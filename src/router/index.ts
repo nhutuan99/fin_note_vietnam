@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { setLocale } from '@/i18n'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -148,6 +149,26 @@ const router = createRouter({
       name: 'admin-blog',
       component: () => import('@/views/AdminBlogView.vue'),
       meta: { parentRoute: '/' }
+    },
+    {
+      // Locale-prefixed landing: /en → set EN locale then go to /landing
+      path: '/en',
+      name: 'landing-en',
+      redirect: () => {
+        setLocale('en')
+        return { path: '/landing' }
+      },
+      meta: { isPublic: true }
+    },
+    {
+      // Locale-prefixed landing: /vi → set VI locale then go to /landing
+      path: '/vi',
+      name: 'landing-vi',
+      redirect: () => {
+        setLocale('vi')
+        return { path: '/landing' }
+      },
+      meta: { isPublic: true }
     }
   ]
 })

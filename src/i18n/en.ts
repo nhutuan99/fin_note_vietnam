@@ -623,7 +623,7 @@ export default {
 
   // ── Login ──
   login: {
-    tagline: 'Your personal knowledge hub',
+    tagline: 'Personal finance, simplified',
     welcomeBack: 'Welcome back',
     createAccount: 'Create account',
     signInDesc: 'Sign in to continue',

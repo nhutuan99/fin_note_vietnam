@@ -644,7 +644,7 @@ export default {
 
   // ── Login ──
   login: {
-    tagline: 'Trung tâm kiến thức cá nhân',
+    tagline: 'Quản lý tài chính cá nhân',
     welcomeBack: 'Chào mừng trở lại',
     createAccount: 'Tạo tài khoản',
     signInDesc: 'Đăng nhập để tiếp tục',
