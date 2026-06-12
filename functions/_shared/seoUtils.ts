@@ -24,7 +24,10 @@ export function extractFirstImage(html: string, fallbackUrl: string, baseUrl?: s
   const imgMatch = html.match(/<img[^>]+src=["']([^"'>\s]+)["']/i)
   const mdMatch = html.match(/!\[[^\]]*\]\(([^)\s]+)(?:\s+"[^"]*")?\)/)
   const candidate = imgMatch?.[1] || mdMatch?.[1]
-  return candidate ? toAbsoluteUrl(candidate, baseUrl || fallbackUrl) : fallbackUrl
+  if (!candidate || isInlineOrLocalOnlyImage(candidate)) return fallbackUrl
+
+  const absoluteUrl = toAbsoluteUrl(candidate, baseUrl || fallbackUrl)
+  return /^https?:\/\//i.test(absoluteUrl) ? absoluteUrl : fallbackUrl
 }
 
 export function toAbsoluteUrl(url: string, baseUrl: string): string {
@@ -107,4 +110,8 @@ function decodeHtmlEntities(str: string): string {
 
     return entity
   })
+}
+
+function isInlineOrLocalOnlyImage(url: string): boolean {
+  return /^(data:|blob:|file:|javascript:)/i.test(url.trim())
 }
