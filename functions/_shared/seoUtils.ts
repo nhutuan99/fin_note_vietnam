@@ -1,17 +1,49 @@
-export function extractExcerpt(html: string, fallback = 'FinNote'): string {
-  if (!html) return fallback
-  let text = html.replace(/<[^>]+>/g, ' ')
-  text = text.replace(/\s+/g, ' ').trim()
-  return text.length > 160 ? text.substring(0, 160) + '...' : text || fallback
+export function extractPlainText(html: string): string {
+  if (!html) return ''
+
+  return decodeHtmlEntities(html)
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<br\s*\/?>/gi, ' ')
+    .replace(/<\/(p|div|li|h[1-6]|blockquote|tr)>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/!\[[^\]]*\]\([^)]+\)/g, ' ')
+    .replace(/\[[^\]]+\]\([^)]+\)/g, (match) => match.slice(1, match.indexOf(']')))
+    .replace(/\s+/g, ' ')
+    .trim()
 }
 
-export function extractFirstImage(html: string, fallbackUrl: string): string {
+export function extractExcerpt(html: string, fallback = 'FinNote', maxLength = 160): string {
+  const text = extractPlainText(html)
+  if (!text) return fallback
+  return truncateText(text, maxLength)
+}
+
+export function extractFirstImage(html: string, fallbackUrl: string, baseUrl?: string): string {
   if (!html) return fallbackUrl
-  const imgMatch = html.match(/<img[^>]+src="([^">]+)"/i)
-  if (imgMatch && imgMatch[1]) return imgMatch[1]
-  const mdMatch = html.match(/!\[[^\]]*\]\(([^)]+)\)/)
-  if (mdMatch && mdMatch[1]) return mdMatch[1]
-  return fallbackUrl
+  const imgMatch = html.match(/<img[^>]+src=["']([^"'>\s]+)["']/i)
+  const mdMatch = html.match(/!\[[^\]]*\]\(([^)\s]+)(?:\s+"[^"]*")?\)/)
+  const candidate = imgMatch?.[1] || mdMatch?.[1]
+  return candidate ? toAbsoluteUrl(candidate, baseUrl || fallbackUrl) : fallbackUrl
+}
+
+export function toAbsoluteUrl(url: string, baseUrl: string): string {
+  if (!url) return baseUrl
+  if (/^https?:\/\//i.test(url)) return url
+  if (url.startsWith('//')) return `https:${url}`
+
+  try {
+    return new URL(url, baseUrl).toString()
+  } catch {
+    return baseUrl
+  }
+}
+
+export function truncateText(text: string, maxLength = 160): string {
+  if (text.length <= maxLength) return text
+  const sliced = text.slice(0, maxLength - 1)
+  const lastSpace = sliced.lastIndexOf(' ')
+  return `${(lastSpace > 80 ? sliced.slice(0, lastSpace) : sliced).trim()}...`
 }
 
 export function injectMeta(html: string, meta: string, articleHtml: string | null): string {
@@ -47,4 +79,32 @@ export function escHtml(str: string): string {
     .replace(/'/g, '&#x27;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
+}
+
+function decodeHtmlEntities(str: string): string {
+  const named: Record<string, string> = {
+    amp: '&',
+    quot: '"',
+    apos: "'",
+    lt: '<',
+    gt: '>',
+    nbsp: ' ',
+  }
+
+  return str.replace(/&(#x?[0-9a-f]+|[a-z]+);/gi, (entity, code) => {
+    const lower = code.toLowerCase()
+    if (lower in named) return named[lower]
+
+    if (lower.startsWith('#x')) {
+      const value = Number.parseInt(lower.slice(2), 16)
+      return Number.isFinite(value) ? String.fromCodePoint(value) : entity
+    }
+
+    if (lower.startsWith('#')) {
+      const value = Number.parseInt(lower.slice(1), 10)
+      return Number.isFinite(value) ? String.fromCodePoint(value) : entity
+    }
+
+    return entity
+  })
 }
