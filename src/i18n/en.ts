@@ -1431,6 +1431,17 @@ export default {
     other: 'Other',
     loginRequiredTitle: 'Login to get notifications',
     loginRequiredMessage: 'You need to log in to subscribe to push notifications for new OTP codes. Log in now?',
-    goToLogin: 'Log in'
+    goToLogin: 'Log in',
+    seoTitle: 'OTP Hub | Get Free Online OTP Codes',
+    seoDesc: 'Get free online OTP verification codes instantly from FinNote. Receive OTP codes for Netflix, Spotify, YouTube... and subscribe to push notifications.',
+    seoKeywords: 'otp hub, get otp online, free otp, netflix otp, spotify otp, youtube otp, finnote otp',
+    pwaGuideTitle: 'How to Install PWA (Web App)',
+    pwaGuideDesc: 'For a full-screen app experience and to receive instant OTP push notifications (especially on iOS).',
+    pwaIosTitle: 'Install on iOS (Safari):',
+    pwaIosStep1: 'Tap the <strong>Share</strong> button (📤) on the Safari toolbar.',
+    pwaIosStep2: 'Select <strong>Add to Home Screen</strong>.',
+    pwaAndroidTitle: 'Install on Android / Chrome / PC:',
+    pwaAndroidStep1: 'Tap the <strong>Install</strong> icon in the address bar or the 3-dot menu.',
+    pwaAndroidStep2: 'Select <strong>Install App</strong>.'
   }
 }

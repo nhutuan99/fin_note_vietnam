@@ -133,7 +133,7 @@ onMounted(async () => {
       <!-- Public Header for Unauthenticated Users to discover the app -->
       <header v-if="!auth.isAuthenticated" class="public-header">
         <div class="public-header__container">
-          <router-link to="/" class="public-header__logo">
+          <router-link to="/landing" class="public-header__logo">
             <img src="/images/logo-512.png" alt="FinNote" class="w-8 h-8 object-contain" />
             <span class="font-bold text-[1.125rem] text-text-primary tracking-tight">FinNote</span>
           </router-link>

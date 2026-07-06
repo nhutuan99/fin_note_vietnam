@@ -1474,6 +1474,17 @@ export default {
     other: 'Khác',
     loginRequiredTitle: 'Đăng nhập để nhận thông báo',
     loginRequiredMessage: 'Bạn cần đăng nhập để đăng ký nhận push notification khi có mã OTP mới. Đăng nhập ngay?',
-    goToLogin: 'Đăng nhập'
+    goToLogin: 'Đăng nhập',
+    seoTitle: 'OTP Hub | Nhận Mã OTP Trực Tuyến Miễn Phí',
+    seoDesc: 'Nhận mã OTP trực tuyến nhanh chóng, hoàn toàn miễn phí từ FinNote. Nhận mã OTP Netflix, Spotify, YouTube... ngay lập tức và đăng ký nhận thông báo đẩy.',
+    seoKeywords: 'otp hub, nhận mã otp, otp netflix, otp spotify, otp youtube, otp mien phi, finnote, otp',
+    pwaGuideTitle: 'Hướng dẫn cài đặt PWA (Ứng dụng Web)',
+    pwaGuideDesc: 'Để có trải nghiệm toàn màn hình và nhận thông báo đẩy mã OTP tức thì (đặc biệt là iOS).',
+    pwaIosTitle: 'Cài đặt trên iOS (Safari):',
+    pwaIosStep1: 'Nhấn nút <strong>Chia sẻ</strong> (🔲↑ hoặc 📤) trên thanh công cụ.',
+    pwaIosStep2: 'Chọn <strong>Thêm vào Màn hình chính</strong>.',
+    pwaAndroidTitle: 'Cài đặt trên Android / Chrome / PC:',
+    pwaAndroidStep1: 'Nhấn biểu tượng <strong>Cài đặt</strong> trên thanh địa chỉ hoặc Menu 3 chấm.',
+    pwaAndroidStep2: 'Chọn <strong>Cài đặt ứng dụng</strong> (Install App).'
   }
 }
