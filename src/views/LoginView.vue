@@ -45,9 +45,11 @@ const isValid = computed(() => {
   return true
 })
 
+const oauthRedirect = ref('/')
+
 /** Get the redirect path from query params, defaulting to '/' */
 function getRedirectPath(): string {
-  const redirect = route.query.redirect as string
+  const redirect = (route.query.redirect as string) || oauthRedirect.value
   // Only allow internal paths (starting with /) to prevent open redirect
   return redirect && redirect.startsWith('/') ? redirect : '/'
 }
@@ -85,7 +87,8 @@ function startGoogleSignIn() {
     return
   }
   const redirectUri = `${window.location.origin}/login`
-  const state = btoa(JSON.stringify({ flow: 'signin' }))
+  const redirectPath = route.query.redirect as string || '/'
+  const state = btoa(JSON.stringify({ flow: 'signin', redirect: redirectPath }))
   sessionStorage.setItem('google_signin_flow', 'true')
   const params = new URLSearchParams({
     client_id: clientId,
@@ -106,6 +109,7 @@ async function startGoogleSignInViaBackend() {
   try {
     // Use a dummy email just to get the OAuth URL — backend will be updated to handle this
     const redirectUri = `${window.location.origin}/login`
+    const redirectPath = route.query.redirect as string || '/'
     sessionStorage.setItem('google_signin_flow', 'true')
     const params = new URLSearchParams({
       client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID || '',
@@ -113,7 +117,7 @@ async function startGoogleSignInViaBackend() {
       response_type: 'code',
       scope: 'email profile',
       access_type: 'online',
-      state: btoa(JSON.stringify({ flow: 'signin' })),
+      state: btoa(JSON.stringify({ flow: 'signin', redirect: redirectPath })),
       prompt: 'select_account'
     })
     window.location.href = `${GOOGLE_OAUTH_AUTH_URL}?${params.toString()}`
@@ -291,7 +295,12 @@ watch(
       let isSignInFlow = sessionStorage.getItem('google_signin_flow') === 'true'
       try {
         const stateData = JSON.parse(atob(state))
-        if (stateData.flow === 'signin') isSignInFlow = true
+        if (stateData.flow === 'signin') {
+          isSignInFlow = true
+          if (stateData.redirect) {
+            oauthRedirect.value = stateData.redirect
+          }
+        }
       } catch {}
 
       if (isSignInFlow) {
