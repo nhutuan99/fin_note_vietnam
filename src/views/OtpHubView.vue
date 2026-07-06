@@ -45,16 +45,34 @@ interface OtpCode {
 }
 
 const SERVICES: Record<string, { name: string; color: string; icon: string }> = {
-  netflix: { name: 'Netflix', color: '#E50914', icon: 'N' },
-  spotify: { name: 'Spotify', color: '#1DB954', icon: '♫' },
-  youtube: { name: 'YouTube', color: '#FF0000', icon: '▶' },
-  discord: { name: 'Discord', color: '#5865F2', icon: '🎮' },
-  github: { name: 'GitHub', color: '#8B5CF6', icon: '⌨' },
-  google: { name: 'Google', color: '#4285F4', icon: 'G' },
-  facebook: { name: 'Facebook', color: '#1877F2', icon: 'f' },
-  apple: { name: 'Apple', color: '#A2AAAD', icon: '' },
-  steam: { name: 'Steam', color: '#171A21', icon: '🎮' },
+  netflix: { name: 'Netflix', color: '#E50914', icon: '🍿' },
+  spotify: { name: 'Spotify', color: '#1DB954', icon: '🎵' },
+  youtube: { name: 'YouTube', color: '#FF0000', icon: '📺' },
+  discord: { name: 'Discord', color: '#5865F2', icon: '💬' },
+  github: { name: 'GitHub', color: '#181717', icon: '💻' },
+  google: { name: 'Google', color: '#4285F4', icon: '🔍' },
+  facebook: { name: 'Facebook', color: '#1877F2', icon: '🔵' },
+  apple: { name: 'Apple', color: '#000000', icon: '🍎' },
+  steam: { name: 'Steam', color: '#171A21', icon: '🕹️' },
   custom: { name: 'Other', color: '#7c6ff7', icon: '🔑' }
+}
+
+const isServiceDropdownOpen = ref(false)
+const serviceDropdownRef = ref<HTMLElement | null>(null)
+
+function toggleServiceDropdown() {
+  isServiceDropdownOpen.value = !isServiceDropdownOpen.value
+}
+
+function selectService(key: string) {
+  adminForm.value.service = key
+  isServiceDropdownOpen.value = false
+}
+
+function handleClickOutside(e: MouseEvent) {
+  if (serviceDropdownRef.value && !serviceDropdownRef.value.contains(e.target as Node)) {
+    isServiceDropdownOpen.value = false
+  }
 }
 
 const serviceOptions = computed(() =>
@@ -234,11 +252,13 @@ onMounted(() => {
   countdownInterval = setInterval(() => { now.value = Date.now() }, 1000)
   pollInterval = setInterval(() => { fetchOtpCodes() }, 10000)
   if (isAdmin.value) { showAdminPanel.value = true; fetchSubscriberCount(); fetchSettings() }
+  document.addEventListener('click', handleClickOutside)
 })
 
 onUnmounted(() => {
   if (countdownInterval) clearInterval(countdownInterval)
   if (pollInterval) clearInterval(pollInterval)
+  document.removeEventListener('click', handleClickOutside)
 })
 
 watch(isAdmin, (val) => {
@@ -308,14 +328,60 @@ watch(isAdmin, (val) => {
         <div class="flex gap-3">
           <div class="flex-1 space-y-1.5">
             <label class="text-[0.6875rem] font-semibold uppercase tracking-wider text-text-tertiary">{{ t('otpHub.service') }}</label>
-            <div class="relative">
-              <select
-                v-model="adminForm.service"
-                class="w-full appearance-none rounded-lg bg-bg-elevated border border-border-default px-3 py-2.5 pr-8 text-[0.875rem] text-text-primary outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/20"
+            <div class="relative" ref="serviceDropdownRef">
+              <button
+                type="button"
+                @click="toggleServiceDropdown"
+                class="flex w-full items-center justify-between gap-2.5 rounded-lg border border-border-default bg-bg-elevated px-3 py-2.5 text-left text-[0.875rem] text-text-primary outline-none transition-all focus:border-accent focus:ring-2 focus:ring-accent/20"
+                :class="{ 'border-accent ring-2 ring-accent/20': isServiceDropdownOpen }"
               >
-                <option v-for="s in serviceOptions" :key="s.key" :value="s.key">{{ s.icon }} {{ s.displayName }}</option>
-              </select>
-              <ChevronDown :size="14" class="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-text-tertiary" />
+                <div class="flex items-center gap-2">
+                  <div
+                    class="flex h-5 w-5 items-center justify-center rounded text-[0.6875rem] font-black text-white shrink-0"
+                    :style="{ background: getServiceConfig(adminForm.service).color }"
+                  >
+                    {{ getServiceConfig(adminForm.service).icon }}
+                  </div>
+                  <span>{{ serviceOptions.find(s => s.key === adminForm.service)?.displayName }}</span>
+                </div>
+                <ChevronDown :size="14" class="text-text-tertiary transition-transform duration-200" :class="{ 'rotate-180': isServiceDropdownOpen }" />
+              </button>
+
+              <transition
+                enter-active-class="transition duration-150 ease-out"
+                enter-from-class="transform scale-95 opacity-0 translate-y-[-10px]"
+                enter-to-class="transform scale-100 opacity-100 translate-y-0"
+                leave-active-class="transition duration-100 ease-in"
+                leave-from-class="transform scale-100 opacity-100 translate-y-0"
+                leave-to-class="transform scale-95 opacity-0 translate-y-[-10px]"
+              >
+                <div
+                  v-if="isServiceDropdownOpen"
+                  class="absolute left-0 right-0 z-[100] mt-1.5 max-h-60 overflow-y-auto rounded-xl border border-border-default bg-bg-surface p-1.5 shadow-[0_10px_40px_rgba(0,0,0,0.5)] custom-scrollbar"
+                >
+                  <div class="flex flex-col gap-0.5">
+                    <button
+                      v-for="s in serviceOptions"
+                      :key="s.key"
+                      type="button"
+                      @click="selectService(s.key)"
+                      class="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-[0.875rem] transition-colors"
+                      :class="s.key === adminForm.service ? 'bg-accent/15 text-accent font-semibold' : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'"
+                    >
+                      <div class="flex items-center gap-2 py-0.5">
+                        <div
+                          class="flex h-5 w-5 items-center justify-center rounded text-[0.6875rem] font-black text-white shrink-0"
+                          :style="{ background: s.color }"
+                        >
+                          {{ s.icon }}
+                        </div>
+                        <span>{{ s.displayName }}</span>
+                      </div>
+                      <Check v-if="s.key === adminForm.service" :size="14" class="text-accent shrink-0" />
+                    </button>
+                  </div>
+                </div>
+              </transition>
             </div>
           </div>
           <div v-if="adminForm.service === 'custom'" class="flex-1 space-y-1.5">
@@ -505,6 +571,18 @@ watch(isAdmin, (val) => {
 }
 
 .tabular-nums { font-variant-numeric: tabular-nums; }
+
+/* Custom scrollbar for dropdown */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: var(--color-border-strong);
+  border-radius: 10px;
+}
 
 @media (max-width: 480px) {
   .font-mono.text-\[2rem\] { font-size: 1.5rem; letter-spacing: 0.15em; }
