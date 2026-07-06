@@ -10,6 +10,7 @@ import { setLocale } from '@/i18n'
 // 3. Stores
 import { useAuthStore } from '@/stores/auth'
 import { useTradingStore } from '@/stores/trading'
+import { useUiStore } from '@/stores/ui'
 
 // 4. Composables
 import { useDevice } from '@/composables/useDevice'
@@ -19,11 +20,15 @@ import { useSwipeNavigation } from '@/composables/useSwipeNavigation'
 // 5. Components
 import AppLayout from '@/components/layout/AppLayout.vue'
 import TradingCheckinModal from '@/modules/finance/components/TradingCheckinModal.vue'
+import ToastContainer from '@/components/ui/ToastContainer.vue'
+import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
+import PinDialog from '@/components/PinDialog.vue'
 import { ArrowLeft } from 'lucide-vue-next'
 
 const route  = useRoute()
 const auth   = useAuthStore()
 const trading = useTradingStore()
+const ui = useUiStore()
 const { t, locale } = useI18n()
 const { deviceType, isMobileOrTablet } = useDevice()
 
@@ -178,6 +183,17 @@ onMounted(async () => {
 
     <!-- Global Trading Check-in popup (auto-trigger once per day) -->
     <TradingCheckinModal v-model="showTradingCheckin" />
+
+    <!-- Global Dialogs and Toasts -->
+    <ToastContainer />
+    <ConfirmDialog />
+    <PinDialog 
+      :show="ui.pinState.isOpen"
+      :title="ui.pinState.title"
+      :message="ui.pinState.message"
+      @confirmed="ui.resolvePin(true)"
+      @cancelled="ui.resolvePin(false)"
+    />
 
     <!-- While auth resolves — render nothing -->
   </div>

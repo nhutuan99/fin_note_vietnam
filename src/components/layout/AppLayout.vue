@@ -233,15 +233,7 @@ async function handleRefresh(done: () => void) {
     <!-- Global AI Advisor -->
     <FinanceAiAdvisor />
 
-    <ToastContainer />
-    <ConfirmDialog />
-    <PinDialog 
-      :show="ui.pinState.isOpen"
-      :title="ui.pinState.title"
-      :message="ui.pinState.message"
-      @confirmed="ui.resolvePin(true)"
-      @cancelled="ui.resolvePin(false)"
-    />
+
     <BugReportModal 
       :show="ui.showBugReport" 
       @close="ui.showBugReport = false" 
