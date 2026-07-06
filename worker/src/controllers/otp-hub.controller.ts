@@ -291,40 +291,45 @@ const EMAIL_SERVICE_MAP: { match: string; service: string; name: string; expiry:
  * Returns the OTP code string or null if not found.
  */
 function extractOtpFromText(text: string): string | null {
-  // Clean HTML tags if present
-  const cleanText = text.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ')
+  // Clean HTML tags but preserve newlines
+  const cleanText = text.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/[ \t\r]+/g, ' ')
+
+  // Temporary variable with single-line space for explicit pattern matching across lines
+  const singleLineText = cleanText.replace(/\s+/g, ' ')
 
   // Pattern 1: Explicit OTP/code/mã patterns (Vietnamese + English)
   const explicitPatterns = [
     /(?:mã|code|OTP|verification code|security code|mã xác (?:thực|nhận|minh)|mã đăng nhập|sign[- ]?in code|login code)[:\s]*(\d{4,8})/i,
     /(\d{4,8})\s*(?:là mã|is your|is the code|is your code)/i,
     /(?:enter|nhập|use)\s*(?:this\s*)?(?:code|mã)[:\s]*(\d{4,8})/i,
+    // Netflix specific
+    /(?:nhập mã này để đăng nhập|mã đăng nhập netflix|netflix code|mã netflix)[:\s]*(\d{4,8})/i,
+    // Google specific
+    /(?:mã xác minh google|google verification code)[:\s]*(\d{4,8})/i,
   ]
 
   for (const pattern of explicitPatterns) {
-    const match = cleanText.match(pattern)
+    const match = singleLineText.match(pattern)
     if (match?.[1]) return match[1]
   }
 
-  // Pattern 2: Standalone prominent number (4-8 digits, surrounded by whitespace or special formatting)
-  // Netflix-style: big number in the middle of the email
-  const standalonePattern = /(?:^|\s)(\d{4,8})(?:\s|$)/
-  const lines = cleanText.split(/[.\n]/)
+  // Pattern 2: Standalone prominent number (4-8 digits, surrounded by lines)
+  const lines = cleanText.split('\n')
   for (const line of lines) {
     const trimmed = line.trim()
     // Short line with just a number = likely an OTP
     if (/^\d{4,8}$/.test(trimmed)) return trimmed
-    // Line that is mostly a number
+    
+    // Line that is mostly a number (e.g. "9262 ")
     if (trimmed.length < 20) {
-      const match = trimmed.match(standalonePattern)
+      const match = trimmed.match(/(?:^|\s)(\d{4,8})(?:\s|$)/)
       if (match?.[1]) return match[1]
     }
   }
 
   // Pattern 3: Last resort — find any 4-6 digit number in the text
-  const allNumbers = cleanText.match(/\b(\d{4,6})\b/g)
+  const allNumbers = singleLineText.match(/\b(\d{4,6})\b/g)
   if (allNumbers && allNumbers.length === 1) {
-    // Only if there's exactly one number, it's likely the OTP
     return allNumbers[0]
   }
 
