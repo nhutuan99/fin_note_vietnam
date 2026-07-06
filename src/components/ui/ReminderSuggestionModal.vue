@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useReminderStore } from '@/stores/reminders'
 import { useUiStore } from '@/stores/ui'
@@ -67,12 +67,12 @@ const batchMode = ref(false)
 const batchCreating = ref(false)
 const batchOffsets = ref<string[]>(['1d'])
 
-const offsetOptions = [
-  { key: '1d', label: '1 ngày' },
-  { key: '2d', label: '2 ngày' },
-  { key: '3d', label: '3 ngày' },
-  { key: '1w', label: '1 tuần' },
-]
+const offsetOptions = computed(() => [
+  { key: '1d', label: t('reminders.offset1d') },
+  { key: '2d', label: t('reminders.offset2d') },
+  { key: '3d', label: t('reminders.offset3d') },
+  { key: '1w', label: t('reminders.offset1w') },
+])
 
 function toggleBatchOffset(key: string) {
   const idx = batchOffsets.value.indexOf(key)
@@ -164,17 +164,17 @@ async function handleBatchCreate() {
             @click="batchMode = true"
             class="w-full mt-2 py-3 rounded-xl bg-accent-subtle text-accent font-semibold text-sm hover:bg-accent/20 transition-all border border-accent/20"
           >
-            Thêm nhanh tất cả ({{ suggestions.length }})
+            {{ t('reminders.batchAddAll', { n: suggestions.length }) }}
           </button>
         </template>
 
         <!-- Batch Add Options -->
         <template v-else>
           <div class="p-4 rounded-xl bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.05)]">
-            <h4 class="text-sm font-semibold mb-1 text-text-primary">Thêm {{ suggestions.length }} lời nhắc</h4>
-            <p class="text-xs text-text-secondary mb-4">Các sự kiện deadline nên được nhắc trước tối thiểu 1 ngày.</p>
+            <h4 class="text-sm font-semibold mb-1 text-text-primary">{{ t('reminders.batchTitle', { n: suggestions.length }) }}</h4>
+            <p class="text-xs text-text-secondary mb-4">{{ t('reminders.batchDesc') }}</p>
             
-            <label class="text-xs font-semibold text-text-tertiary uppercase mb-2 block">Nhắc trước bao lâu?</label>
+            <label class="text-xs font-semibold text-text-tertiary uppercase mb-2 block">{{ t('reminders.batchRemindBefore') }}</label>
             <div class="flex flex-wrap gap-2 mb-6">
               <button
                 v-for="opt in offsetOptions" :key="opt.key"
@@ -187,14 +187,14 @@ async function handleBatchCreate() {
             </div>
 
             <div class="flex gap-2">
-              <button @click="batchMode = false" class="flex-1 py-2 rounded-lg bg-bg-elevated border border-border-default text-xs font-medium hover:bg-bg-hover">Hủy</button>
+              <button @click="batchMode = false" class="flex-1 py-2 rounded-lg bg-bg-elevated border border-border-default text-xs font-medium hover:bg-bg-hover">{{ t('common.cancel') }}</button>
               <button 
                 @click="handleBatchCreate" 
                 :disabled="batchOffsets.length === 0 || batchCreating"
                 class="flex-1 py-2 rounded-lg bg-accent text-white text-xs font-semibold hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 <AppSpinner v-if="batchCreating" :size="14"  />
-                Xác nhận thêm
+                {{ t('reminders.batchConfirm') }}
               </button>
             </div>
           </div>

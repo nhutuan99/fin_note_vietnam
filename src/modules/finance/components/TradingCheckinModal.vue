@@ -390,7 +390,7 @@ function close() { emit('update:modelValue', false) }
                     </div>
                     <!-- USD live conversion hint -->
                     <div v-if="drafts[walletStep].inputMode === 'usd'" class="flex items-center text-[11px] px-1">
-                      <span v-if="usdRateLoading" class="text-text-disabled italic">Đang tải tỷ giá...</span>
+                      <span v-if="usdRateLoading" class="text-text-disabled italic">{{ t('trading.loadingRate') }}</span>
                       <template v-else-if="usdToVnd > 0">
                         <!-- If user is in VND mode → show VND equivalent -->
                         <span v-if="globalCurrency === 'VND'" class="text-emerald-400 font-medium">
@@ -398,11 +398,11 @@ function close() { emit('update:modelValue', false) }
                         </span>
                         <!-- If user is in USD mode → just confirm the rate -->
                         <span v-else class="text-emerald-400 font-medium">
-                          1$ = {{ new Intl.NumberFormat('vi-VN').format(usdToVnd) }}₫ (đang dùng USD)
+                          1$ = {{ new Intl.NumberFormat('vi-VN').format(usdToVnd) }}₫ {{ t('trading.usingUsd') }}
                         </span>
                       </template>
                       <span v-else-if="usdRateError" class="text-error text-[10px]">{{ usdRateError }}</span>
-                      <span v-else class="text-text-disabled text-[10px]">Chưa có tỷ giá</span>
+                      <span v-else class="text-text-disabled text-[10px]">{{ t('trading.noExchangeRate') }}</span>
                     </div>
                   </div>
 

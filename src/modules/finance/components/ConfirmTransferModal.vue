@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useFinanceStore } from '@/stores/finance'
 import { useUiStore } from '@/stores/ui'
 import { X, ArrowRightLeft, Check, ArrowLeft } from 'lucide-vue-next'
 import type { PendingTransfer } from '@/types'
 
+const { t } = useI18n()
 const financeStore = useFinanceStore()
 const uiStore = useUiStore()
 
@@ -33,7 +35,7 @@ function formatMoney(amount: number) {
 
 async function handleConfirmTransfer() {
   if (!selectedTargetWalletId.value) {
-    uiStore.showToast('error', 'Vui lòng chọn ví nhận tiền')
+    uiStore.showToast('error', t('transfer.selectTargetWallet'))
     return
   }
   isResolving.value = true
@@ -45,11 +47,11 @@ async function handleConfirmTransfer() {
       confirmAmount.value,
       disableFuture.value
     )
-    uiStore.showToast('success', 'Đã ghi nhận chuyển khoản nội bộ thành công')
+    uiStore.showToast('success', t('transfer.internalTransferSuccess'))
     emit('resolved')
     emit('close')
   } catch (error) {
-    uiStore.showToast('error', 'Đã xảy ra lỗi khi ghi nhận')
+    uiStore.showToast('error', t('transfer.recordError'))
   } finally {
     isResolving.value = false
   }
@@ -65,11 +67,11 @@ async function handleConfirmExpense() {
       undefined,
       disableFuture.value
     )
-    uiStore.showToast('success', 'Đã xác nhận là chi tiêu thực tế')
+    uiStore.showToast('success', t('transfer.confirmedAsExpense'))
     emit('resolved')
     emit('close')
   } catch (error) {
-    uiStore.showToast('error', 'Đã xảy ra lỗi khi ghi nhận')
+    uiStore.showToast('error', t('transfer.recordError'))
   } finally {
     isResolving.value = false
   }
@@ -93,10 +95,10 @@ async function handleConfirmExpense() {
           </div>
           <div class="flex-1 min-w-0">
             <h2 class="text-sm font-bold text-text-primary">
-              Xác nhận giao dịch lớn
+              {{ t('transfer.confirmLargeTitle') }}
             </h2>
             <p class="text-[11px] text-text-tertiary">
-              Phát hiện chi tiêu trên 3,000,000đ
+              {{ t('transfer.largeTransactionDetected') }}
             </p>
           </div>
           <button
@@ -111,29 +113,29 @@ async function handleConfirmExpense() {
         <div v-if="step === 1" class="p-5 space-y-4">
           <div class="bg-bg-elevated border border-border-default rounded-xl p-4 space-y-2">
             <div class="flex justify-between items-baseline">
-              <span class="text-xs text-text-tertiary">Số tiền chuyển đi:</span>
+              <span class="text-xs text-text-tertiary">{{ t('transfer.amountSent') }}</span>
               <span class="text-lg font-bold text-error">-{{ formatMoney(transfer.amount) }}</span>
             </div>
             <div class="flex justify-between">
-              <span class="text-xs text-text-tertiary">Từ ví:</span>
+              <span class="text-xs text-text-tertiary">{{ t('transfer.fromWallet') }}</span>
               <span class="text-xs font-semibold text-text-primary">{{ transfer.walletName }}</span>
             </div>
             <div class="flex justify-between">
-              <span class="text-xs text-text-tertiary">Nội dung:</span>
+              <span class="text-xs text-text-tertiary">{{ t('transfer.content') }}</span>
               <span class="text-xs text-text-secondary text-right truncate max-w-[200px]">{{ transfer.note }}</span>
             </div>
             <div class="flex justify-between">
-              <span class="text-xs text-text-tertiary">Ngày:</span>
+              <span class="text-xs text-text-tertiary">{{ t('transfer.date') }}</span>
               <span class="text-xs text-text-secondary">{{ transfer.date }}</span>
             </div>
           </div>
 
           <div class="space-y-1 text-center">
             <p class="text-sm font-bold text-text-primary">
-              Đây có phải là chuyển khoản nội bộ (chuyển sang ví khác của bạn) không?
+              {{ t('transfer.isInternalQuestion') }}
             </p>
             <p class="text-xs text-text-tertiary leading-relaxed">
-              Nếu là chuyển nội bộ, hệ thống sẽ tự động cân đối và không tính giao dịch này vào mục tiêu chi tiêu tháng (tránh bị báo đỏ ngân sách).
+              {{ t('transfer.isInternalHint') }}
             </p>
           </div>
 
@@ -145,7 +147,7 @@ async function handleConfirmExpense() {
               class="mt-0.5 rounded border-border-strong text-accent focus:ring-accent-subtle"
             />
             <span class="text-xs text-text-secondary leading-tight">
-              Tắt tính năng tự động hỏi xác nhận này trong tương lai. (Có thể bật lại trong Cài đặt)
+              {{ t('transfer.disableFutureHint') }}
             </span>
           </label>
 
@@ -156,7 +158,7 @@ async function handleConfirmExpense() {
               class="w-full btn-primary justify-center py-2.5"
             >
               <Check :size="15" />
-              <span>Đúng vậy, là chuyển khoản nội bộ</span>
+              <span>{{ t('transfer.yesInternal') }}</span>
             </button>
             <button
               @click="handleConfirmExpense"
@@ -165,7 +167,7 @@ async function handleConfirmExpense() {
             >
               <span v-if="isResolving" class="inline-block h-3.5 w-3.5 rounded-full border-2 border-text-secondary/30 border-t-text-secondary animate-spin" />
               <template v-else>
-                <span>Không phải, đây là chi tiêu thực tế</span>
+                <span>{{ t('transfer.noItIsExpense') }}</span>
               </template>
             </button>
           </div>
@@ -178,32 +180,32 @@ async function handleConfirmExpense() {
             class="flex items-center gap-1.5 text-xs font-semibold text-accent hover:text-accent-text transition-colors"
           >
             <ArrowLeft :size="12" />
-            <span>Quay lại</span>
+            <span>{{ t('common.back') }}</span>
           </button>
 
           <div class="space-y-3">
             <div class="space-y-1.5">
-              <label class="text-xs font-semibold text-text-secondary">Ví chuyển đi (Nguồn)</label>
+              <label class="text-xs font-semibold text-text-secondary">{{ t('transfer.sourceWallet') }}</label>
               <div class="w-full rounded-xl border border-border-default bg-bg-elevated px-3.5 py-2.5 text-sm text-text-primary font-medium">
                 {{ transfer.walletName }}
               </div>
             </div>
 
             <div class="space-y-1.5">
-              <label class="text-xs font-semibold text-text-secondary">Ví nhận tiền (Đích)</label>
+              <label class="text-xs font-semibold text-text-secondary">{{ t('transfer.targetWallet') }}</label>
               <select
                 v-model="selectedTargetWalletId"
                 class="w-full rounded-xl border border-border-default bg-bg-elevated px-3.5 py-2.5 text-sm text-text-primary focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent transition-colors"
               >
-                <option value="" disabled selected>-- Chọn ví nhận --</option>
+                <option value="" disabled selected>{{ t('transfer.selectWalletPlaceholder') }}</option>
                 <option v-for="w in otherWallets" :key="w.id" :value="w.id">
-                  {{ w.icon }} {{ w.name }} (Số dư: {{ formatMoney(w.balance) }})
+                  {{ w.icon }} {{ w.name }} ({{ t('transfer.balance') }}: {{ formatMoney(w.balance) }})
                 </option>
               </select>
             </div>
 
             <div class="space-y-1.5">
-              <label class="text-xs font-semibold text-text-secondary">Số tiền chuyển khoản</label>
+              <label class="text-xs font-semibold text-text-secondary">{{ t('transfer.transferAmount') }}</label>
               <div class="relative">
                 <input
                   v-model.number="confirmAmount"
@@ -225,7 +227,7 @@ async function handleConfirmExpense() {
               <span v-if="isResolving" class="inline-block h-3.5 w-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
               <template v-else>
                 <Check :size="15" />
-                <span>Xác nhận & Hoàn tất</span>
+                <span>{{ t('transfer.confirmAndFinish') }}</span>
               </template>
             </button>
           </div>

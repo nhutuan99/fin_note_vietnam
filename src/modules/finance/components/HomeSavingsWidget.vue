@@ -61,9 +61,9 @@ async function quickSave() {
             </span>
           </div>
           <div class="text-sm text-text-secondary">
-            Mục tiêu: <span class="font-semibold text-text-primary">{{ formatVND(suggestedGoal.targetAmount) }}</span>
+            {{ t('savings.targetLabel') }}: <span class="font-semibold text-text-primary">{{ formatVND(suggestedGoal.targetAmount) }}</span>
             <span class="mx-2 text-text-tertiary">•</span>
-            Đã đạt: <span class="font-semibold text-success">{{ formatVND(suggestedGoal.currentAmount) }}</span>
+            {{ t('savings.achievedLabel') }}: <span class="font-semibold text-success">{{ formatVND(suggestedGoal.currentAmount) }}</span>
           </div>
           
           <div class="w-full max-w-xs bg-bg-surface/50 h-1.5 mt-2 rounded-full overflow-hidden">

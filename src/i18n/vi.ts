@@ -43,7 +43,16 @@ export default {
     stopLoss: 'Cắt lỗ',
     confirmDelete: 'Bạn có chắc chắn muốn xóa không?',
     noData: 'Chưa có dữ liệu',
-    fillRequiredFields: 'Vui lòng điền đầy đủ thông tin bắt buộc'
+    fillRequiredFields: 'Vui lòng điền đầy đủ thông tin bắt buộc',
+    selectAll: 'Chọn tất cả',
+    continue: 'Tiếp tục',
+    goBack: 'Quay lại',
+    apply: 'Xác nhận',
+    copyLinkTitle: 'Sao chép liên kết',
+    copiedTitle: 'Đã sao chép!',
+    shareOnFacebook: 'Chia sẻ lên Facebook',
+    shareOnTwitter: 'Chia sẻ lên Twitter',
+    shareOnLinkedIn: 'Chia sẻ lên LinkedIn'
   },
 
   // ── Stock Alerts ──
@@ -65,6 +74,61 @@ export default {
     noAlerts: 'Chưa có mốc giá',
     stopLoss: 'Cắt lỗ',
     takeProfit: 'Mục tiêu chốt lời'
+  },
+
+  // ── Stocks / Funds View ──
+  stocks: {
+    tabStocks: 'Cổ phiếu',
+    tabFunds: 'Chứng chỉ quỹ',
+    // Chart tooltip
+    tooltipOpen: 'Mở cửa:',
+    tooltipHigh: 'Cao nhất:',
+    tooltipLow: 'Thấp nhất:',
+    tooltipClose: 'Kết phiên:',
+    tooltipVolume: 'Khối lượng:',
+    // Company info tooltip
+    loadingInfo: 'Đang tải thông tin...',
+    listedCode: 'Mã niêm yết:',
+    exchange: 'Sàn GDKC:',
+    listedDate: 'Ngày niêm yết:',
+    intlName: 'Tên QT:',
+    // Price bar titles
+    buyPriceLabel: 'Giá mua:',
+    currentPriceLabel: 'Giá hiện tại:',
+    // Toast messages
+    updated: 'Đã cập nhật mã {symbol}',
+    added: 'Đã thêm mã {symbol}',
+    deleted: 'Đã xóa mã {symbol}',
+    // PIN confirm
+    pinTitle: 'Xác nhận mã PIN',
+    pinMessage: 'Nhập mã PIN để xóa mã {symbol}',
+    // Confirm dialogs
+    deleteStockTitle: 'Xóa mã chứng khoán'
+  },
+
+  // ── Funds View ──
+  funds: {
+    title: 'Chứng chỉ quỹ',
+    totalNav: 'Tổng NAV',
+    addFund: 'Thêm quỹ',
+    empty: 'Chưa có chứng chỉ quỹ nào',
+    emptyHint: 'Thêm quỹ để theo dõi NAV & lợi nhuận',
+    currentNav: 'NAV hiện tại',
+    buyPricePerUnit: 'Giá mua / CCQ',
+    profit: 'Lợi nhuận',
+    portfolioValue: 'Giá trị danh mục',
+    unitCount: '{count} CCQ',
+    // Fund type labels
+    typeStock: 'Cổ phiếu',
+    typeBond: 'Trái phiếu',
+    typeBalance: 'Cân bằng',
+    // Confirm & toast
+    deleteFundTitle: 'Xoá chứng chỉ quỹ',
+    deleteFundMessage: 'Bạn có chắc muốn xoá {symbol} khỏi danh mục?',
+    deleteFundConfirm: 'Xoá',
+    fundUpdated: 'Đã cập nhật {symbol}',
+    fundAdded: 'Đã thêm {symbol}',
+    fundDeleted: 'Đã xoá {symbol}'
   },
 
   // ── Time ──
@@ -225,7 +289,12 @@ export default {
     reminderSaved: 'Đã đặt giờ nhắc lúc {time} 🔔',
     reminderDisabled: 'Đã tắt nhắc nhở',
     reminderSaveError: 'Không thể lưu, thử lại nhé.',
-    reminderTurnOff: 'Tắt nhắc nhở'
+    reminderTurnOff: 'Tắt nhắc nhở',
+
+    // USD exchange rate
+    loadingRate: 'Đang tải tỷ giá...',
+    usingUsd: '(đang dùng USD)',
+    noExchangeRate: 'Chưa có tỷ giá'
   },
 
   // ── Planning Hub ──
@@ -261,7 +330,8 @@ export default {
     emptyHint: 'Thêm khoản vay mua nhà, xe, hoặc nợ bạn bè để theo dõi',
     deleteTitle: 'Xóa khoản nợ',
     deleteMessage: 'Khoản nợ/vay này sẽ bị xóa khỏi hệ thống.',
-    count: '{n} khoản'
+    count: '{n} khoản',
+    interestRateUnit: 'năm'
   },
 
   // ── Onboarding ──
@@ -444,7 +514,18 @@ export default {
     deleteConfirm: 'Chắc chắn xóa',
     cannotSaveOrder: 'Không thể lưu thứ tự ví',
     pinDeleteTitle: 'Xác nhận xóa ví',
-    pinDeleteMessage: 'Nhập mã PIN để xóa ví này'
+    pinDeleteMessage: 'Nhập mã PIN để xóa ví này',
+    customLogo: 'Logo tuỳ chỉnh',
+    logoOptional: '(không bắt buộc)',
+    logoPasteUrl: 'Dán link URL',
+    logoUploadImage: 'Upload ảnh',
+    logoUrlError: 'Không load được ảnh từ URL này. Thử URL khác.',
+    logoUploading: 'Đang tải...',
+    logoChooseFile: 'Chọn file ảnh (PNG, JPG, SVG, WEBP, max 300KB)',
+    logoUploaded: '✓ Ảnh đã được tải lên',
+    logoTooLarge: 'Ảnh quá lớn. Vui lòng chọn ảnh dưới 300KB.',
+    logoInvalidType: 'Chỉ chấp nhận file ảnh (PNG, JPG, SVG, WEBP).',
+    logoReadError: 'Không thể đọc file. Thử lại.'
   },
 
   // ── Notes ──
@@ -616,6 +697,7 @@ export default {
     wrongPassword: 'Mật khẩu không chính xác',
     pinResetFailed: 'Đặt lại PIN thất bại',
     fallbackRate: 'đang dùng tỷ giá dự phòng',
+    updateFailed: 'Cập nhật thất bại',
     // Push Notifications
     pushNotifications: 'Thông báo',
     pushDesc: 'Nhận thông báo giao dịch ngân hàng ngay trên màn hình khóa',
@@ -1031,7 +1113,11 @@ export default {
     perDayText: '/ngày',
     applyAiPlan: 'Áp dụng ngày hạn & Auto-save ({amount}/ngày)',
     autoSaveSourceLabel: 'Nguồn Auto-Save',
-    chooseWallet: 'Chọn ví'
+    chooseWallet: 'Chọn ví',
+
+    // HomeSavingsWidget labels
+    targetLabel: 'Mục tiêu',
+    achievedLabel: 'Đã đạt'
   },
 
   // ── Subscriptions ──
@@ -1122,7 +1208,39 @@ export default {
     timelineDaysLeft: '{n} ngày nữa',
     timelineHoursLeft: '{n} giờ nữa',
     timelineMinsLeft: '{n} phút nữa',
-    widgetTitle: 'Nhắc nhở sắp tới'
+    widgetTitle: 'Nhắc nhở sắp tới',
+    deleteAll: 'Xóa tất cả',
+    deleteAllTitle: 'Xóa lời nhắc',
+    deleteAllMessage: 'Bạn có chắc chắn muốn xóa tất cả lời nhắc {filter} không? Hành động này không thể hoàn tác.',
+    cleanupBtn: 'Dọn dẹp ({n})',
+    cleanupTitle: 'Dọn dẹp quá hạn',
+    clearSuccess: 'Đã xóa thành công',
+    // CleanupExpiredModal
+    cleanupModalTitle: 'Dọn dẹp nhắc nhở quá hạn',
+    cleanupDesc: 'Bạn có {n} nhắc nhở đã quá thời gian.',
+    cleanupSuccess: 'Đã dọn dẹp các mục quá hạn',
+    deleteAllSelected: 'Xóa tất cả',
+    deleteSelected: 'Xóa đã chọn ({n})',
+    // CreateReminderModal
+    aiQuickAdd: 'Tạo nhanh bằng AI',
+    aiPlaceholder: 'vd: Hẹn gặp khách lúc 3h chiều mai, nhắc trước 1 tiếng...',
+    orManual: 'Hoặc điền thủ công',
+    // Offset chip labels
+    offset15m: '15 phút',
+    offset30m: '30 phút',
+    offset1h: '1 giờ',
+    offset2h: '2 giờ',
+    offset3h: '3 giờ',
+    offset1d: '1 ngày',
+    offset2d: '2 ngày',
+    offset3d: '3 ngày',
+    offset1w: '1 tuần',
+    // Batch add (ReminderSuggestionModal)
+    batchAddAll: 'Thêm nhanh tất cả ({n})',
+    batchTitle: 'Thêm {n} lời nhắc',
+    batchDesc: 'Các sự kiện deadline nên được nhắc trước tối thiểu 1 ngày.',
+    batchRemindBefore: 'Nhắc trước bao lâu?',
+    batchConfirm: 'Xác nhận thêm'
   },
 
   // ── Coffee ──
@@ -1283,5 +1401,30 @@ export default {
       terms: 'Điều khoản',
       contact: 'Liên hệ'
     }
+  },
+
+  // ── Transfer Confirmation ──
+  transfer: {
+    confirmLargeTitle: 'Xác nhận giao dịch lớn',
+    largeTransactionDetected: 'Phát hiện chi tiêu trên 3,000,000đ',
+    amountSent: 'Số tiền chuyển đi:',
+    fromWallet: 'Từ ví:',
+    content: 'Nội dung:',
+    date: 'Ngày:',
+    isInternalQuestion: 'Đây có phải là chuyển khoản nội bộ (chuyển sang ví khác của bạn) không?',
+    isInternalHint: 'Nếu là chuyển nội bộ, hệ thống sẽ tự động cân đối và không tính giao dịch này vào mục tiêu chi tiêu tháng (tránh bị báo đỏ ngân sách).',
+    disableFutureHint: 'Tắt tính năng tự động hỏi xác nhận này trong tương lai. (Có thể bật lại trong Cài đặt)',
+    yesInternal: 'Đúng vậy, là chuyển khoản nội bộ',
+    noItIsExpense: 'Không phải, đây là chi tiêu thực tế',
+    sourceWallet: 'Ví chuyển đi (Nguồn)',
+    targetWallet: 'Ví nhận tiền (Đích)',
+    selectWalletPlaceholder: '-- Chọn ví nhận --',
+    balance: 'Số dư',
+    transferAmount: 'Số tiền chuyển khoản',
+    confirmAndFinish: 'Xác nhận & Hoàn tất',
+    selectTargetWallet: 'Vui lòng chọn ví nhận tiền',
+    internalTransferSuccess: 'Đã ghi nhận chuyển khoản nội bộ thành công',
+    confirmedAsExpense: 'Đã xác nhận là chi tiêu thực tế',
+    recordError: 'Đã xảy ra lỗi khi ghi nhận'
   }
 }

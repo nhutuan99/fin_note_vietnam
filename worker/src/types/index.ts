@@ -283,3 +283,33 @@ export interface TradingCheckinData {
   updatedAt: string
 }
 
+// ── OTP Hub ──
+
+export interface OtpCodeData {
+  id: string
+  /** Service identifier: 'netflix', 'spotify', 'youtube', 'custom' */
+  service: string
+  /** Display name for the service */
+  serviceName: string
+  /** The OTP code string */
+  code: string
+  /** When this OTP expires (ISO string) */
+  expiresAt: string
+  createdAt: string
+}
+
+export interface OtpHubSettings {
+  /** Default expiry time in minutes */
+  defaultExpiryMinutes: number
+  updatedAt: string
+}
+
+export interface OtpHubSubscriber {
+  endpoint: string
+  keys: {
+    p256dh: string
+    auth: string
+  }
+  createdAt: string
+}
+

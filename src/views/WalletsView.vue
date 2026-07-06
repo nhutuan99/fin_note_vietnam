@@ -65,11 +65,11 @@ async function handleFileUpload(e: Event) {
 
   // Limit to 300KB to stay within KV value size sanity
   if (file.size > 300 * 1024) {
-    ui.showToast('error', 'Ảnh quá lớn. Vui lòng chọn ảnh dưới 300KB.')
+    ui.showToast('error', t('wallets.logoTooLarge'))
     return
   }
   if (!file.type.startsWith('image/')) {
-    ui.showToast('error', 'Chỉ chấp nhận file ảnh (PNG, JPG, SVG, WEBP).')
+    ui.showToast('error', t('wallets.logoInvalidType'))
     return
   }
 
@@ -84,7 +84,7 @@ async function handleFileUpload(e: Event) {
     uploadPreview.value = base64
     logoMode.value = 'upload'
   } catch {
-    ui.showToast('error', 'Không thể đọc file. Thử lại.')
+    ui.showToast('error', t('wallets.logoReadError'))
   } finally {
     isUploadLoading.value = false
   }
@@ -303,8 +303,8 @@ function getWalletBrandConfig(w: Wallet) {
           <div v-if="newWallet.name.trim() && !hasBrandLogo" class="rounded-xl border border-border-default bg-bg-elevated p-4">
             <div class="flex items-center gap-2 mb-3">
               <ImageIcon :size="14" class="text-accent" />
-              <span class="text-[0.6875rem] font-semibold text-text-secondary uppercase tracking-wider">Logo tuỳ chỉnh</span>
-              <span class="text-[0.6875rem] text-text-disabled">(không bắt buộc)</span>
+              <span class="text-[0.6875rem] font-semibold text-text-secondary uppercase tracking-wider">{{ t('wallets.customLogo') }}</span>
+              <span class="text-[0.6875rem] text-text-disabled">{{ t('wallets.logoOptional') }}</span>
             </div>
 
             <!-- Mode tabs -->
@@ -314,14 +314,14 @@ function getWalletBrandConfig(w: Wallet) {
                 class="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-xs font-medium transition-all"
                 :class="logoMode === 'url' ? 'bg-accent text-white shadow-sm' : 'text-text-tertiary hover:text-text-primary'"
               >
-                <Link :size="12" /> Dán link URL
+                <Link :size="12" /> {{ t('wallets.logoPasteUrl') }}
               </button>
               <button
                 @click="logoMode = 'upload'"
                 class="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-xs font-medium transition-all"
                 :class="logoMode === 'upload' ? 'bg-accent text-white shadow-sm' : 'text-text-tertiary hover:text-text-primary'"
               >
-                <Upload :size="12" /> Upload ảnh
+                <Upload :size="12" /> {{ t('wallets.logoUploadImage') }}
               </button>
             </div>
 
@@ -340,14 +340,14 @@ function getWalletBrandConfig(w: Wallet) {
             </div>
 
             <!-- URL Preview error hint -->
-            <p v-if="logoMode === 'url' && urlPreviewError" class="text-[10px] text-error mt-1">Không load được ảnh từ URL này. Thử URL khác.</p>
+            <p v-if="logoMode === 'url' && urlPreviewError" class="text-[10px] text-error mt-1">{{ t('wallets.logoUrlError') }}</p>
 
             <!-- Upload mode -->
             <div v-if="logoMode === 'upload'" class="flex items-center gap-3">
               <label class="flex-1 cursor-pointer">
                 <div class="flex items-center justify-center gap-2 border-2 border-dashed border-border-default rounded-lg py-3 px-4 hover:border-accent hover:bg-accent/5 transition-all text-xs text-text-tertiary">
                   <Upload :size="14" />
-                  <span>{{ isUploadLoading ? 'Đang tải...' : 'Chọn file ảnh (PNG, JPG, SVG, WEBP, max 300KB)' }}</span>
+                  <span>{{ isUploadLoading ? t('wallets.logoUploading') : t('wallets.logoChooseFile') }}</span>
                 </div>
                 <input type="file" accept="image/*" class="hidden" @change="handleFileUpload" :disabled="isUploadLoading" />
               </label>
@@ -361,7 +361,7 @@ function getWalletBrandConfig(w: Wallet) {
               <div class="h-8 w-8 rounded-lg border border-border-default overflow-hidden bg-white p-1 shrink-0">
                 <img :src="uploadPreview" class="h-full w-full object-contain" alt="preview" />
               </div>
-              <span class="text-[10px] text-success">✓ Ảnh đã được tải lên</span>
+              <span class="text-[10px] text-success">{{ t('wallets.logoUploaded') }}</span>
             </div>
           </div>
 

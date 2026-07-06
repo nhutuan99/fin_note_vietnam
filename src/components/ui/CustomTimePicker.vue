@@ -174,7 +174,7 @@ function applyTime() {
           class="w-full py-1.5 rounded-lg text-xs font-semibold bg-accent text-white hover:bg-accent-hover transition-colors"
           @click="applyTime"
         >
-          Xác nhận
+          {{ t('common.confirm') }}
         </button>
       </div>
     </Transition>

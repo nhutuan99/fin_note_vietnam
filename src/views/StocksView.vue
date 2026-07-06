@@ -201,10 +201,10 @@ async function handleFundAdd() {
 
   if (isEditingFund.value && editingFundId.value) {
     await fundStore.updatePosition(editingFundId.value, data)
-    ui.showToast('success', `Đã cập nhật ${data.symbol}`)
+    ui.showToast('success', t('funds.fundUpdated', { symbol: data.symbol }))
   } else {
     await fundStore.addPosition(data)
-    ui.showToast('success', `Đã thêm ${data.symbol}`)
+    ui.showToast('success', t('funds.fundAdded', { symbol: data.symbol }))
   }
   
   showFundAddModal.value = false
@@ -228,16 +228,16 @@ function editFundPos(pos: FundPosition) {
 
 async function removeFund(id: string, symbol: string) {
   const isConfirmed = await ui.requestConfirm({
-    title: 'Xoá chứng chỉ quỹ',
-    message: `Bạn có chắc muốn xoá ${symbol} khỏi danh mục?`,
-    confirmText: 'Xoá',
+    title: t('funds.deleteFundTitle'),
+    message: t('funds.deleteFundMessage', { symbol }),
+    confirmText: t('funds.deleteFundConfirm'),
     cancelText: t('common.cancel'),
     danger: true
   })
   if (!isConfirmed) return
   try {
     await fundStore.deletePosition(id)
-    ui.showToast('success', `Đã xoá ${symbol}`)
+    ui.showToast('success', t('funds.fundDeleted', { symbol }))
   } catch (e) {}
 }
 
@@ -283,10 +283,10 @@ async function handleAdd() {
 
   if (isEditingStock.value && editingStockId.value) {
     await stockStore.updatePosition(editingStockId.value, data)
-    ui.showToast('success', `Đã cập nhật mã ${data.symbol}`)
+    ui.showToast('success', t('stocks.updated', { symbol: data.symbol }))
   } else {
     await stockStore.addPosition(data)
-    ui.showToast('success', `Đã thêm mã ${data.symbol}`)
+    ui.showToast('success', t('stocks.added', { symbol: data.symbol }))
   }
   
   showAddModal.value = false
@@ -310,24 +310,24 @@ function editStockPos(pos: StockPosition) {
 
 async function removePos(id: string, symbol: string) {
   const isConfirmed = await ui.requestConfirm({
-    title: t('common.confirmDelete') || 'Xóa mã chứng khoán',
-    message: `Bạn có chắc chắn muốn xóa mã ${symbol} khỏi danh mục không?`,
-    confirmText: t('common.delete') || 'Xóa',
-    cancelText: t('common.cancel') || 'Hủy',
+    title: t('stocks.deleteStockTitle'),
+    message: t('common.confirmDelete'),
+    confirmText: t('common.delete'),
+    cancelText: t('common.cancel'),
     danger: true
   })
   
   if (!isConfirmed) return
 
   const isValidPin = await ui.requestPinValidation(
-    'Xác nhận mã PIN', 
-    `Nhập mã PIN để xóa mã ${symbol}`
+    t('stocks.pinTitle'), 
+    t('stocks.pinMessage', { symbol })
   )
   if (!isValidPin) return
 
   try {
     await stockStore.deletePosition(id)
-    ui.showToast('success', `Đã xóa mã ${symbol}`)
+    ui.showToast('success', t('stocks.deleted', { symbol }))
   } catch (e) {
     // API client handles error toasts
   }
@@ -453,16 +453,16 @@ const externalTooltipHandler = (context: any) => {
     
     if (!pt || pt.open === undefined) {
       innerHtml = `<div style="font-weight: 600; margin-bottom: 4px; color: #fff;">${tooltip.title[0]}</div>
-                   <div style="color: #cbd5e1;">Kết phiên: <span style="color: #fff; font-weight: 500;">${pt ? pt.price : tooltip.dataPoints[0].raw}</span></div>`
+                   <div style="color: #cbd5e1;">${t('stocks.tooltipClose')} <span style="color: #fff; font-weight: 500;">${pt ? pt.price : tooltip.dataPoints[0].raw}</span></div>`
     } else {
       innerHtml = `
         <div style="font-weight: 600; margin-bottom: 6px; color: #fff;">${tooltip.title[0]}</div>
         <div style="display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; color: #cbd5e1;">
-          <div>Mở cửa:</div><div style="text-align: right; color: #fff; font-weight: 500;">${pt.open}</div>
-          <div>Cao nhất:</div><div style="text-align: right; color: #34d399; font-weight: 500;">${pt.high}</div>
-          <div>Thấp nhất:</div><div style="text-align: right; color: #fb7185; font-weight: 500;">${pt.low}</div>
-          <div>Kết phiên:</div><div style="text-align: right; color: #60a5fa; font-weight: 500;">${pt.price}</div>
-          <div style="margin-top: 4px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 4px;">Khối lượng:</div>
+          <div>${t('stocks.tooltipOpen')}</div><div style="text-align: right; color: #fff; font-weight: 500;">${pt.open}</div>
+          <div>${t('stocks.tooltipHigh')}</div><div style="text-align: right; color: #34d399; font-weight: 500;">${pt.high}</div>
+          <div>${t('stocks.tooltipLow')}</div><div style="text-align: right; color: #fb7185; font-weight: 500;">${pt.low}</div>
+          <div>${t('stocks.tooltipClose')}</div><div style="text-align: right; color: #60a5fa; font-weight: 500;">${pt.price}</div>
+          <div style="margin-top: 4px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 4px;">${t('stocks.tooltipVolume')}</div>
           <div style="margin-top: 4px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 4px; text-align: right; color: #fff; font-weight: 500;">${pt.volume ? pt.volume.toLocaleString() : '0'}</div>
         </div>
       `
@@ -578,7 +578,7 @@ function getChartData(symbol: string) {
         @click="activeTab = 'stocks'"
       >
         <LineChart :size="16" />
-        Cổ phiếu
+        {{ t('stocks.tabStocks') }}
       </button>
       <button
         class="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200"
@@ -586,7 +586,7 @@ function getChartData(symbol: string) {
         @click="activeTab = 'funds'"
       >
         <Landmark :size="16" />
-        Chứng chỉ quỹ
+        {{ t('stocks.tabFunds') }}
       </button>
     </div>
 
@@ -651,14 +651,14 @@ function getChartData(symbol: string) {
               <div v-if="activeTooltip === pos.symbol" class="absolute top-full left-0 mt-2 p-3 w-64 bg-bg-elevated border border-border-default rounded-xl shadow-2xl z-50 text-xs pointer-events-none">
                 <div v-if="!tooltipInfo" class="flex items-center gap-2 text-text-tertiary">
                   <AppSpinner :size="14"  />
-                  Đang tải thông tin API...
+                  {{ t('stocks.loadingInfo') }}
                 </div>
                 <div v-else class="space-y-1.5">
                   <div class="font-bold text-sm text-accent mb-2 leading-tight">{{ tooltipInfo.companyName }}</div>
-                  <div class="flex justify-between"><span class="text-text-tertiary">Mã niêm yết:</span> <span class="font-medium">{{ tooltipInfo.code }}</span></div>
-                  <div class="flex justify-between"><span class="text-text-tertiary">Sàn GDKC:</span> <span class="font-medium">{{ tooltipInfo.floor }}</span></div>
-                  <div class="flex justify-between"><span class="text-text-tertiary">Ngày niêm yết:</span> <span class="font-medium">{{ tooltipInfo.listedDate }}</span></div>
-                  <div class="flex justify-between gap-2"><span class="text-text-tertiary shrink-0">Tên QT:</span> <span class="font-medium truncate text-right min-w-0" :title="tooltipInfo.companyNameEng">{{ tooltipInfo.companyNameEng || '---' }}</span></div>
+                  <div class="flex justify-between"><span class="text-text-tertiary">{{ t('stocks.listedCode') }}</span> <span class="font-medium">{{ tooltipInfo.code }}</span></div>
+                  <div class="flex justify-between"><span class="text-text-tertiary">{{ t('stocks.exchange') }}</span> <span class="font-medium">{{ tooltipInfo.floor }}</span></div>
+                  <div class="flex justify-between"><span class="text-text-tertiary">{{ t('stocks.listedDate') }}</span> <span class="font-medium">{{ tooltipInfo.listedDate }}</span></div>
+                  <div class="flex justify-between gap-2"><span class="text-text-tertiary shrink-0">{{ t('stocks.intlName') }}</span> <span class="font-medium truncate text-right min-w-0" :title="tooltipInfo.companyNameEng">{{ tooltipInfo.companyNameEng || '---' }}</span></div>
                 </div>
               </div>
             </transition>
@@ -701,13 +701,13 @@ function getChartData(symbol: string) {
             <div 
               class="absolute top-0 h-full w-0.5 bg-accent/50"
               :style="{ left: priceToPercent(pos.buyPrice, getPriceRange(pos).min, getPriceRange(pos).range) + '%' }"
-              :title="'Giá mua: ' + pos.buyPrice"
+              :title="t('stocks.buyPriceLabel') + ' ' + pos.buyPrice"
             ></div>
             <!-- Current price marker -->
             <div 
               class="absolute top-[-2px] h-[calc(100%+4px)] w-1.5 bg-accent rounded-full shadow-sm shadow-accent/40 z-10"
               :style="{ left: 'calc(' + priceToPercent(stockStore.prices[pos.symbol], getPriceRange(pos).min, getPriceRange(pos).range) + '% - 3px)' }"
-              :title="'Giá hiện tại: ' + stockStore.prices[pos.symbol]"
+              :title="t('stocks.currentPriceLabel') + ' ' + stockStore.prices[pos.symbol]"
             ></div>
             <!-- Alert markers -->
             <div 
@@ -949,17 +949,17 @@ function getChartData(symbol: string) {
       <div class="flex items-center justify-between">
         <div>
           <h1 class="text-xl font-bold flex items-center gap-2">
-            <Landmark :size="20" class="text-accent" /> Chứng chỉ quỹ
+            <Landmark :size="20" class="text-accent" /> {{ t('funds.title') }}
           </h1>
           <p class="text-text-tertiary text-sm mt-1">
-            Tổng NAV: <span class="text-accent font-semibold">{{ formatVNDShort(fundTotalValue) }}</span>
+            {{ t('funds.totalNav') }}: <span class="text-accent font-semibold">{{ formatVNDShort(fundTotalValue) }}</span>
             <span :class="fundTotalProfit > 0 ? 'text-success' : (fundTotalProfit < 0 ? 'text-error' : 'text-text-primary')" class="ml-2 font-medium">
               ({{ fundTotalProfit > 0 ? '+' : '' }}{{ formatVNDShort(fundTotalProfit) }})
             </span>
           </p>
         </div>
         <button @click="showFundAddModal = true; isEditingFund = false; newFund = { symbol: '', buyPrice: '', quantity: '', fundName: '', productId: 0 }" class="btn-primary">
-          <Plus :size="18" /> Thêm quỹ
+          <Plus :size="18" /> {{ t('funds.addFund') }}
         </button>
       </div>
 
@@ -973,8 +973,8 @@ function getChartData(symbol: string) {
         <div class="h-12 w-12 rounded-full bg-accent-subtle flex items-center justify-center text-accent mb-3">
           <Landmark :size="24" />
         </div>
-        <p class="text-text-secondary font-medium">Chưa có chứng chỉ quỹ nào</p>
-        <p class="text-text-disabled text-xs mt-1">Thêm quỹ để theo dõi NAV & lợi nhuận</p>
+        <p class="text-text-secondary font-medium">{{ t('funds.empty') }}</p>
+        <p class="text-text-disabled text-xs mt-1">{{ t('funds.emptyHint') }}</p>
       </div>
 
       <!-- Fund Grid -->
@@ -982,10 +982,10 @@ function getChartData(symbol: string) {
         <div v-for="pos in fundStore.positions" :key="pos.id" class="card-premium p-5 flex flex-col relative group">
           <!-- Delete button -->
           <div class="absolute top-4 right-4 flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity z-10">
-            <button @click="editFundPos(pos)" class="p-1.5 text-text-disabled hover:text-accent hover:bg-accent/10 rounded-lg transition-colors" title="Chỉnh sửa">
+            <button @click="editFundPos(pos)" class="p-1.5 text-text-disabled hover:text-accent hover:bg-accent/10 rounded-lg transition-colors" :title="t('common.edit')">
               <Pencil :size="16" />
             </button>
-            <button @click="removeFund(pos.id, pos.symbol)" class="p-1.5 text-text-disabled hover:text-error hover:bg-error/10 rounded-lg transition-colors" title="Xóa">
+            <button @click="removeFund(pos.id, pos.symbol)" class="p-1.5 text-text-disabled hover:text-error hover:bg-error/10 rounded-lg transition-colors" :title="t('common.delete')">
               <Trash2 :size="16" />
             </button>
           </div>
@@ -995,10 +995,10 @@ function getChartData(symbol: string) {
             <div class="min-w-0 flex-1">
               <p class="font-bold text-lg text-accent leading-tight">{{ pos.symbol }}</p>
               <p class="text-xs text-text-tertiary line-clamp-2 leading-tight mt-0.5" :title="pos.fundName">{{ pos.fundName || '—' }}</p>
-              <p class="text-[10px] text-text-disabled mt-0.5">{{ pos.quantity.toLocaleString() }} CCQ</p>
+              <p class="text-[10px] text-text-disabled mt-0.5">{{ t('funds.unitCount', { count: pos.quantity.toLocaleString() }) }}</p>
             </div>
             <div class="text-right flex-shrink-0">
-              <p class="text-xs text-text-tertiary">NAV hiện tại</p>
+              <p class="text-xs text-text-tertiary">{{ t('funds.currentNav') }}</p>
               <p class="font-semibold text-lg">
                 {{ fundStore.navs[pos.symbol] ? fundStore.navs[pos.symbol].toLocaleString('vi-VN') : '---' }}
               </p>
@@ -1008,11 +1008,11 @@ function getChartData(symbol: string) {
           <!-- Stats -->
           <div class="grid grid-cols-2 gap-3 mb-4">
             <div class="bg-bg-surface p-3 rounded-xl border border-border-default">
-              <p class="text-xs text-text-disabled">Giá mua / CCQ</p>
+              <p class="text-xs text-text-disabled">{{ t('funds.buyPricePerUnit') }}</p>
               <p class="font-medium text-sm mt-0.5">{{ pos.buyPrice.toLocaleString('vi-VN') }}</p>
             </div>
             <div class="bg-bg-surface p-3 rounded-xl border border-border-default text-right">
-              <p class="text-xs text-text-disabled">Lợi nhuận</p>
+              <p class="text-xs text-text-disabled">{{ t('funds.profit') }}</p>
               <template v-if="fundStore.navs[pos.symbol]">
                 <p :class="(fundStore.navs[pos.symbol] - pos.buyPrice) > 0 ? 'text-success' : ((fundStore.navs[pos.symbol] - pos.buyPrice) < 0 ? 'text-error' : 'text-text-primary')"
                    class="font-medium text-sm mt-0.5 flex items-center justify-end gap-1">
@@ -1032,7 +1032,7 @@ function getChartData(symbol: string) {
 
           <!-- Total value -->
           <div class="mt-auto pt-3 border-t border-border-subtle flex items-center justify-between">
-            <span class="text-xs text-text-disabled">Giá trị danh mục</span>
+            <span class="text-xs text-text-disabled">{{ t('funds.portfolioValue') }}</span>
             <span class="font-bold text-sm text-accent">
               {{ formatVNDShort((fundStore.navs[pos.symbol] || pos.buyPrice) * pos.quantity) }}
             </span>
@@ -1077,7 +1077,7 @@ function getChartData(symbol: string) {
                     </div>
                     <div class="text-[10px] px-1.5 py-0.5 rounded border border-border-subtle text-text-disabled shrink-0"
                          :class="fund.type === 'STOCK' ? 'text-success border-success/30' : (fund.type === 'BOND' ? 'text-blue-400 border-blue-400/30' : 'text-orange-400 border-orange-400/30')">
-                      {{ fund.type === 'STOCK' ? 'Cổ phiếu' : fund.type === 'BOND' ? 'Trái phiếu' : 'Cân bằng' }}
+                      {{ fund.type === 'STOCK' ? t('funds.typeStock') : fund.type === 'BOND' ? t('funds.typeBond') : t('funds.typeBalance') }}
                     </div>
                   </div>
                 </div>

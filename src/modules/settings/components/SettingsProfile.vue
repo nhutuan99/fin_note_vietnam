@@ -45,7 +45,7 @@ async function saveProfile() {
       ui.showToast('success', t('settings.profileUpdated', 'Hồ sơ đã được cập nhật'))
     }
   } catch (err: any) {
-    ui.showToast('error', err.message || 'Cập nhật thất bại')
+    ui.showToast('error', err.message || t('settings.updateFailed'))
   } finally {
     profileLoading.value = false
   }

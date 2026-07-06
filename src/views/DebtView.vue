@@ -233,7 +233,7 @@ async function handleDelete(debt: Debt) {
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-3 text-[0.6875rem] text-text-disabled">
             <span v-if="debt.dueDate">{{ t('debt.dueDate') }}: {{ debt.dueDate }}</span>
-            <span v-if="debt.interestRate > 0">{{ debt.interestRate }}%/{{ t('savings.perDay').replace('ngày', 'năm') }}</span>
+            <span v-if="debt.interestRate > 0">{{ debt.interestRate }}%/{{ t('debt.interestRateUnit') }}</span>
           </div>
           <div class="flex items-center gap-1">
             <button

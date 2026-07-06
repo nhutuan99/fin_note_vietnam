@@ -46,7 +46,7 @@ const confirmLargeTransfer = computed({
         ui.showToast('success', t('settings.profileUpdated'))
       }
     } catch (err: any) {
-      ui.showToast('error', err.message || 'Cập nhật thất bại')
+      ui.showToast('error', err.message || t('settings.updateFailed'))
     }
   }
 })

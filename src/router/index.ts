@@ -151,6 +151,12 @@ const router = createRouter({
       meta: { parentRoute: '/' }
     },
     {
+      path: '/otp-hub',
+      name: 'otp-hub',
+      component: () => import('@/views/OtpHubView.vue'),
+      meta: { isPublic: true }
+    },
+    {
       // Locale-prefixed landing: /en → set EN locale then go to /landing
       path: '/en',
       name: 'landing-en',

@@ -149,6 +149,18 @@ import {
   handleAiGenerateTodos,
 } from './controllers/todo.controller'
 
+import {
+  handleListOtpCodes,
+  handleCreateOtpCode,
+  handleDeleteOtpCode,
+  handleGetOtpSettings,
+  handleUpdateOtpSettings,
+  handleGetOtpSubscriberCount,
+  handleOtpSubscribe,
+  handleOtpUnsubscribe,
+  handleEmailOtpWebhook,
+} from './controllers/otp-hub.controller'
+
 import { checkAllStockAlerts } from './services/stock-alert.service'
 import { checkAllReminders } from './services/reminder.service'
 import { checkTradingReminders } from './services/trading-reminder.service'
@@ -228,6 +240,9 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
       if (path === '/api/webhook/sms' && request.method === 'POST') {
         return handleSmsWebhook(request, env)
       }
+      if (path === '/api/webhook/email-otp' && request.method === 'POST') {
+        return handleEmailOtpWebhook(request, env)
+      }
 
       // Public Blog Routes
       if (path === '/api/blogs' && request.method === 'GET') {
@@ -295,6 +310,17 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
         return handleGetSharedNote(sharedNoteMatch[1], request, env)
       }
 
+      // ── OTP Hub (Public Routes) ──
+      if (path === '/api/otp-hub' && request.method === 'GET') {
+        return handleListOtpCodes(env)
+      }
+      if (path === '/api/otp-hub/subscribe' && request.method === 'POST') {
+        return handleOtpSubscribe(request, env)
+      }
+      if (path === '/api/otp-hub/unsubscribe' && request.method === 'POST') {
+        return handleOtpUnsubscribe(request, env)
+      }
+
       // Protected routes - verify JWT
       const authHeader = request.headers.get('Authorization')
       if (!authHeader?.startsWith('Bearer ')) {
@@ -337,6 +363,24 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
       }
       if (adminBlogMatch && request.method === 'DELETE') {
         return handleDeleteBlog(userId, adminBlogMatch[1], env)
+      }
+
+      // ── OTP Hub (Admin Routes) ──
+      if (path === '/api/otp-hub' && request.method === 'POST') {
+        return handleCreateOtpCode(userId, request, env)
+      }
+      const otpDeleteMatch = path.match(/^\/api\/otp-hub\/([^\/]+)$/)
+      if (otpDeleteMatch && request.method === 'DELETE') {
+        return handleDeleteOtpCode(userId, otpDeleteMatch[1], env)
+      }
+      if (path === '/api/otp-hub/settings' && request.method === 'GET') {
+        return handleGetOtpSettings(userId, env)
+      }
+      if (path === '/api/otp-hub/settings' && request.method === 'PUT') {
+        return handleUpdateOtpSettings(userId, request, env)
+      }
+      if (path === '/api/otp-hub/subscribers/count' && request.method === 'GET') {
+        return handleGetOtpSubscriberCount(userId, env)
       }
 
       // Bug Report

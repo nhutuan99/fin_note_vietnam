@@ -43,7 +43,16 @@ export default {
     stopLoss: 'Stop Loss',
     confirmDelete: 'Are you sure you want to delete this?',
     noData: 'No Data Available',
-    fillRequiredFields: 'Please fill in all required fields'
+    fillRequiredFields: 'Please fill in all required fields',
+    selectAll: 'Select all',
+    continue: 'Continue',
+    goBack: 'Go back',
+    apply: 'Apply',
+    copyLinkTitle: 'Copy link',
+    copiedTitle: 'Copied!',
+    shareOnFacebook: 'Share on Facebook',
+    shareOnTwitter: 'Share on Twitter',
+    shareOnLinkedIn: 'Share on LinkedIn'
   },
 
   // ── Stock Alerts ──
@@ -65,6 +74,61 @@ export default {
     noAlerts: 'No price alerts set',
     stopLoss: 'Stop Loss',
     takeProfit: 'Take Profit Target'
+  },
+
+  // ── Stocks / Funds View ──
+  stocks: {
+    tabStocks: 'Stocks',
+    tabFunds: 'Funds',
+    // Chart tooltip
+    tooltipOpen: 'Open:',
+    tooltipHigh: 'High:',
+    tooltipLow: 'Low:',
+    tooltipClose: 'Close:',
+    tooltipVolume: 'Volume:',
+    // Company info tooltip
+    loadingInfo: 'Loading info...',
+    listedCode: 'Listed Code:',
+    exchange: 'Exchange:',
+    listedDate: 'Listed Date:',
+    intlName: 'Intl. Name:',
+    // Price bar titles
+    buyPriceLabel: 'Buy Price:',
+    currentPriceLabel: 'Current Price:',
+    // Toast messages
+    updated: 'Updated {symbol}',
+    added: 'Added {symbol}',
+    deleted: 'Deleted {symbol}',
+    // PIN confirm
+    pinTitle: 'Confirm PIN',
+    pinMessage: 'Enter PIN to delete {symbol}',
+    // Confirm dialogs
+    deleteStockTitle: 'Delete Stock'
+  },
+
+  // ── Funds View ──
+  funds: {
+    title: 'Fund Certificates',
+    totalNav: 'Total NAV',
+    addFund: 'Add Fund',
+    empty: 'No fund certificates yet',
+    emptyHint: 'Add funds to track NAV & profit',
+    currentNav: 'Current NAV',
+    buyPricePerUnit: 'Buy Price / Unit',
+    profit: 'Profit/Loss',
+    portfolioValue: 'Portfolio Value',
+    unitCount: '{count} units',
+    // Fund type labels
+    typeStock: 'Equity',
+    typeBond: 'Bond',
+    typeBalance: 'Balanced',
+    // Confirm & toast
+    deleteFundTitle: 'Delete Fund',
+    deleteFundMessage: 'Are you sure you want to remove {symbol} from your portfolio?',
+    deleteFundConfirm: 'Delete',
+    fundUpdated: 'Updated {symbol}',
+    fundAdded: 'Added {symbol}',
+    fundDeleted: 'Deleted {symbol}'
   },
 
   // ── Time ──
@@ -215,7 +279,12 @@ export default {
     reminderSaved: 'Reminder set for {time} 🔔',
     reminderDisabled: 'Reminder disabled',
     reminderSaveError: 'Failed to save. Please try again.',
-    reminderTurnOff: 'Turn off reminder'
+    reminderTurnOff: 'Turn off reminder',
+
+    // USD exchange rate
+    loadingRate: 'Loading exchange rate...',
+    usingUsd: '(using USD)',
+    noExchangeRate: 'No exchange rate available'
   },
 
   // ── Planning Hub ──
@@ -250,7 +319,8 @@ export default {
     emptyHint: 'Add a mortgage, car loan, or personal debt to track',
     deleteTitle: 'Delete Debt',
     deleteMessage: 'This debt/loan will be permanently removed.',
-    count: '{n} items'
+    count: '{n} items',
+    interestRateUnit: 'year'
   },
 
   // ── Onboarding ──
@@ -430,7 +500,18 @@ export default {
     deleteConfirm: 'Yes, Delete',
     cannotSaveOrder: 'Cannot save wallet order',
     pinDeleteTitle: 'Confirm Wallet Deletion',
-    pinDeleteMessage: 'Enter your PIN to delete this wallet'
+    pinDeleteMessage: 'Enter your PIN to delete this wallet',
+    customLogo: 'Custom Logo',
+    logoOptional: '(optional)',
+    logoPasteUrl: 'Paste URL',
+    logoUploadImage: 'Upload image',
+    logoUrlError: 'Cannot load image from this URL. Try a different URL.',
+    logoUploading: 'Uploading...',
+    logoChooseFile: 'Choose image file (PNG, JPG, SVG, WEBP, max 300KB)',
+    logoUploaded: '✓ Image uploaded',
+    logoTooLarge: 'Image too large. Please choose an image under 300KB.',
+    logoInvalidType: 'Only image files are accepted (PNG, JPG, SVG, WEBP).',
+    logoReadError: 'Cannot read file. Please try again.'
   },
 
   // ── Notes ──
@@ -596,6 +677,7 @@ export default {
     wrongPassword: 'Incorrect password',
     pinResetFailed: 'PIN reset failed',
     fallbackRate: 'using fallback rate',
+    updateFailed: 'Update failed',
     // Push Notifications
     pushNotifications: 'Push Notifications',
     pushDesc: 'Receive bank transaction alerts on your lock screen',
@@ -998,7 +1080,11 @@ export default {
     perDayText: '/day',
     applyAiPlan: 'Apply Deadline & Auto-save ({amount}/day)',
     autoSaveSourceLabel: 'Auto-Save Source',
-    chooseWallet: 'Choose wallet'
+    chooseWallet: 'Choose wallet',
+
+    // HomeSavingsWidget labels
+    targetLabel: 'Target',
+    achievedLabel: 'Achieved'
   },
 
   // ── Subscriptions ──
@@ -1083,7 +1169,33 @@ export default {
     timelineDaysLeft: '{n} days left',
     timelineHoursLeft: '{n} hours left',
     timelineMinsLeft: '{n} mins left',
-    widgetTitle: 'Upcoming Reminders'
+    widgetTitle: 'Upcoming Reminders',
+    // CleanupExpiredModal
+    cleanupModalTitle: 'Clean Up Expired Reminders',
+    cleanupDesc: 'You have {n} past-due reminders.',
+    cleanupSuccess: 'Expired items cleaned up',
+    deleteAllSelected: 'Delete all',
+    deleteSelected: 'Delete selected ({n})',
+    // CreateReminderModal
+    aiQuickAdd: 'Quick create with AI',
+    aiPlaceholder: 'e.g. Meet client at 3pm tomorrow, remind 1 hour before...',
+    orManual: 'Or fill in manually',
+    // Offset chip labels
+    offset15m: '15 min',
+    offset30m: '30 min',
+    offset1h: '1 hour',
+    offset2h: '2 hours',
+    offset3h: '3 hours',
+    offset1d: '1 day',
+    offset2d: '2 days',
+    offset3d: '3 days',
+    offset1w: '1 week',
+    // Batch add (ReminderSuggestionModal)
+    batchAddAll: 'Quick add all ({n})',
+    batchTitle: 'Add {n} reminders',
+    batchDesc: 'Deadline events should be reminded at least 1 day in advance.',
+    batchRemindBefore: 'Remind how far in advance?',
+    batchConfirm: 'Confirm add'
   },
 
   // ── Coffee ──
@@ -1246,5 +1358,30 @@ export default {
       terms: 'Terms',
       contact: 'Contact'
     }
+  },
+
+  // ── Transfer Confirmation ──
+  transfer: {
+    confirmLargeTitle: 'Confirm Large Transaction',
+    largeTransactionDetected: 'Expense over 3,000,000₫ detected',
+    amountSent: 'Amount sent:',
+    fromWallet: 'From wallet:',
+    content: 'Description:',
+    date: 'Date:',
+    isInternalQuestion: 'Is this an internal transfer (to another one of your wallets)?',
+    isInternalHint: 'If it is internal, the system will automatically balance it and exclude this from your monthly spending goal (to avoid a budget alert).',
+    disableFutureHint: 'Disable auto-confirmation prompts in the future. (Can be re-enabled in Settings)',
+    yesInternal: 'Yes, it is an internal transfer',
+    noItIsExpense: 'No, this is an actual expense',
+    sourceWallet: 'Source wallet',
+    targetWallet: 'Target wallet',
+    selectWalletPlaceholder: '-- Select target wallet --',
+    balance: 'Balance',
+    transferAmount: 'Transfer amount',
+    confirmAndFinish: 'Confirm & Finish',
+    selectTargetWallet: 'Please select a target wallet',
+    internalTransferSuccess: 'Internal transfer recorded successfully',
+    confirmedAsExpense: 'Confirmed as an actual expense',
+    recordError: 'An error occurred while recording'
   }
 }

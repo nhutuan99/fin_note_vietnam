@@ -61,10 +61,10 @@ async function handleCleanup() {
       const ids = Array.from(selectedIds.value)
       await Promise.all(ids.map(id => store.remove(id)))
     }
-    ui.showToast('success', 'Đã dọn dẹp các mục quá hạn')
+    ui.showToast('success', t('reminders.cleanupSuccess'))
     emit('cleaned')
   } catch (error) {
-    ui.showToast('error', t('common.somethingWentWrong') || 'Có lỗi xảy ra')
+    ui.showToast('error', t('common.somethingWentWrong'))
   } finally {
     isCleaning.value = false
   }
@@ -80,8 +80,8 @@ async function handleCleanup() {
             <Trash2 :size="20" />
           </div>
           <div>
-            <h3 class="text-lg font-bold">Dọn dẹp nhắc nhở quá hạn</h3>
-            <p class="text-sm text-text-tertiary">Bạn có {{ reminders.length }} nhắc nhở đã quá thời gian.</p>
+            <h3 class="text-lg font-bold">{{ t('reminders.cleanupModalTitle') }}</h3>
+            <p class="text-sm text-text-tertiary">{{ t('reminders.cleanupDesc', { n: reminders.length }) }}</p>
           </div>
         </div>
         <button @click="emit('close')" class="modal-close">
@@ -98,7 +98,7 @@ async function handleCleanup() {
             </div>
             <Square v-else :size="20" class="text-text-tertiary" />
           </div>
-          <span class="text-sm font-semibold text-text-primary">Chọn tất cả</span>
+          <span class="text-sm font-semibold text-text-primary">{{ t('common.selectAll') }}</span>
         </div>
 
         <div class="list-container">
@@ -125,7 +125,7 @@ async function handleCleanup() {
 
       <div class="modal-footer">
         <button @click="emit('close')" class="btn-cancel" :disabled="isCleaning">
-          {{ t('common.cancel') || 'Hủy' }}
+          {{ t('common.cancel') }}
         </button>
         <button 
           @click="handleCleanup" 
@@ -134,7 +134,7 @@ async function handleCleanup() {
         >
           <AppSpinner v-if="isCleaning" :size="16" />
           <Trash2 v-else :size="16" />
-          {{ isAllSelected ? 'Xóa tất cả' : `Xóa đã chọn (${selectedIds.size})` }}
+          {{ isAllSelected ? t('reminders.deleteAllSelected') : t('reminders.deleteSelected', { n: selectedIds.size }) }}
         </button>
       </div>
     </div>

@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useUiStore } from '@/stores/ui'
@@ -442,7 +442,7 @@ watch(
 
           <!-- Error -->
           <div v-if="error" class="bg-error/10 border-error/20 text-error rounded-lg border px-3 py-2.5 text-sm flex items-start gap-2">
-            <span class="shrink-0 mt-0.5">âš </span>
+            <span class="shrink-0 mt-0.5">⚠</span>
             <span>{{ error }}</span>
           </div>
 

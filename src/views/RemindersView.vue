@@ -88,10 +88,10 @@ function handleModalClose() {
 
 async function handleClearReminders() {
   const isConfirmed = await ui.requestConfirm({
-    title: t('common.delete') || 'Xóa tất cả',
-    message: `Bạn có chắc chắn muốn xóa tất cả lời nhắc ${store.filter === 'all' ? '' : (store.filter === 'active' ? 'đang hoạt động' : 'đã hoàn thành')} không? Hành động này không thể hoàn tác.`,
-    confirmText: t('common.delete') || 'Xóa',
-    cancelText: t('common.cancel') || 'Hủy',
+    title: t('reminders.deleteAllTitle'),
+    message: t('reminders.deleteAllMessage', { filter: store.filter === 'all' ? t('reminders.all') : store.filter === 'active' ? t('reminders.active') : t('reminders.completed') }),
+    confirmText: t('common.delete'),
+    cancelText: t('common.cancel'),
     danger: true
   })
   
@@ -100,7 +100,7 @@ async function handleClearReminders() {
   try {
     const success = await store.clear(store.filter)
     if (success) {
-      ui.showToast('success', 'Đã xóa thành công')
+      ui.showToast('success', t('reminders.clearSuccess'))
     } else {
       ui.showToast('error', t('common.somethingWentWrong'))
     }
@@ -261,20 +261,20 @@ const groupedReminders = computed<DateGroup[]>(() => {
           v-if="expiredReminders.length > 0"
           @click="showCleanupModal = true"
           class="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-warning bg-warning/10 hover:bg-warning/20 transition-colors"
-          title="Dọn dẹp quá hạn"
+          :title="t('reminders.cleanupTitle')"
         >
           <Sparkles :size="14" />
-          <span class="hidden sm:inline">Dọn dẹp ({{ expiredReminders.length }})</span>
+          <span class="hidden sm:inline">{{ t('reminders.cleanupBtn', { n: expiredReminders.length }) }}</span>
         </button>
 
         <button 
           v-if="store.filtered.length > 0"
           @click="handleClearReminders"
           class="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-error bg-error/10 hover:bg-error/20 transition-colors"
-          title="Xóa tất cả"
+          :title="t('reminders.deleteAll')"
         >
           <Trash2 :size="14" />
-          <span class="hidden sm:inline">Xóa tất cả</span>
+          <span class="hidden sm:inline">{{ t('reminders.deleteAll') }}</span>
         </button>
       </div>
     </div>

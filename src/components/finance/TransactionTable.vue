@@ -391,7 +391,7 @@ function dayTotal(txs: Transaction[]) {
             <div class="tx-detail-card__row">
               <div class="tx-detail-card__label">
                 <Calendar :size="13" />
-                <span>{{ t('transactions.tableDate') || 'Ngày' }}</span>
+                <span>{{ t('transactions.tableDate') }}</span>
               </div>
               <span class="tx-detail-card__value">{{ formatDateTime(selectedTx.date) }}</span>
             </div>
@@ -400,7 +400,7 @@ function dayTotal(txs: Transaction[]) {
             <div class="tx-detail-card__row">
               <div class="tx-detail-card__label">
                 <Clock :size="13" />
-                <span>{{ t('transactions.created') || 'Tạo lúc' }}</span>
+                <span>{{ t('transactions.created') }}</span>
               </div>
               <span class="tx-detail-card__value">{{ formatDateTime(selectedTx.createdAt) }}</span>
             </div>
@@ -424,7 +424,7 @@ function dayTotal(txs: Transaction[]) {
               @click="emit('delete', selectedTx!); selectedTx = null"
             >
               <Trash2 :size="14" />
-              <span>{{ t('transactions.deleteConfirm') || 'Xóa' }}</span>
+              <span>{{ t('transactions.deleteConfirm') }}</span>
             </button>
           </div>
         </div>

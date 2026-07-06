@@ -6,6 +6,7 @@ import { useUiStore } from '@/stores/ui'
 import type { Reminder } from '@/types'
 import { X, Bell, CalendarDays, Clock, Save, Repeat, Plus, Link, ExternalLink, Sparkles } from 'lucide-vue-next'
 import CustomTimePicker from './CustomTimePicker.vue'
+import AppSpinner from '@/components/ui/AppSpinner.vue'
 import LogoLoader from '@/components/ui/LogoLoader.vue'
 
 const props = defineProps<{
@@ -35,27 +36,27 @@ const showCustomInput = ref(false)
 const repeatInterval = ref('none')
 const saving = ref(false)
 
-const offsetOptions = [
-  { key: '15m', label: '15 phút', group: 'time' },
-  { key: '30m', label: '30 phút', group: 'time' },
-  { key: '1h', label: '1 giờ', group: 'time' },
-  { key: '2h', label: '2 giờ', group: 'time' },
-  { key: '3h', label: '3 giờ', group: 'time' },
-  { key: '1d', label: '1 ngày', group: 'day' },
-  { key: '2d', label: '2 ngày', group: 'day' },
-  { key: '3d', label: '3 ngày', group: 'day' },
-  { key: '1w', label: '1 tuần', group: 'day' },
-]
+const offsetOptions = computed(() => [
+  { key: '15m', label: t('reminders.offset15m'), group: 'time' },
+  { key: '30m', label: t('reminders.offset30m'), group: 'time' },
+  { key: '1h', label: t('reminders.offset1h'), group: 'time' },
+  { key: '2h', label: t('reminders.offset2h'), group: 'time' },
+  { key: '3h', label: t('reminders.offset3h'), group: 'time' },
+  { key: '1d', label: t('reminders.offset1d'), group: 'day' },
+  { key: '2d', label: t('reminders.offset2d'), group: 'day' },
+  { key: '3d', label: t('reminders.offset3d'), group: 'day' },
+  { key: '1w', label: t('reminders.offset1w'), group: 'day' },
+])
 
-const repeatOptions = [
-  { key: 'none', label: 'Không lặp' },
-  { key: 'daily', label: 'Hàng ngày' },
-  { key: 'weekly', label: 'Hàng tuần' },
-  { key: 'monthly', label: 'Hàng tháng' },
-]
+const repeatOptions = computed(() => [
+  { key: 'none', label: t('reminders.repeatNone') },
+  { key: 'daily', label: t('reminders.repeatDaily') },
+  { key: 'weekly', label: t('reminders.repeatWeekly') },
+  { key: 'monthly', label: t('reminders.repeatMonthly') },
+])
 
-const timeOffsets = computed(() => offsetOptions.filter(o => o.group === 'time'))
-const dayOffsets = computed(() => offsetOptions.filter(o => o.group === 'day'))
+const timeOffsets = computed(() => offsetOptions.value.filter(o => o.group === 'time'))
+const dayOffsets = computed(() => offsetOptions.value.filter(o => o.group === 'day'))
 
 const currentStep = ref(1)
 
@@ -70,7 +71,7 @@ async function handleAiSubmit() {
     if (suggestions.length > 0) {
       emit('suggestions', suggestions)
     } else {
-      ui.showToast('info', t('reminders.noEventsFound') || 'Không tìm thấy sự kiện nào')
+      ui.showToast('info', t('reminders.noEventsFound'))
     }
   } catch {
     ui.showToast('error', t('common.somethingWentWrong'))
@@ -203,13 +204,13 @@ async function handleSave() {
             <!-- AI Quick Add -->
             <div v-if="!isEditing" class="mb-6">
               <label class="flex items-center gap-2 text-sm font-bold text-accent mb-2">
-                <Sparkles :size="16" /> Tạo nhanh bằng AI
+                <Sparkles :size="16" /> {{ t('reminders.aiQuickAdd') }}
               </label>
               <div class="relative group">
                 <textarea
                   v-model="aiInput"
                   rows="2"
-                  placeholder="vd: Hẹn gặp khách lúc 3h chiều mai, nhắc trước 1 tiếng..."
+                  :placeholder="t('reminders.aiPlaceholder')"
                   class="w-full bg-bg-surface border border-border-default focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-xl text-sm transition-all duration-200 outline-none text-text-primary placeholder:text-text-disabled shadow-sm resize-none p-3 pr-14"
                   @keydown.enter.prevent="handleAiSubmit"
                 />
@@ -224,7 +225,7 @@ async function handleSave() {
               </div>
               <div class="flex items-center gap-3 my-5">
                 <div class="flex-1 h-px bg-border-default"></div>
-                <span class="text-[0.6875rem] text-text-tertiary uppercase font-bold tracking-wider">Hoặc điền thủ công</span>
+                <span class="text-[0.6875rem] text-text-tertiary uppercase font-bold tracking-wider">{{ t('reminders.orManual') }}</span>
                 <div class="flex-1 h-px bg-border-default"></div>
               </div>
             </div>
@@ -350,11 +351,11 @@ async function handleSave() {
           <template v-if="currentStep === 1">
             <button @click="emit('close')" class="btn-cancel">{{ t('common.cancel') }}</button>
             <button @click="currentStep = 2" :disabled="!isStep1Valid" class="btn-save">
-              Tiếp tục
+              {{ t('common.continue') }}
             </button>
           </template>
           <template v-else>
-            <button @click="currentStep = 1" class="btn-cancel">Quay lại</button>
+            <button @click="currentStep = 1" class="btn-cancel">{{ t('common.goBack') }}</button>
             <button @click="handleSave" :disabled="!isValid || saving" class="btn-save">
               <span v-if="saving" class="spinner" />
               <Save v-else :size="15" />
