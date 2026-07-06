@@ -45,6 +45,13 @@ const isValid = computed(() => {
   return true
 })
 
+/** Get the redirect path from query params, defaulting to '/' */
+function getRedirectPath(): string {
+  const redirect = route.query.redirect as string
+  // Only allow internal paths (starting with /) to prevent open redirect
+  return redirect && redirect.startsWith('/') ? redirect : '/'
+}
+
 async function handleSubmit() {
   if (!isValid.value || loading.value) return
   loading.value = true
@@ -55,7 +62,7 @@ async function handleSubmit() {
     if (result) {
       auth.setAuth(result.token, result.user, result.refreshToken)
       ui.showToast('success', `${t(isLogin.value ? 'login.welcomeBack' : 'common.confirm')}, ${result.user.name}!`)
-      router.push('/')
+      router.push(getRedirectPath())
     }
   } catch (err: any) {
     error.value = err.message || t('common.somethingWentWrong')
@@ -132,7 +139,7 @@ async function handleGoogleSignInCallback(code: string) {
         ? `${t('login.createAccount')} ${t('common.confirm')}! ${t('login.welcomeBack')}, ${res.user.name}!`
         : `${t('login.welcomeBack')}, ${res.user.name}!`
       ui.showToast('success', welcomeMsg)
-      router.push('/')
+      router.push(getRedirectPath())
     }
   } catch (err: any) {
     googleError.value = err.message || t('common.somethingWentWrong')

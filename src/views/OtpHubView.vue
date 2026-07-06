@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useUiStore } from '@/stores/ui'
 import { useI18n } from 'vue-i18n'
@@ -15,6 +16,7 @@ const ADMIN_EMAIL = 'tintphcm@gmail.com'
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY
 
 const { t } = useI18n()
+const router = useRouter()
 const auth = useAuthStore()
 const ui = useUiStore()
 
@@ -170,6 +172,22 @@ async function checkPushState() {
   } catch { pushSubscribed.value = false }
 }
 
+async function handleSubscribeClick() {
+  if (!auth.isAuthenticated) {
+    const confirmed = await ui.requestConfirm({
+      title: t('otpHub.loginRequiredTitle'),
+      message: t('otpHub.loginRequiredMessage'),
+      confirmText: t('otpHub.goToLogin'),
+      cancelText: t('common.cancel')
+    })
+    if (confirmed) {
+      router.push({ path: '/login', query: { redirect: '/otp-hub' } })
+    }
+    return
+  }
+  await subscribePush()
+}
+
 async function subscribePush() {
   if (!pushSupported.value) return
   pushLoading.value = true
@@ -244,9 +262,9 @@ watch(isAdmin, (val) => {
         </div>
 
         <button
-          v-if="pushSupported && !pushSubscribed"
+          v-if="!pushSubscribed"
           :disabled="pushLoading"
-          @click="subscribePush"
+          @click="handleSubscribeClick"
           class="flex items-center gap-2 rounded-full bg-accent px-4 py-2 text-[0.8125rem] font-semibold text-white transition-all duration-200 hover:bg-accent-hover hover:-translate-y-0.5 shadow-[0_4px_16px_rgba(124,111,247,0.3)] hover:shadow-[0_6px_24px_rgba(124,111,247,0.4)] disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
         >
           <Bell :size="15" />
@@ -456,9 +474,9 @@ watch(isAdmin, (val) => {
       <h3 class="text-xl font-bold mb-2">{{ t('otpHub.emptyTitle') }}</h3>
       <p class="text-text-tertiary text-[0.8125rem] mb-8 max-w-[280px] leading-relaxed">{{ t('otpHub.emptyDesc') }}</p>
       <button
-        v-if="pushSupported && !pushSubscribed"
+        v-if="!pushSubscribed"
         :disabled="pushLoading"
-        @click="subscribePush"
+        @click="handleSubscribeClick"
         class="flex items-center gap-2 px-6 py-3 rounded-full text-[0.875rem] font-bold text-white bg-accent hover:bg-accent-hover transition-all duration-200 shadow-[0_4px_16px_rgba(124,111,247,0.3)] hover:shadow-[0_6px_24px_rgba(124,111,247,0.4)] hover:-translate-y-0.5 disabled:opacity-50"
       >
         <Bell :size="18" />

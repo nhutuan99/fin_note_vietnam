@@ -1471,6 +1471,9 @@ export default {
     emptyDesc: 'Khi admin gửi mã OTP, bạn sẽ thấy ở đây và nhận được push notification nếu đã đăng ký.',
     emptySubscribe: 'Đăng ký nhận thông báo',
     pushNotSupported: 'Trình duyệt không hỗ trợ Push Notification. Thử mở trên Chrome/Safari hoặc cài FinNote làm PWA.',
-    other: 'Khác'
+    other: 'Khác',
+    loginRequiredTitle: 'Đăng nhập để nhận thông báo',
+    loginRequiredMessage: 'Bạn cần đăng nhập để đăng ký nhận push notification khi có mã OTP mới. Đăng nhập ngay?',
+    goToLogin: 'Đăng nhập'
   }
 }

@@ -188,7 +188,10 @@ router.beforeEach((to) => {
     if (to.path === '/login' && to.query.code && to.query.state) {
       return
     }
-    return { path: '/', replace: true }
+    // Respect redirect query param (e.g. /login?redirect=/otp-hub)
+    const redirect = to.query.redirect as string
+    const target = redirect && redirect.startsWith('/') ? redirect : '/'
+    return { path: target, replace: true }
   }
 
   // Protected pages: redirect unauthenticated users to login

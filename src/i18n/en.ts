@@ -1428,6 +1428,9 @@ export default {
     emptyDesc: 'When admin sends an OTP code, it will appear here. Subscribe to get push notifications.',
     emptySubscribe: 'Subscribe to notifications',
     pushNotSupported: 'Your browser does not support Push Notifications. Try Chrome/Safari or install FinNote as a PWA.',
-    other: 'Other'
+    other: 'Other',
+    loginRequiredTitle: 'Login to get notifications',
+    loginRequiredMessage: 'You need to log in to subscribe to push notifications for new OTP codes. Log in now?',
+    goToLogin: 'Log in'
   }
 }
