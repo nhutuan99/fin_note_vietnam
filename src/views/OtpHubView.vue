@@ -309,10 +309,10 @@ watch(isAdmin, (val) => {
     </div>
 
     <!-- ── Admin Panel ── -->
-    <div v-if="isAdmin" class="card-premium rounded-2xl mb-6 overflow-hidden">
+    <div v-if="isAdmin" class="card-premium rounded-2xl mb-6">
       <button
         @click="showAdminPanel = !showAdminPanel"
-        class="flex w-full items-center justify-between px-5 py-3.5 transition-colors hover:bg-bg-hover"
+        class="flex w-full items-center justify-between px-5 py-3.5 transition-colors hover:bg-bg-hover rounded-t-2xl"
       >
         <div class="flex items-center gap-2.5">
           <ShieldCheck :size="16" class="text-accent" />
