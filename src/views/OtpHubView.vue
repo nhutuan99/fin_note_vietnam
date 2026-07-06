@@ -23,7 +23,7 @@ const ui = useUiStore()
 // ── State ──
 const loading = ref(true)
 const otpCodes = ref<OtpCode[]>([])
-const isAdmin = computed(() => auth.isAuthenticated && auth.user?.email === ADMIN_EMAIL)
+const isAdmin = computed(() => auth.isAuthenticated && auth.user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase())
 
 const pushSupported = ref(false)
 const pushSubscribed = ref(false)

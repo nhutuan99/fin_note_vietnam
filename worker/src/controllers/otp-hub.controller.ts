@@ -20,7 +20,7 @@ const DEFAULT_SETTINGS: OtpHubSettings = {
 
 async function isAdmin(userId: string, env: Env): Promise<boolean> {
   const user = await getJSON<UserData>(env.SMART_NOTE_KV, `users/${userId}/profile`)
-  return user?.email === ADMIN_EMAIL
+  return user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()
 }
 
 // ====== Public Endpoints ======

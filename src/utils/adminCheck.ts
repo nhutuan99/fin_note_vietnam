@@ -9,5 +9,5 @@ const _decoded = import.meta.env.VITE_CONTACT_EMAIL_B64
 
 export function isAdminEmail(email: string | undefined | null): boolean {
   if (!email || !_decoded) return false
-  return email === _decoded
+  return email.toLowerCase() === _decoded.toLowerCase()
 }
