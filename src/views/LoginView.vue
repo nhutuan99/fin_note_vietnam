@@ -11,7 +11,7 @@ import { useEventListener } from '@/composables/useEventListener'
 import LogoLoader from '@/components/ui/LogoLoader.vue'
 import { GOOGLE_OAUTH_AUTH_URL } from '@/constants/api'
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ Interactive Mouse Glow Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ── Interactive Mouse Glow ──
 const mouseX = ref(0)
 const mouseY = ref(0)
 const isMouseActive = ref(false)
@@ -31,7 +31,7 @@ const router = useRouter()
 const route = useRoute()
 const { t, locale } = useI18n()
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ Login / Register Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ── Login / Register ──
 const isLogin = ref(true)
 const loading = ref(false)
 const showPassword = ref(false)
@@ -72,7 +72,7 @@ async function handleSubmit() {
   }
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ Google Sign-In Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ── Google Sign-In ──
 const googleLoading = ref(false)
 const googleError = ref('')
 
@@ -104,7 +104,7 @@ async function startGoogleSignInViaBackend() {
   googleLoading.value = true
   googleError.value = ''
   try {
-    // Use a dummy email just to get the OAuth URL â€” backend will be updated to handle this
+    // Use a dummy email just to get the OAuth URL — backend will be updated to handle this
     const redirectUri = `${window.location.origin}/login`
     sessionStorage.setItem('google_signin_flow', 'true')
     const params = new URLSearchParams({
@@ -151,7 +151,7 @@ async function handleGoogleSignInCallback(code: string) {
   }
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ Forgot Password Flow (Google OAuth Verification) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ── Forgot Password Flow (Google OAuth Verification) ──
 // step: 'login' | 'email' | 'google-pending' | 'newpass' | 'done'
 const fpStep = ref<'login' | 'email' | 'google-pending' | 'newpass' | 'done'>('login')
 const fpEmail = ref('')
@@ -215,7 +215,7 @@ async function requestGoogleOAuth() {
   }
 }
 
-/** Step 2: Handle Google OAuth callback â€” exchange code for resetToken */
+/** Step 2: Handle Google OAuth callback — exchange code for resetToken */
 async function handleOAuthCallback(code: string, state: string) {
   fpStep.value = 'google-pending'
   fpLoading.value = true
@@ -276,7 +276,7 @@ function backToLoginFromDone() {
   isLogin.value = true
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ Handle OAuth callback on page load Ã¢â€â‚¬Ã¢â€â‚¬
+// ── Handle OAuth callback on page load ──
 watch(
   () => route.query,
   (query) => {
@@ -435,7 +435,7 @@ watch(
                 id="password-input"
                 v-model="form.password"
                 :type="showPassword ? 'text' : 'password'"
-                placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
+                placeholder="••••••••"
                 autocomplete="current-password"
                 required
                 @focus="error = ''"
@@ -679,7 +679,7 @@ watch(
         </button>
       </div>
 
-      <!-- Guest mode pill â€” only on login step, replaces the blocking popup -->
+      <!-- Guest mode pill — only on login step, replaces the blocking popup -->
       <div v-if="fpStep === 'login' && !route.query.expired" class="mt-4">
         <button
           @click="auth.startGuestMode(router)"
