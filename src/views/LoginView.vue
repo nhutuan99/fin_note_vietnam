@@ -132,6 +132,7 @@ async function startGoogleSignInViaBackend() {
 async function handleGoogleSignInCallback(code: string) {
   googleLoading.value = true
   googleError.value = ''
+  let success = false
   try {
     const res = await httpClient.post<{ token: string; refreshToken?: string; user: any; isNewUser?: boolean }>('/api/auth/google-signin', {
       code,
@@ -143,6 +144,7 @@ async function handleGoogleSignInCallback(code: string) {
         ? `${t('login.createAccount')} ${t('common.confirm')}! ${t('login.welcomeBack')}, ${res.user.name}!`
         : `${t('login.welcomeBack')}, ${res.user.name}!`
       ui.showToast('success', welcomeMsg)
+      success = true
       router.push(getRedirectPath())
     }
   } catch (err: any) {
@@ -151,7 +153,9 @@ async function handleGoogleSignInCallback(code: string) {
   } finally {
     googleLoading.value = false
     sessionStorage.removeItem('google_signin_flow')
-    window.history.replaceState({}, '', '/login')
+    if (!success) {
+      window.history.replaceState({}, '', '/login')
+    }
   }
 }
 
@@ -315,7 +319,7 @@ watch(
 </script>
 
 <template>
-  <div class="bg-bg-base text-text-primary relative flex min-h-screen min-h-[100dvh] items-center justify-center p-4 pt-[max(env(safe-area-inset-top,0px),1rem)]">
+  <div class="bg-bg-primary text-text-primary relative flex min-h-screen min-h-[100dvh] items-center justify-center p-4 pt-[max(env(safe-area-inset-top,0px),1rem)]">
     <!-- Language Switcher -->
     <div class="absolute right-4 z-10 flex items-center gap-1" style="top: max(env(safe-area-inset-top, 0px), 1rem)">
       <button

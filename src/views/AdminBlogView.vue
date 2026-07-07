@@ -585,7 +585,7 @@ const formatDate = (dateStr: string) => {
     <div v-else class="space-y-8">
       <div v-for="group in groupedBlogs" :key="group.month" class="relative">
         <!-- Month Label & Line -->
-        <div class="sticky top-[70px] z-10 flex items-center gap-3 mb-4 bg-bg-base/90 backdrop-blur-sm py-2 -mx-2 px-2">
+        <div class="sticky top-[70px] z-10 flex items-center gap-3 mb-4 bg-bg-primary/90 backdrop-blur-sm py-2 -mx-2 px-2">
           <div class="w-2 h-2 rounded-full bg-accent ring-4 ring-accent/20"></div>
           <h2 class="text-sm font-bold text-text-primary tracking-wider uppercase opacity-80">{{ group.month }}</h2>
           <div class="flex-1 h-px bg-border-subtle"></div>
