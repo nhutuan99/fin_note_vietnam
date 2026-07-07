@@ -21,9 +21,13 @@ app.use(createHead())
 // Give httpClient access to Vue Router for SPA-safe 401 redirects
 setHttpClientRouter(router)
 
-app.mount('#app')
+// Wait for router to be ready before mounting to avoid initial layout flashes/routing glitches on reload
+router.isReady().then(() => {
+  app.mount('#app')
 
-// Fade out the PWA splash screen after Vue has mounted
-setTimeout(() => {
-  ;(window as any).__removeSplash?.()
-}, 800)
+  // Fade out the PWA splash screen after Vue has mounted
+  setTimeout(() => {
+    ;(window as any).__removeSplash?.()
+  }, 800)
+})
+
