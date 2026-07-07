@@ -282,12 +282,14 @@ function copyCode(code: string, id: string) {
   navigator.clipboard.writeText(code).then(() => { copiedId.value = id; setTimeout(() => { copiedId.value = null }, 2000) })
 }
 
-// ── Lifecycle ──
-onMounted(() => {
-  fetchOtpCodes(); checkPushState()
-  countdownInterval = setInterval(() => { now.value = Date.now() }, 1000)
-  
-  let pollCount = 0
+let pollCount = 0
+
+function startPolling() {
+  if (pollInterval) {
+    clearInterval(pollInterval)
+    pollInterval = null
+  }
+  pollCount = 0
   pollInterval = setInterval(() => {
     fetchOtpCodes()
     pollCount++
@@ -296,15 +298,32 @@ onMounted(() => {
       pollInterval = null
     }
   }, 10000)
+}
+
+function handleVisibilityChange() {
+  if (document.visibilityState === 'visible') {
+    fetchOtpCodes()
+    startPolling()
+  }
+}
+
+// ── Lifecycle ──
+onMounted(() => {
+  fetchOtpCodes(); checkPushState()
+  countdownInterval = setInterval(() => { now.value = Date.now() }, 1000)
+  
+  startPolling()
   
   if (isAdmin.value) { showAdminPanel.value = true; fetchSubscriberCount(); fetchSettings() }
   document.addEventListener('click', handleClickOutside)
+  document.addEventListener('visibilitychange', handleVisibilityChange)
 })
 
 onUnmounted(() => {
   if (countdownInterval) clearInterval(countdownInterval)
   if (pollInterval) clearInterval(pollInterval)
   document.removeEventListener('click', handleClickOutside)
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
 })
 
 watch(isAdmin, (val) => {
