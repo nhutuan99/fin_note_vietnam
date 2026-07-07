@@ -286,7 +286,17 @@ function copyCode(code: string, id: string) {
 onMounted(() => {
   fetchOtpCodes(); checkPushState()
   countdownInterval = setInterval(() => { now.value = Date.now() }, 1000)
-  pollInterval = setInterval(() => { fetchOtpCodes() }, 10000)
+  
+  let pollCount = 0
+  pollInterval = setInterval(() => {
+    fetchOtpCodes()
+    pollCount++
+    if (pollCount >= 3 && pollInterval) {
+      clearInterval(pollInterval)
+      pollInterval = null
+    }
+  }, 10000)
+  
   if (isAdmin.value) { showAdminPanel.value = true; fetchSubscriberCount(); fetchSettings() }
   document.addEventListener('click', handleClickOutside)
 })
