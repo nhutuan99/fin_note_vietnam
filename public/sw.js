@@ -42,7 +42,31 @@ self.addEventListener('fetch', (event) => {
   // 4. Skip browser extension requests
   if (url.protocol === 'chrome-extension:' || url.protocol === 'moz-extension:') return
 
-  // ── Cache strategy: Stale-While-Revalidate for same-origin assets ──
+  // ── Cache strategy ──
+
+  // 1. Navigation / HTML pages: Network-First (always fresh, offline fallback)
+  const isHtml = request.mode === 'navigate' || request.headers.get('accept')?.includes('text/html')
+  if (isHtml) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response.ok) {
+            const clone = response.clone()
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone))
+          }
+          return response
+        })
+        .catch(() => {
+          // If offline/error, fall back to cached version or root '/'
+          return caches.match(request).then((cached) => {
+            return cached || caches.match('/')
+          })
+        })
+    )
+    return
+  }
+
+  // 2. Static assets (JS, CSS, images, etc.): Stale-While-Revalidate
   event.respondWith(
     caches.match(request).then((cached) => {
       const fetched = fetch(request).then((response) => {
@@ -51,7 +75,7 @@ self.addEventListener('fetch', (event) => {
           caches.open(CACHE_NAME).then((cache) => cache.put(request, clone))
         }
         return response
-      }).catch(() => cached) // If network fails, fall back to cache
+      }).catch(() => cached)
 
       return cached || fetched
     })
