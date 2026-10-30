@@ -72,6 +72,13 @@ const subscriberCount = ref(0)
 const defaultExpiry = ref(15)
 const showPwaGuide = ref(false)
 
+const passwordEnabled = ref(false)
+const passwordValue = ref('')
+const showPasswordModal = ref(false)
+const userPasswordInput = ref('')
+const checkingPassword = ref(false)
+const passwordError = ref(false)
+
 const now = ref(Date.now())
 let countdownInterval: ReturnType<typeof setInterval> | null = null
 let pollInterval: ReturnType<typeof setInterval> | null = null
@@ -153,9 +160,40 @@ function timeSince(iso: string): string {
 // ── API ──
 async function fetchOtpCodes() {
   try {
-    const res = await httpClient.get<OtpCode[]>('/api/otp-hub')
-    if (res) otpCodes.value = res
-  } catch { /* silent */ } finally { loading.value = false }
+    const res = await httpClient.get<OtpCode[]>('/api/otp-hub', { silent: true })
+    if (res) {
+      otpCodes.value = res
+      showPasswordModal.value = false
+    }
+  } catch (err: any) {
+    if (err.message === 'PASSWORD_REQUIRED') {
+      showPasswordModal.value = true
+      otpCodes.value = []
+      localStorage.removeItem('otp_hub_password')
+    }
+  } finally {
+    loading.value = false
+  }
+}
+
+async function submitUserPassword() {
+  if (!userPasswordInput.value.trim() || checkingPassword.value) return
+  checkingPassword.value = true
+  passwordError.value = false
+  try {
+    localStorage.setItem('otp_hub_password', userPasswordInput.value.trim())
+    const res = await httpClient.get<OtpCode[]>('/api/otp-hub', { silent: true })
+    if (res) {
+      otpCodes.value = res
+      showPasswordModal.value = false
+      userPasswordInput.value = ''
+    }
+  } catch (err: any) {
+    passwordError.value = true
+    localStorage.removeItem('otp_hub_password')
+  } finally {
+    checkingPassword.value = false
+  }
 }
 
 async function createOtp() {
@@ -192,15 +230,36 @@ async function fetchSubscriberCount() {
 
 async function fetchSettings() {
   try {
-    const res = await httpClient.get<{ defaultExpiryMinutes: number }>('/api/otp-hub/settings')
-    if (res) { defaultExpiry.value = res.defaultExpiryMinutes; adminForm.value.expiryMinutes = res.defaultExpiryMinutes }
+    const res = await httpClient.get<{ defaultExpiryMinutes: number; passwordEnabled?: boolean; password?: string }>('/api/otp-hub/settings')
+    if (res) {
+      defaultExpiry.value = res.defaultExpiryMinutes
+      adminForm.value.expiryMinutes = res.defaultExpiryMinutes
+      passwordEnabled.value = res.passwordEnabled || false
+      passwordValue.value = res.password || ''
+      syncAdminPassword()
+    }
   } catch {}
+}
+
+// Admin already knows the password — store it so the viewer overlay never blocks them
+function syncAdminPassword() {
+  if (passwordEnabled.value && passwordValue.value.trim()) {
+    localStorage.setItem('otp_hub_password', passwordValue.value.trim())
+  } else {
+    localStorage.removeItem('otp_hub_password')
+  }
+  fetchOtpCodes()
 }
 
 async function saveSettings() {
   try {
-    await httpClient.put('/api/otp-hub/settings', { defaultExpiryMinutes: defaultExpiry.value })
+    await httpClient.put('/api/otp-hub/settings', {
+      defaultExpiryMinutes: defaultExpiry.value,
+      passwordEnabled: passwordEnabled.value,
+      password: passwordValue.value.trim()
+    })
     adminForm.value.expiryMinutes = defaultExpiry.value
+    syncAdminPassword()
     ui.showToast('success', t('otpHub.settingsSaved'))
     showSettings.value = false
   } catch { ui.showToast('error', t('otpHub.settingsFailed')) }
@@ -251,7 +310,15 @@ async function subscribePush() {
     const reg = await navigator.serviceWorker.ready
     const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) as any })
     const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
-    await fetch(`${API_BASE}/api/otp-hub/subscribe`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(sub.toJSON()) })
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    const otpPassword = localStorage.getItem('otp_hub_password')
+    if (otpPassword) headers['X-Otp-Password'] = otpPassword
+    const res = await fetch(`${API_BASE}/api/otp-hub/subscribe`, { method: 'POST', headers, body: JSON.stringify(sub.toJSON()) })
+    const json = (await res.json().catch(() => null)) as { success?: boolean; error?: string } | null
+    if (!json?.success) {
+      await sub.unsubscribe().catch(() => {})
+      throw new Error(json?.error || t('otpHub.subscribeFailed'))
+    }
     pushSubscribed.value = true
     localStorage.setItem('otp_hub_subscribed', 'true')
     ui.showToast('success', t('otpHub.subscribeSuccess'))
@@ -543,7 +610,8 @@ watch(isAdmin, (val) => {
           </button>
         </div>
 
-        <div v-if="showSettings" class="rounded-xl bg-bg-elevated border border-border-subtle p-4 space-y-3">
+        <div v-if="showSettings" class="rounded-xl bg-bg-elevated border border-border-subtle p-4 space-y-4">
+          <!-- Expiry setting -->
           <div class="flex items-center justify-between gap-3 flex-wrap">
             <span class="text-[0.8125rem] text-text-secondary">{{ t('otpHub.defaultExpiry') }}</span>
             <div class="flex items-center gap-2">
@@ -553,12 +621,36 @@ watch(isAdmin, (val) => {
                 class="w-16 rounded-md bg-bg-surface border border-border-default px-2 py-1.5 text-[0.8125rem] text-text-primary text-center outline-none focus:border-accent"
               />
               <span class="text-[0.8125rem] text-text-tertiary">{{ t('otpHub.minutes') }}</span>
-              <button @click="saveSettings" class="btn-primary btn-sm">{{ t('otpHub.save') }}</button>
             </div>
           </div>
-          <div class="flex items-center gap-1.5 text-[0.6875rem] text-text-disabled">
-            <Users :size="12" />
-            <span>{{ t('otpHub.subscribersCount', { count: subscriberCount }) }}</span>
+
+          <!-- Password setting -->
+          <div class="border-t border-border-default/50 pt-3 space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-[0.8125rem] text-text-secondary">{{ t('otpHub.passwordProtect') }}</span>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" v-model="passwordEnabled" class="sr-only peer" />
+                <div class="w-9 h-5 bg-border-strong peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent"></div>
+              </label>
+            </div>
+            
+            <div v-if="passwordEnabled" class="flex items-center gap-2">
+              <input
+                v-model="passwordValue"
+                type="text"
+                :placeholder="t('otpHub.passwordPlaceholder')"
+                class="flex-1 rounded-md bg-bg-surface border border-border-default px-3 py-1.5 text-[0.8125rem] text-text-primary outline-none focus:border-accent"
+              />
+            </div>
+          </div>
+
+          <!-- Save button -->
+          <div class="flex justify-between items-center pt-2 border-t border-border-default/50">
+            <div class="flex items-center gap-1.5 text-[0.6875rem] text-text-disabled">
+              <Users :size="12" />
+              <span>{{ t('otpHub.subscribersCount', { count: subscriberCount }) }}</span>
+            </div>
+            <button @click="saveSettings" class="btn-primary btn-sm px-4">{{ t('otpHub.save') }}</button>
           </div>
         </div>
       </div>
@@ -666,6 +758,43 @@ watch(isAdmin, (val) => {
     </div>
 
     <AppIntroCta />
+
+    <!-- ── Password Overlay ── -->
+    <div v-if="showPasswordModal" class="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+      <div class="card-premium rounded-2xl w-full max-w-[24rem] p-6 text-center space-y-6 animate-[fadeSlideIn_0.3s_ease]">
+        <div class="mx-auto w-16 h-16 flex items-center justify-center rounded-3xl bg-accent/10 text-accent border border-accent/20 shadow-[0_0_24px_rgba(124,111,247,0.15)] animate-pulse">
+          <KeyRound :size="30" />
+        </div>
+        
+        <div>
+          <h3 class="text-xl font-bold mb-2">{{ t('otpHub.enterPasswordTitle') }}</h3>
+          <p class="text-text-tertiary text-[0.8125rem] leading-relaxed">{{ t('otpHub.enterPasswordDesc') }}</p>
+        </div>
+
+        <div class="space-y-3">
+          <input
+            v-model="userPasswordInput"
+            type="password"
+            :placeholder="t('otpHub.passwordPlaceholder')"
+            class="w-full rounded-xl bg-bg-elevated border border-border-default px-4 py-3 text-center text-lg font-bold tracking-[0.1em] outline-none transition-all focus:border-accent focus:ring-2 focus:ring-accent/20 placeholder:text-text-disabled"
+            :class="{ 'border-error focus:border-error focus:ring-error/20': passwordError }"
+            @keydown.enter="submitUserPassword"
+          />
+          <p v-if="passwordError" class="text-error text-xs text-center font-semibold">
+            {{ t('otpHub.incorrectPassword') }}
+          </p>
+        </div>
+
+        <button
+          :disabled="checkingPassword || !userPasswordInput.trim()"
+          @click="submitUserPassword"
+          class="w-full btn-primary py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all cursor-pointer"
+        >
+          <AppSpinner v-if="checkingPassword" :size="16" />
+          <span>{{ checkingPassword ? t('otpHub.checking') : t('otpHub.confirm') }}</span>
+        </button>
+      </div>
+    </div>
   </div>
 </template>
 

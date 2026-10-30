@@ -312,7 +312,7 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
 
       // ── OTP Hub (Public Routes) ──
       if (path === '/api/otp-hub' && request.method === 'GET') {
-        return handleListOtpCodes(env)
+        return handleListOtpCodes(request, env)
       }
       if (path === '/api/otp-hub/subscribe' && request.method === 'POST') {
         return handleOtpSubscribe(request, env)

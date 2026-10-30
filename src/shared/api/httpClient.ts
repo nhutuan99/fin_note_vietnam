@@ -147,6 +147,11 @@ function buildHeaders(hasBody: boolean, isExternal: boolean = false): HeadersIni
     }
     const locale = localStorage.getItem('sn_locale') || 'vi'
     headers['Accept-Language'] = locale
+
+    const otpPassword = localStorage.getItem('otp_hub_password')
+    if (otpPassword) {
+      headers['X-Otp-Password'] = otpPassword
+    }
   }
 
   if (hasBody) {

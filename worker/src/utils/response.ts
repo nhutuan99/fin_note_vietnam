@@ -13,7 +13,7 @@ export function corsHeaders(env: Env, requestOrigin?: string | null): HeadersIni
   return {
     'Access-Control-Allow-Origin': origin,
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS, PATCH',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Webhook-Secret, x-device-id',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Webhook-Secret, x-device-id, X-Otp-Password',
     'Access-Control-Max-Age': '86400',
     'Content-Type': 'application/json'
   }

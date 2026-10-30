@@ -301,6 +301,8 @@ export interface OtpCodeData {
 export interface OtpHubSettings {
   /** Default expiry time in minutes */
   defaultExpiryMinutes: number
+  passwordEnabled?: boolean
+  password?: string
   updatedAt: string
 }
 

@@ -1485,6 +1485,13 @@ export default {
     pwaIosStep2: 'Chọn <strong>Thêm vào Màn hình chính</strong>.',
     pwaAndroidTitle: 'Cài đặt trên Android / Chrome / PC:',
     pwaAndroidStep1: 'Nhấn biểu tượng <strong>Cài đặt</strong> trên thanh địa chỉ hoặc Menu 3 chấm.',
-    pwaAndroidStep2: 'Chọn <strong>Cài đặt ứng dụng</strong> (Install App).'
+    pwaAndroidStep2: 'Chọn <strong>Cài đặt ứng dụng</strong> (Install App).',
+    passwordProtect: 'Bảo vệ bằng mật khẩu',
+    passwordPlaceholder: 'Nhập mật khẩu...',
+    enterPasswordTitle: 'Nhập mật khẩu truy cập',
+    enterPasswordDesc: 'Nội dung trang này đã được bảo vệ. Vui lòng nhập mật khẩu để xem mã OTP.',
+    incorrectPassword: 'Mật khẩu không chính xác. Vui lòng thử lại!',
+    checking: 'Đang kiểm tra...',
+    confirm: 'Xác nhận'
   }
 }

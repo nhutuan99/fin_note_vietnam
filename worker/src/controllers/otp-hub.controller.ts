@@ -23,13 +23,24 @@ async function isAdmin(userId: string, env: Env): Promise<boolean> {
   return user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()
 }
 
+/** True if the request may access OTP codes (password disabled, or correct X-Otp-Password header). */
+async function hasOtpAccess(request: Request, env: Env): Promise<boolean> {
+  const settings = (await getJSON<OtpHubSettings>(env.SMART_NOTE_KV, KV_OTP_SETTINGS)) || DEFAULT_SETTINGS
+  if (!settings.passwordEnabled || !settings.password) return true
+  return request.headers.get('X-Otp-Password') === settings.password
+}
+
 // ====== Public Endpoints ======
 
 /**
  * GET /api/otp-hub — List active OTP codes (public, no auth)
  * Returns only non-expired codes, sorted by newest first. Max 5.
  */
-export async function handleListOtpCodes(env: Env): Promise<Response> {
+export async function handleListOtpCodes(request: Request, env: Env): Promise<Response> {
+  if (!(await hasOtpAccess(request, env))) {
+    return jsonResponse({ success: false, error: 'PASSWORD_REQUIRED' })
+  }
+
   const codes = (await getJSON<OtpCodeData[]>(env.SMART_NOTE_KV, KV_OTP_CODES)) || []
   const now = new Date().toISOString()
 
@@ -46,6 +57,11 @@ export async function handleListOtpCodes(env: Env): Promise<Response> {
  * POST /api/otp-hub/subscribe — Subscribe to OTP push notifications (anonymous)
  */
 export async function handleOtpSubscribe(request: Request, env: Env): Promise<Response> {
+  // Push payloads contain the OTP code, so subscribing requires the same access as listing
+  if (!(await hasOtpAccess(request, env))) {
+    return jsonResponse({ success: false, error: 'PASSWORD_REQUIRED' })
+  }
+
   const body = (await request.json()) as any
   const { endpoint, keys } = body
 
@@ -174,6 +190,16 @@ export async function handleUpdateOtpSettings(userId: string, request: Request, 
 
   if (body.defaultExpiryMinutes !== undefined) {
     settings.defaultExpiryMinutes = body.defaultExpiryMinutes
+  }
+  if (body.password !== undefined) {
+    settings.password = String(body.password).trim()
+  }
+  if (body.passwordEnabled !== undefined) {
+    // Enabling with an empty password would lock everyone out
+    if (body.passwordEnabled && !settings.password) {
+      return errorResponse('Password is required')
+    }
+    settings.passwordEnabled = !!body.passwordEnabled
   }
   settings.updatedAt = new Date().toISOString()
 

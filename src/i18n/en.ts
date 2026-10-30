@@ -1442,6 +1442,13 @@ export default {
     pwaIosStep2: 'Select <strong>Add to Home Screen</strong>.',
     pwaAndroidTitle: 'Install on Android / Chrome / PC:',
     pwaAndroidStep1: 'Tap the <strong>Install</strong> icon in the address bar or the 3-dot menu.',
-    pwaAndroidStep2: 'Select <strong>Install App</strong>.'
+    pwaAndroidStep2: 'Select <strong>Install App</strong>.',
+    passwordProtect: 'Password protection',
+    passwordPlaceholder: 'Enter password...',
+    enterPasswordTitle: 'Enter access password',
+    enterPasswordDesc: 'This page is password protected. Please enter the password to view OTP codes.',
+    incorrectPassword: 'Incorrect password. Please try again!',
+    checking: 'Checking...',
+    confirm: 'Confirm'
   }
 }
