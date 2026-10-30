@@ -2,7 +2,6 @@
 import { ref, watch, computed } from 'vue'
 import { X, Globe, Lock, Mail, Plus, Trash2, Check, Copy } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
-import LogoLoader from '@/components/ui/LogoLoader.vue'
 
 const props = defineProps<{
   noteId: string

@@ -96,7 +96,7 @@ export async function handleLogin(request: Request, env: Env): Promise<Response>
 }
 
 export async function handleUpdateProfile(userId: string, request: Request, env: Env): Promise<Response> {
-  const { name, avatarUrl, hasCompletedOnboarding, lastWeeklyEvent, disableLargeTransferConfirmation } = (await request.json()) as any
+  const { name, avatarUrl, hasCompletedOnboarding, disableLargeTransferConfirmation } = (await request.json()) as any
   const user = await getJSON<UserData>(env.SMART_NOTE_KV, `users/${userId}/profile`)
   if (!user) return errorResponse('User not found', 404)
 
@@ -110,9 +110,6 @@ export async function handleUpdateProfile(userId: string, request: Request, env:
   }
   if (hasCompletedOnboarding !== undefined) {
     user.hasCompletedOnboarding = hasCompletedOnboarding
-  }
-  if (lastWeeklyEvent !== undefined) {
-    user.lastWeeklyEvent = lastWeeklyEvent
   }
   if (disableLargeTransferConfirmation !== undefined) {
     user.disableLargeTransferConfirmation = disableLargeTransferConfirmation
@@ -129,7 +126,6 @@ export async function handleUpdateProfile(userId: string, request: Request, env:
       avatarUrl: user.avatarUrl || '',
       createdAt: user.createdAt,
       hasCompletedOnboarding: user.hasCompletedOnboarding,
-      lastWeeklyEvent: user.lastWeeklyEvent,
       disableLargeTransferConfirmation: user.disableLargeTransferConfirmation
     }
   })
@@ -321,7 +317,6 @@ export async function handleGoogleSignIn(request: Request, env: Env): Promise<Re
   const usersIndex = (await getJSON<Record<string, string>>(env.SMART_NOTE_KV, 'users/_index')) || {}
 
   let userId = usersIndex[email]
-  let isNewUser = false
 
   if (userId) {
     const user = await getJSON<UserData>(env.SMART_NOTE_KV, `users/${userId}/profile`)
@@ -344,7 +339,6 @@ export async function handleGoogleSignIn(request: Request, env: Env): Promise<Re
       }
     })
   } else {
-    isNewUser = true
     userId = generateId()
     const randomPass = generateId() + generateId() + generateId()
     const user: UserData = {

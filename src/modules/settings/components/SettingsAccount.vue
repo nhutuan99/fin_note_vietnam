@@ -7,7 +7,6 @@ import { useUiStore } from '@/stores/ui'
 import { useI18n } from 'vue-i18n'
 import { Shield, LogOut, Trash2, AlertTriangle, Lock, Eye, EyeOff } from 'lucide-vue-next'
 import { httpClient } from '@/shared/api/httpClient'
-import LogoLoader from '@/components/ui/LogoLoader.vue'
 
 const { t } = useI18n()
 const router = useRouter()

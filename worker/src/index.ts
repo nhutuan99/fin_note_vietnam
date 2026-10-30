@@ -81,8 +81,7 @@ import {
 
 import {
   handleAiStream,
-  handleAi,
-  handleAiImage
+  handleAi
 } from './controllers/ai.controller'
 
 import {
@@ -387,12 +386,6 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
       if (path === '/api/savings' && request.method === 'POST') {
         return handleCreateSaving(userId, request, env)
       }
-      const savingMatch = path.match(/^\/api\/savings\/(.+)$/)
-      if (savingMatch) {
-        const savingId = savingMatch[1]
-        // Note: Check for sub-paths before the base ID match if needed, but since we matched strict id, deposit and withdraw must be checked first
-      }
-
       const savingDepositMatch = path.match(/^\/api\/savings\/(.+)\/deposit$/)
       if (savingDepositMatch && request.method === 'POST') {
         return handleDepositSaving(userId, savingDepositMatch[1], request, env)
@@ -539,9 +532,6 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
       }
       if (path === '/api/ai' && request.method === 'POST') {
         return handleAi(request, env)
-      }
-      if (path === '/api/ai/image' && request.method === 'POST') {
-        return handleAiImage(request, env)
       }
 
       // 404 Fallback

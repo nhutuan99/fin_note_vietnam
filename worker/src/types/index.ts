@@ -22,7 +22,6 @@ export interface UserData {
   createdAt: string
   pinHash?: string
   hasCompletedOnboarding?: boolean
-  lastWeeklyEvent?: number
   disableLargeTransferConfirmation?: boolean
 }
 

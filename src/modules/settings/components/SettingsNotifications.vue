@@ -2,7 +2,6 @@
 import { useI18n } from 'vue-i18n'
 import { Bell } from 'lucide-vue-next'
 import { usePushNotifications } from '@/composables/usePushNotifications'
-import LogoLoader from '@/components/ui/LogoLoader.vue'
 
 const { t } = useI18n()
 

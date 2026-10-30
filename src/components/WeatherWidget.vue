@@ -18,7 +18,6 @@ import { useI18n } from 'vue-i18n'
 
 // 6. Icons
 import { RefreshCw, MapPin, Wind, Droplets, Zap, Car, Leaf, ChevronDown } from 'lucide-vue-next'
-import LogoLoader from '@/components/ui/LogoLoader.vue'
 
 // ── State ──────────────────────────────────────────────────────────────────────
 

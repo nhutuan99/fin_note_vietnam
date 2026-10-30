@@ -2,11 +2,9 @@
 import { ref, onMounted, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useUiStore } from '@/stores/ui'
-import { httpClient } from '@/shared/api/httpClient'
-import { Copy, ShieldCheck, Smartphone, CheckCircle, Activity, ArrowUpRight, ArrowDownRight, Server, RefreshCw, ChevronDownIcon } from 'lucide-vue-next'
+import { Copy, ShieldCheck, Smartphone, CheckCircle } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import { useFinanceStore } from '@/stores/finance'
-import { formatVND, getCategoryConfig } from '@/constants/finance'
 
 const auth = useAuthStore()
 const ui = useUiStore()

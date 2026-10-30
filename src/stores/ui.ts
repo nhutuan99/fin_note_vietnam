@@ -21,8 +21,6 @@ export const useUiStore = defineStore('ui', () => {
   const showBugReport = ref(false)
   const showContactFeedback = ref(false)
   const showBuyMeCoffee = ref(false)
-  const showWeeklyEvent = ref(false)
-  const hasCompletedWeeklyEvent = ref(false)
   const toasts = ref<Toast[]>([])
   const theme = ref<'dark' | 'light'>(
     (localStorage.getItem('sn_theme') as 'dark' | 'light') || 'dark'
@@ -74,43 +72,6 @@ export const useUiStore = defineStore('ui', () => {
 
   function toggleHideBalances() {
     hideBalances.value = !hideBalances.value
-  }
-
-  function checkWeeklyEvent() {
-    const lastEvent = localStorage.getItem('sn_last_weekly_event')
-    // Fallback to local storage or backend auth state. If we have the backend flag, use it instead.
-    // Assuming we can sync it via auth store, but checking it here:
-    // If it's been more than a week since the last event shown
-    const now = Date.now()
-    const ONE_WEEK = 7 * 24 * 60 * 60 * 1000
-    if (!lastEvent || (now - parseInt(lastEvent)) > ONE_WEEK) {
-      showWeeklyEvent.value = true
-      hasCompletedWeeklyEvent.value = false
-    } else {
-      hasCompletedWeeklyEvent.value = true
-    }
-  }
-
-  async function completeWeeklyEvent() {
-    showWeeklyEvent.value = false
-    hasCompletedWeeklyEvent.value = true
-    const now = Date.now()
-    localStorage.setItem('sn_last_weekly_event', now.toString())
-    
-    // Cache at BE
-    try {
-      const { httpClient } = await import('@/shared/api/httpClient')
-      const { useAuthStore } = await import('@/stores/auth')
-      const auth = useAuthStore()
-      
-      httpClient.put('/api/auth/profile', { lastWeeklyEvent: now })
-        .then((updatedUser: any) => {
-          if (updatedUser) auth.updateUser(updatedUser)
-        })
-        .catch(err => console.error('Failed to sync weekly event to BE:', err))
-    } catch (e) {
-      console.error('Failed to import for weekly event sync', e)
-    }
   }
 
   function toggleSidebar() {
@@ -221,10 +182,6 @@ export const useUiStore = defineStore('ui', () => {
     resolvePin,
     showBugReport,
     showContactFeedback,
-    showBuyMeCoffee,
-    showWeeklyEvent,
-    hasCompletedWeeklyEvent,
-    checkWeeklyEvent,
-    completeWeeklyEvent
+    showBuyMeCoffee
   }
 })

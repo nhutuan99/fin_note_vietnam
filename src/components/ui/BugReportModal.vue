@@ -4,7 +4,6 @@ import { Bug, X, Send, ImagePlus, Trash2, ArrowLeft, Sparkles, AlertCircle, Ligh
 import { httpClient } from '@/shared/api/httpClient'
 import { useUiStore } from '@/stores/ui'
 import { useI18n } from 'vue-i18n'
-import LogoLoader from '@/components/ui/LogoLoader.vue'
 
 const props = defineProps<{
   show: boolean

@@ -1,8 +1,13 @@
 <script setup lang="ts">
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, watch, nextTick } from 'vue'
 import {
-  Copy, Check, ChevronDown, ChevronRight, Search, X,
-  Minimize2, Maximize2, Braces
+  Copy,
+  Check,
+  Search,
+  X,
+  Minimize2,
+  Maximize2,
+  Braces
 } from 'lucide-vue-next'
 
 const props = defineProps<{
@@ -25,11 +30,6 @@ function typeOf(val: any): string {
   return typeof val
 }
 
-function isExpandable(val: any): boolean {
-  const t = typeOf(val)
-  return t === 'object' || t === 'array'
-}
-
 function childCount(val: any): number {
   if (Array.isArray(val)) return val.length
   if (typeof val === 'object' && val !== null) return Object.keys(val).length
@@ -44,12 +44,6 @@ function togglePath(path: string) {
   }
   // Force reactivity
   collapsedPaths.value = new Set(collapsedPaths.value)
-}
-
-function isCollapsed(path: string): boolean {
-  if (globalCollapsed.value && !collapsedPaths.value.has(path)) return true
-  if (!globalCollapsed.value && collapsedPaths.value.has(path)) return true
-  return false
 }
 
 function expandAll() {
@@ -70,11 +64,6 @@ function toggleSearch() {
   } else {
     searchQuery.value = ''
   }
-}
-
-function matchesSearch(text: string): boolean {
-  if (!searchQuery.value) return false
-  return text.toLowerCase().includes(searchQuery.value.toLowerCase())
 }
 
 // Count matches
@@ -115,18 +104,6 @@ async function copyMinified() {
     copied.value = true
     setTimeout(() => (copied.value = false), 1500)
   } catch {}
-}
-
-// ── Preview for collapsed nodes ──
-function collapsedPreview(val: any): string {
-  const t = typeOf(val)
-  if (t === 'array') return `Array(${val.length})`
-  if (t === 'object') {
-    const keys = Object.keys(val)
-    if (keys.length <= 3) return `{ ${keys.join(', ')} }`
-    return `{ ${keys.slice(0, 3).join(', ')}, … }`
-  }
-  return ''
 }
 </script>
 

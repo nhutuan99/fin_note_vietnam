@@ -146,7 +146,6 @@ export function getGreeting(name?: string, locale: string = 'vi'): string {
 export function useWeather() {
   const weather    = ref<WeatherData | null>(null)
   const airQuality = ref<AirQualityData | null>(null)
-  const traffic    = ref<TrafficLevel>(getTrafficLevel())
   const loading    = ref(false)
   const error      = ref('')
 

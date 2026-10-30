@@ -2,13 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useFinanceStore } from '@/stores/finance'
-import {
-  formatVND,
-  getCategoryConfig,
-  EXPENSE_CATEGORIES,
-  INCOME_CATEGORIES
-} from '@/constants/finance'
-import { useCurrency } from '@/composables/useCurrency'
+import { getCategoryConfig, EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '@/constants/finance'
 import { getWalletBrand } from '@/constants/walletBrands'
 import { useI18n } from 'vue-i18n'
 import type { TransactionType } from '@/types'
@@ -19,7 +13,6 @@ import CustomDatePicker from '@/components/ui/CustomDatePicker.vue'
 const { t } = useI18n()
 const router = useRouter()
 const finance = useFinanceStore()
-const { currencySymbol } = useCurrency()
 
 onMounted(() => finance.fetchWallets())
 

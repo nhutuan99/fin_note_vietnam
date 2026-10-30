@@ -4,7 +4,7 @@
  * Called by the Cloudflare Cron Trigger during trading hours (9h-15h VN, Mon-Fri).
  */
 
-import { Env, StockData, StockAlert } from '../types'
+import { Env, StockData } from '../types'
 import { getJSON, putJSON } from './kv.service'
 import { sendPushToUser } from '../controllers/push.controller'
 

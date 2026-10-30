@@ -22,7 +22,6 @@ const ui = useUiStore()
 const stockStore = useStockStore()
 const fundStore = useFundStore()
 const financeStore = useFinanceStore()
-const { t } = useI18n()
 
 const dismissed = ref(false)
 

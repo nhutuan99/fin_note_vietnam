@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
-import { ref, onUnmounted } from 'vue'
+import { ref } from 'vue'
 import { stockApi } from '@/services/api/stock.api'
-import type { StockPosition, StockAlert } from '@/types'
+import type { StockPosition } from '@/types'
 
 export const useStockStore = defineStore('stock', () => {
   const positions = ref<StockPosition[]>([])

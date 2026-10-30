@@ -2,7 +2,7 @@
 import { NodeViewWrapper, nodeViewProps } from '@tiptap/vue-3'
 import { X } from 'lucide-vue-next'
 
-const props = defineProps(nodeViewProps)
+defineProps(nodeViewProps)
 </script>
 
 <template>

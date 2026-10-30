@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useSavingsStore } from '@/stores/savings'
 import { useFinanceStore } from '@/stores/finance'
 import { formatVND } from '@/constants/finance'
-import { Target, Zap, ArrowRight, PartyPopper } from 'lucide-vue-next'
+import { Target, Zap, ArrowRight } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 

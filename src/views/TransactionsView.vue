@@ -4,7 +4,6 @@ import { useEventListener } from '@/composables/useEventListener'
 import { useRouter } from 'vue-router'
 import { useFinancePolling } from '@/composables/useFinancePolling'
 import { useUiStore } from '@/stores/ui'
-import { formatVND, getCategoryConfig } from '@/constants/finance'
 import { getWalletBrand } from '@/constants/walletBrands'
 import { useI18n } from 'vue-i18n'
 import type { Transaction } from '@/types'
@@ -22,7 +21,7 @@ import ClearTransactionsModal from '@/components/finance/ClearTransactionsModal.
 import { useExportCsv } from '@/composables/useExportCsv'
 import { onMounted, watch } from 'vue'
 
-const { t, tm } = useI18n()
+const { t } = useI18n()
 const router = useRouter()
 const finance = useFinancePolling()
 const ui = useUiStore()

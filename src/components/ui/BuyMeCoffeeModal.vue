@@ -4,7 +4,7 @@ import { X, Heart, Copy, Check } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import qrImage from '@/assets/images/qr-coffee.png'
 
-const props = defineProps<{
+defineProps<{
   show: boolean
 }>()
 

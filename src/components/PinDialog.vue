@@ -3,7 +3,6 @@ import { ref, watch, nextTick } from 'vue'
 import { ShieldCheck, X } from 'lucide-vue-next'
 import { httpClient } from '@/shared/api/httpClient'
 import { useI18n } from 'vue-i18n'
-import LogoLoader from '@/components/ui/LogoLoader.vue'
 
 const { t } = useI18n()
 

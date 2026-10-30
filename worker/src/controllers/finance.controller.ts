@@ -1,7 +1,6 @@
-import { Env, UserData, NoteData, TransactionData, WalletData, NotificationData, PendingNotification, BudgetData, PendingTransfer } from '../types'
+import { Env, UserData, TransactionData, WalletData, BudgetData, PendingTransfer } from '../types'
 import { errorResponse, jsonResponse } from '../utils/response'
-import { generateId, hashPassword } from '../utils/crypto'
-import { createJWT } from '../utils/jwt'
+import { generateId } from '../utils/crypto'
 import { getJSON, putJSON } from '../services/kv.service'
 
 // ====== Finance Handlers ======
@@ -125,7 +124,6 @@ export async function handleListTransactions(userId: string, request: Request, e
 
 export async function handleGetFinanceStats(userId: string, request: Request, env: Env): Promise<Response> {
   const txs = (await getJSON<TransactionData[]>(env.SMART_NOTE_KV, `users/${userId}/finance/transactions`)) || []
-  const wallets = (await getJSON<WalletData[]>(env.SMART_NOTE_KV, `users/${userId}/finance/wallets`)) || []
 
   const url = new URL(request.url)
   let month = url.searchParams.get('month')
@@ -408,7 +406,6 @@ export async function handleResolvePendingTransfer(
     // 2. Tạo giao dịch nhận tiền (income, category 'transfer') vào ví nhận
     const transferAmount = typeof body.amount === 'number' && body.amount > 0 ? body.amount : record.amount
     const now = new Date().toISOString()
-    const targetWalletName = wallets.find(w => w.id === body.targetWalletId)?.name || 'Ví nhận'
 
     const incomeTx: TransactionData = {
       id: generateId(),

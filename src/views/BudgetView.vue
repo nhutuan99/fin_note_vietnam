@@ -5,7 +5,7 @@ import { formatVND, getCategoryConfig } from '@/constants/finance'
 import { useI18n } from 'vue-i18n'
 import { useAi } from '@/composables/useGemini'
 import { formatMoneyShort } from '@/composables/useCurrency'
-import { Target, AlertTriangle, CheckCircle2, Bot, Sparkles, TrendingDown } from 'lucide-vue-next'
+import { Target, AlertTriangle, Bot, Sparkles, TrendingDown } from 'lucide-vue-next'
 import type { BudgetGoal, CategoryBudget } from '@/types'
 import CurrencyInput from '@/components/ui/CurrencyInput.vue'
 
@@ -56,7 +56,6 @@ async function setupBudget() {
 
   // Create budget with AI-generated category allocation
   const catTotals = finance.expenseByCategoryThisMonth
-  const totalExp = catTotals.reduce((s, c) => s + c.total, 0)
 
   const categoryBudgets: CategoryBudget[] = catTotals.length > 0
     ? catTotals.map(c => ({ category: c.category, limit: Math.round(amt * (c.percentage / 100)), spent: c.total }))

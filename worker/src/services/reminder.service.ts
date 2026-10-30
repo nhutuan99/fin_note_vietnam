@@ -98,7 +98,6 @@ function advanceRecurring(reminder: ReminderData): void {
   if (reminder.customRemindAt) {
     // Shift custom reminder by the same interval
     const customMs = new Date(reminder.customRemindAt).getTime()
-    const shift = nextMs - new Date(reminder.eventDate).getTime() // already updated above
     const newCustomMs = customMs + (nextMs - eventMs)
     if (newCustomMs > Date.now()) {
       reminder.customRemindAt = new Date(newCustomMs).toISOString()

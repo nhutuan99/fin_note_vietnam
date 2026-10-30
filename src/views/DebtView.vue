@@ -59,12 +59,6 @@ function progressPct(debt: Debt): number {
   return Math.min(((debt.amount - debt.remainingAmount) / debt.amount) * 100, 100)
 }
 
-function daysUntilDue(debt: Debt): number {
-  if (!debt.dueDate) return Infinity
-  const diff = new Date(debt.dueDate).getTime() - Date.now()
-  return Math.ceil(diff / 86400000)
-}
-
 // ─── Actions ────────────────────────────────────
 function resetForm() {
   formTitle.value = ''

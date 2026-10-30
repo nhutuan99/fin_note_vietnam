@@ -981,26 +981,6 @@ export default {
       'Thêm giao dịch để hệ thống tự động phát hiện các khoản chi định kỳ (Netflix, Spotify, gym...)'
   },
 
-  // ── Weekly Event ──
-  weeklyEvent: {
-    title: 'Sự Kiện Hàng Tuần (AI)',
-    skip: 'Bỏ qua tuần này',
-    join: 'Tham gia ngay',
-    success: 'Đã tham gia! Chúc bạn một tuần vui vẻ!',
-    generatingImage: 'AI đang vẽ ảnh minh họa...',
-    topics: {
-      t1_title: 'Thử thách Tiết kiệm 500k',
-      t1_desc:
-        'Tuần này, hãy thử cắt giảm những chi tiêu không cần thiết như trà sữa, cà phê ngoài để tiết kiệm 500k nhé!',
-      t2_title: 'Dọn dẹp Tài chính',
-      t2_desc:
-        'Dành 15 phút tuần này để rà soát lại các khoản chi tiêu nhỏ lẻ tuần qua. Bạn sẽ bất ngờ đấy!',
-      t3_title: 'Quy tắc 50/30/20',
-      t3_desc:
-        'Bạn đã áp dụng quy tắc 50/30/20 chưa? Hãy chia thu nhập của bạn cho Nhu cầu, Mong muốn và Tiết kiệm nhé.'
-    }
-  },
-
   // ── Reminders ──
   reminders: {
     title: 'Lời nhắc',

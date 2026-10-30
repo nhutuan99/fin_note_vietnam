@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useFinanceStore } from '@/stores/finance'
 import { useFinancePolling } from '@/composables/useFinancePolling'
 import { formatVND, getCategoryConfig } from '@/constants/finance'
 import { useI18n } from 'vue-i18n'
 import type { Transaction } from '@/types'
-import { CreditCard, AlertTriangle, Calendar, DollarSign, Loader2 } from 'lucide-vue-next'
+import { CreditCard, AlertTriangle, Calendar, Loader2 } from 'lucide-vue-next'
 
 const { t } = useI18n()
 const finance = useFinancePolling()
@@ -52,7 +51,7 @@ const subscriptions = computed(() => {
 const totalMonthly = computed(() => subscriptions.value.reduce((s, sub) => s + sub.amount, 0))
 const upcomingCount = computed(() => subscriptions.value.filter(s => s.isUpcoming).length)
 
-function fmtDate(d: string) { const [y, m, dd] = d.split('-'); return `${dd}/${m}` }
+function fmtDate(d: string) { const [, m, dd] = d.split('-'); return `${dd}/${m}` }
 </script>
 
 <template>

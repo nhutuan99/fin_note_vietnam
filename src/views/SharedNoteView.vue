@@ -9,7 +9,7 @@ import JsonViewer from '@/components/ui/JsonViewer.vue'
 import LogoLoader from '@/components/ui/LogoLoader.vue'
 import AppIntroCta from '@/components/ui/AppIntroCta.vue'
 import SocialShare from '@/components/ui/SocialShare.vue'
-import { ArrowLeft, Lock } from 'lucide-vue-next'
+import { Lock } from 'lucide-vue-next'
 import { useAppSeo, extractExcerpt, extractFirstImage } from '@/composables/useAppSeo'
 
 const route = useRoute()

@@ -7,7 +7,6 @@ import { httpClient } from '@/shared/api/httpClient'
 import { Plus, Trash2, Edit3, X, Check, GripVertical, Link, Upload, Image as ImageIcon } from 'lucide-vue-next'
 import PinDialog from '@/components/PinDialog.vue'
 import CurrencyInput from '@/components/ui/CurrencyInput.vue'
-import LogoLoader from '@/components/ui/LogoLoader.vue'
 import { useUiStore } from '@/stores/ui'
 import { useI18n } from 'vue-i18n'
 import type { Wallet } from '@/types'
@@ -220,18 +219,6 @@ async function onDrop(e: DragEvent, targetWallet: Wallet) {
 function onDragEnd() {
   draggedId.value = null
   dragOverId.value = null
-}
-
-/** Resolve the logo URL for an existing wallet in the list */
-function getWalletLogo(w: Wallet) {
-  if (w.customLogoUrl) return w.customLogoUrl
-  const brand = getWalletBrand(w.name)
-  return brand?.logoUrl || null
-}
-
-function getWalletBrandConfig(w: Wallet) {
-  if (w.customLogoUrl) return null  // custom logo wins
-  return getWalletBrand(w.name)
 }
 </script>
 

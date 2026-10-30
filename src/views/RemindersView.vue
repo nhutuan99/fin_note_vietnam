@@ -3,21 +3,25 @@ import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useReminderStore, type ReminderFilter } from '@/stores/reminders'
 import { useUiStore } from '@/stores/ui'
-import type { Reminder, ReminderSuggestion } from '@/types'
+import type { Reminder } from '@/types'
 import CreateReminderModal from '@/components/ui/CreateReminderModal.vue'
 import ReminderSuggestionModal from '@/components/ui/ReminderSuggestionModal.vue'
 import CleanupExpiredModal from '@/components/ui/CleanupExpiredModal.vue'
 import {
-  Bell, Plus, Check, Clock, CalendarDays, Trash2,
-  CheckCircle2, AlertCircle, Timer, BellRing, Repeat, Eye,
-  Sparkles, Loader, Link
+  Bell,
+  Plus,
+  Check,
+  Clock,
+  Trash2,
+  Repeat,
+  Eye,
+  Sparkles,
+  Link
 } from 'lucide-vue-next'
 
 const { t, locale } = useI18n()
 const store = useReminderStore()
 const ui = useUiStore()
-
-const isAiFocused = ref(false)
 
 const showCreateModal = ref(false)
 const showCleanupModal = ref(false)
@@ -115,11 +119,6 @@ function handleModalSaved() {
   store.fetch()
 }
 
-function formatDate(iso: string): string {
-  const d = new Date(iso)
-  return d.toLocaleDateString(locale.value, { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' })
-}
-
 function formatTime(iso: string): string {
   const d = new Date(iso)
   return d.toLocaleTimeString(locale.value, { hour: '2-digit', minute: '2-digit' })
@@ -128,12 +127,6 @@ function formatTime(iso: string): string {
 const offsetLabels: Record<string, string> = {
   '15m': '15p', '30m': '30p', '1h': '1h', '2h': '2h', '3h': '3h',
   '1d': '1 ngày', '2d': '2 ngày', '3d': '3 ngày', '1w': '1 tuần',
-}
-
-function getStatusIcon(status: string) {
-  if (status === 'active') return BellRing
-  if (status === 'completed') return CheckCircle2
-  return AlertCircle
 }
 
 function getStatusColor(status: string) {

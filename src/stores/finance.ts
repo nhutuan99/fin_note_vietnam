@@ -3,7 +3,6 @@ import { ref, computed } from 'vue'
 import type {
   Wallet,
   Transaction,
-  TransactionType,
   TransactionFilter,
   CategoryStat,
   DailyStat,

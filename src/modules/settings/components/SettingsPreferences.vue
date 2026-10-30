@@ -1,18 +1,15 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Globe, DollarSign, FolderSync, Link, Unlink } from 'lucide-vue-next'
+import { Globe, DollarSign, FolderSync } from 'lucide-vue-next'
 import { setLocale, currentLocale } from '@/i18n'
 import { useCurrency, type CurrencyCode } from '@/composables/useCurrency'
-import { useNotesStore } from '@/stores/notes'
 import { useUiStore } from '@/stores/ui'
 import { useAuthStore } from '@/stores/auth'
 import { httpClient } from '@/shared/api/httpClient'
 import type { User } from '@/types'
-import LogoLoader from '@/components/ui/LogoLoader.vue'
 
 const { t } = useI18n()
-const notesStore = useNotesStore()
 const ui = useUiStore()
 const auth = useAuthStore()
 

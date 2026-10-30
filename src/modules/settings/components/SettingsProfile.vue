@@ -6,7 +6,6 @@ import { httpClient } from '@/shared/api/httpClient'
 import type { User } from '@/types'
 import { useI18n } from 'vue-i18n'
 import { User as UserIcon, Camera, Trash2, Save } from 'lucide-vue-next'
-import LogoLoader from '@/components/ui/LogoLoader.vue'
 
 const { t } = useI18n()
 const auth = useAuthStore()

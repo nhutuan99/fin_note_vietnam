@@ -1,13 +1,12 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useReminderStore } from '@/stores/reminders'
 import { useUiStore } from '@/stores/ui'
 import type { Reminder } from '@/types'
-import { X, Bell, CalendarDays, Clock, Save, Repeat, Plus, Link, ExternalLink, Sparkles } from 'lucide-vue-next'
+import { X, Bell, Save, Repeat, Plus, Sparkles } from 'lucide-vue-next'
 import CustomTimePicker from './CustomTimePicker.vue'
 import AppSpinner from '@/components/ui/AppSpinner.vue'
-import LogoLoader from '@/components/ui/LogoLoader.vue'
 
 const props = defineProps<{
   reminder?: Reminder | null

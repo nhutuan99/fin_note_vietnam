@@ -6,7 +6,6 @@ import {
   AlignLeft, PenLine, Wand2, Tag, MessageSquare, ListChecks, Braces
 } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
-import LogoLoader from '@/components/ui/LogoLoader.vue'
 
 const props = defineProps<{
   title: string
@@ -158,7 +157,6 @@ async function copyResult() {
 }
 
 const hasContent = computed(() => getPlainText().trim().length > 0 || props.content.includes('<img'))
-const hasResult = computed(() => ai.streamText.value.length > 0 || suggestedTags.value.length > 0)
 </script>
 
 <template>

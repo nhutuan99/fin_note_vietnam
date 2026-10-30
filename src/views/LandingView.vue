@@ -15,7 +15,6 @@ import {
   VolumeX,
   Menu,
   X,
-  CheckCircle2,
   ChevronRight
 } from 'lucide-vue-next'
 import { onMounted, onUnmounted, ref, watch } from 'vue'

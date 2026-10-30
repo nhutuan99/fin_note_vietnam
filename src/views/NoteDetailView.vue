@@ -10,16 +10,14 @@ import AiPanel from '@/components/editor/AiPanel.vue'
 import ShareNoteModal from '@/components/ui/ShareNoteModal.vue'
 import ReminderSuggestionModal from '@/components/ui/ReminderSuggestionModal.vue'
 import type { ReminderSuggestion } from '@/types'
-import { ArrowLeft, Save, Pin, Trash2, Tag, X, Plus, Check, Sparkles, Bell, Loader, Share2 } from 'lucide-vue-next'
+import { ArrowLeft, Save, Pin, Trash2, Tag, X, Plus, Check, Sparkles, Bell, Share2 } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
-import { useAi } from '@/composables/useGemini'
 import { autoFormatJsonContent } from '@/shared/utils/jsonFormatter'
 
 const route = useRoute()
 const router = useRouter()
 const notesStore = useNotesStore()
 const ui = useUiStore()
-const ai = useAi()
 const { t } = useI18n()
 
 const title = ref('')

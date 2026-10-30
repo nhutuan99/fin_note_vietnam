@@ -3,7 +3,6 @@ import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useOnboarding } from '@/composables/useOnboarding'
 import { useFinanceStore } from '@/stores/finance'
-import { useUiStore } from '@/stores/ui'
 
 import CurrencyInput from '@/components/ui/CurrencyInput.vue'
 import {
@@ -19,9 +18,8 @@ import {
 } from 'lucide-vue-next'
 
 const { t, locale } = useI18n()
-const { currentStep, progress, totalSteps, nextStep, prevStep, completeOnboarding } = useOnboarding()
+const { currentStep, totalSteps, nextStep, prevStep, completeOnboarding } = useOnboarding()
 const finance = useFinanceStore()
-const ui = useUiStore()
 
 // ─── Step 1: Language ─────────────────────────
 const selectedLang = ref(locale.value)
@@ -73,8 +71,6 @@ async function handleNext() {
   }
   nextStep()
 }
-
-const stepIcons = [Globe, Wallet, Target, Sparkles]
 </script>
 
 <template>

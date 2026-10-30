@@ -1,8 +1,5 @@
-import { Env, UserData, NoteData, TransactionData, WalletData, NotificationData, PendingNotification, BudgetData } from '../types'
+import { Env } from '../types'
 import { errorResponse, jsonResponse, corsHeaders } from '../utils/response'
-import { generateId, hashPassword } from '../utils/crypto'
-import { createJWT } from '../utils/jwt'
-import { getJSON, putJSON } from '../services/kv.service'
 
 // ====== Cloudflare Workers AI ======
 
@@ -22,17 +19,6 @@ Quy tắc quan trọng:
 - Trả lời bằng tiếng Việt, dùng Markdown và emoji
 - Ngắn gọn, tối đa 200 từ
 - Nếu câu hỏi không liên quan đến tài chính, lịch sự từ chối và nhắc lại vai trò`,
-  weekly_event: `Bạn là một chuyên gia tài chính cá nhân siêu sáng tạo và hài hước. 
-Hãy tạo ra MỘT sự kiện tài chính để giới thiệu tính năng "Quản lý Cổ phiếu (Stocks)" mới ra mắt của ứng dụng.
-Khuyến khích người dùng thêm mã chứng khoán đầu tiên của họ (VD: FPT, VIC, HPG) để theo dõi giá và Lãi/Lỗ tự động.
-Yêu cầu bắt buộc:
-- TRẢ VỀ DUY NHẤT 1 CHUỖI JSON HỢP LỆ, KHÔNG CÓ BẤT KỲ TEXT NÀO BÊN NGOÀI.
-- Cấu trúc JSON:
-{
-  "title": "Tên thử thách ngắn gọn (tiếng Việt)",
-  "desc": "Mô tả chi tiết và khích lệ (tiếng Việt)",
-  "imagePrompt": "A single english keyword or short phrase describing the core subject for a 3d icon generation (e.g., 'piggy bank', 'stock chart', 'shopping receipt', 'wallet', 'coins', 'credit card'). Keep it simple."
-}`,
   rewrite_note: `Bạn là một trợ lý thông minh. Nhiệm vụ của bạn là viết lại và trình bày nội dung ghi chú được cung cấp một cách chuyên nghiệp, sạch sẽ, súc tích và mạch lạc.
 Nếu trong nội dung có các công việc cần làm (to-do, checklist), hãy sử dụng thẻ HTML để tạo danh sách công việc. Ví dụ: <ul data-type="taskList"><li data-type="taskItem"><label><input type="checkbox"><span>Nội dung việc cần làm</span></label></li></ul>.
 Trả về nội dung được định dạng dưới dạng HTML hợp lệ để hiển thị trong Tiptap editor. Không bao gồm thẻ <html> hay <body>.`,
@@ -81,7 +67,7 @@ export async function handleAi(request: Request, env: Env): Promise<Response> {
   const { action, content, question, imagesBase64 } = body
 
   if (!action) return errorResponse('Missing action')
-  if (!content && !['ask', 'weekly_event'].includes(action)) return errorResponse('Note content is required')
+  if (!content && action !== 'ask') return errorResponse('Note content is required')
   if (action === 'ask' && !question) return errorResponse('Missing question')
 
   const systemPrompt = AI_SYSTEM_PROMPTS[action]
@@ -99,8 +85,6 @@ export async function handleAi(request: Request, env: Env): Promise<Response> {
       : `Question: ${question}`
   } else if (action === 'tags') {
     userMessage = `Title: ${body.title || ''}\nContent: ${fullContent.substring(0, 600)}`
-  } else if (action === 'weekly_event') {
-    userMessage = `Tạo một sự kiện tài chính mới lạ cho tuần này. Phải trả về JSON hợp lệ.`
   } else if (action === 'rewrite_note') {
     userMessage = fullContent
   } else {
@@ -131,7 +115,7 @@ export async function handleAiStream(request: Request, env: Env): Promise<Respon
   const { action, content, question, imagesBase64 } = body
 
   if (!action) return errorResponse('Missing action')
-  if (!content && !['ask', 'weekly_event'].includes(action)) return errorResponse('Note content is required')
+  if (!content && action !== 'ask') return errorResponse('Note content is required')
   if (action === 'ask' && !question) return errorResponse('Missing question')
 
   const systemPrompt = AI_SYSTEM_PROMPTS[action]
@@ -179,29 +163,6 @@ export async function handleAiStream(request: Request, env: Env): Promise<Respon
     })
   } catch (err: any) {
     return errorResponse(err.message || 'AI stream failed', 500)
-  }
-}
-
-export async function handleAiImage(request: Request, env: Env): Promise<Response> {
-  if (!env.AI) return errorResponse('AI binding not configured', 503)
-
-  const body = (await request.json().catch(() => ({}))) as any
-  const prompt = body.prompt || 'golden coin'
-
-  try {
-    const response = await (env.AI as any).run('@cf/stabilityai/stable-diffusion-xl-base-1.0', {
-      prompt: `A highly detailed 3d cute cartoon UI asset icon of ${prompt}, vibrant colors, neon accents, dark purple gradient background, high quality, 4k`
-    })
-
-    const cors = corsHeaders(env, request.headers.get('Origin'))
-    return new Response(response, {
-      headers: {
-        ...cors,
-        'Content-Type': 'image/png'
-      }
-    })
-  } catch (err: any) {
-    return errorResponse(err.message || 'AI image generation failed', 500)
   }
 }
 

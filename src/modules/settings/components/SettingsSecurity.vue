@@ -3,8 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useUiStore } from '@/stores/ui'
 import { httpClient } from '@/shared/api/httpClient'
-import { Lock, Eye, EyeOff, KeyRound, Shield } from 'lucide-vue-next'
-import LogoLoader from '@/components/ui/LogoLoader.vue'
+import { Lock, Eye, EyeOff, KeyRound } from 'lucide-vue-next'
 
 const { t } = useI18n()
 const ui = useUiStore()

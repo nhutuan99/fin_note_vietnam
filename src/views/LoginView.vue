@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useUiStore } from '@/stores/ui'
 import { httpClient } from '@/shared/api/httpClient'
 import { useRouter, useRoute } from 'vue-router'
-import { Mail, Lock, User, Eye, EyeOff, ArrowRight, KeyRound, RotateCcw, CheckCircle2, ChevronLeft, ShieldCheck, Sparkles, LogIn, X } from 'lucide-vue-next'
+import { Mail, Lock, User, Eye, EyeOff, ArrowRight, KeyRound, RotateCcw, CheckCircle2, ChevronLeft, ShieldCheck, Sparkles } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
-import { setLocale, currentLocale } from '@/i18n'
+import { setLocale } from '@/i18n'
 import { useEventListener } from '@/composables/useEventListener'
 import LogoLoader from '@/components/ui/LogoLoader.vue'
 import { GOOGLE_OAUTH_AUTH_URL } from '@/constants/api'
@@ -170,13 +170,6 @@ const fpShowNew = ref(false)
 const fpShowConfirm = ref(false)
 const fpLoading = ref(false)
 const fpError = ref('')
-
-const showGuestWelcome = ref(!route.query.expired && !localStorage.getItem('guest_popup_closed'))
-
-function closeGuestWelcome() {
-  showGuestWelcome.value = false
-  localStorage.setItem('guest_popup_closed', 'true')
-}
 
 function goForgot() {
   fpStep.value = 'email'

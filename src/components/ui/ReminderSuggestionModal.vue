@@ -4,8 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { useReminderStore } from '@/stores/reminders'
 import { useUiStore } from '@/stores/ui'
 import type { ReminderSuggestion } from '@/types'
-import { Sparkles, Bell, X, ChevronRight, Loader, Link } from 'lucide-vue-next'
-import LogoLoader from '@/components/ui/LogoLoader.vue'
+import { Sparkles, Bell, X, ChevronRight, Link } from 'lucide-vue-next'
 
 const props = defineProps<{
   suggestions: ReminderSuggestion[]
