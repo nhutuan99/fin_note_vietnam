@@ -66,7 +66,7 @@ const trafficBg = computed(() => {
     <!-- ── Top bar: greeting + actions ── -->
     <div class="flex items-start justify-between gap-3 mb-3">
       <div>
-        <p class="text-[1.125rem] font-bold text-text-primary tracking-tight leading-snug">{{ greeting }}</p>
+        <p class="greeting text-text-primary">{{ greeting }}</p>
         <p class="text-[0.75rem] text-text-tertiary mt-0.5 capitalize">{{ dateStr }}</p>
       </div>
 
@@ -214,6 +214,22 @@ const trafficBg = computed(() => {
 </template>
 
 <style scoped>
+/* Blackletter greeting. Grenze Gotisch is one of the few blackletter faces with Vietnamese
+   diacritics; emoji in the greeting fall back to the system emoji font. */
+.greeting {
+  font-family: 'Grenze Gotisch', 'Inter', serif;
+  font-size: 1.625rem;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+}
+
+@media (min-width: 1024px) {
+  .greeting {
+    font-size: 1.875rem;
+  }
+}
+
 /* ── Keyframes (cannot be replaced by Tailwind utilities) ── */
 @keyframes fadeSlideIn {
   from { opacity: 0; transform: translateY(-8px); }
