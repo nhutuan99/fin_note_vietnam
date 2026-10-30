@@ -15,7 +15,8 @@ import ShareNoteModal from '@/components/ui/ShareNoteModal.vue'
 import ReminderSuggestionModal from '@/components/ui/ReminderSuggestionModal.vue'
 import type { Note, ReminderSuggestion } from '@/types'
 import {
-  ArrowLeft, Pin, Trash2, X, Check, Sparkles, Bell, Share2, MoreHorizontal, Copy, CloudOff, Hash
+  ArrowLeft, Pin, Trash2, X, Check, Sparkles, Bell, Share2, MoreHorizontal, Copy, CloudOff, Hash,
+  Maximize2, Minimize2
 } from 'lucide-vue-next'
 
 /** Debounce between the last keystroke and the autosave request */
@@ -344,6 +345,19 @@ function handleTagKeydown(e: KeyboardEvent) {
   }
 }
 
+// ── Layout: full width (default) or a narrower focus column, remembered per device ──
+const FULL_WIDTH_KEY = 'sn_note_full_width'
+const fullWidth = ref(localStorage.getItem(FULL_WIDTH_KEY) !== '0')
+function toggleWidth() {
+  fullWidth.value = !fullWidth.value
+  showMenu.value = false
+  try {
+    localStorage.setItem(FULL_WIDTH_KEY, fullWidth.value ? '1' : '0')
+  } catch {
+    // Storage unavailable — the choice just isn't remembered
+  }
+}
+
 // ── Actions ──
 const showMenu = ref(false)
 const menuRef = ref<HTMLElement | null>(null)
@@ -434,7 +448,7 @@ async function handleExtractEvents() {
 </script>
 
 <template>
-  <div class="note-page mx-auto flex min-h-[calc(100vh-3.5rem-3rem)] max-w-[52rem] flex-col">
+  <div class="note-page mx-auto flex min-h-[calc(100vh-3.5rem-3rem)] w-full flex-col" :class="{ 'is-focus': !fullWidth }">
     <!-- Top bar -->
     <div class="note-topbar">
       <button id="back-to-notes-btn" class="icon-btn" :title="t('notes.backToNotes')" :aria-label="t('notes.backToNotes')" @click="router.push('/notes')">
@@ -496,6 +510,10 @@ async function handleExtractEvents() {
               <button role="menuitem" @click="copyAsText">
                 <Copy :size="15" />
                 {{ t('notes.copyText') }}
+              </button>
+              <button role="menuitem" class="hidden lg:flex" @click="toggleWidth">
+                <component :is="fullWidth ? Minimize2 : Maximize2" :size="15" />
+                {{ fullWidth ? t('notes.focusWidth') : t('notes.fullWidth') }}
               </button>
               <div class="note-menu__divider" />
               <button id="delete-note-btn" role="menuitem" class="is-danger" @click="handleDelete">
@@ -589,7 +607,16 @@ async function handleExtractEvents() {
 
 <style scoped>
 .note-page {
+  max-width: 100%;
   animation: notePageIn 0.2s ease both;
+  transition: max-width 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Focus mode: a comfortable reading column (desktop only) */
+@media (min-width: 1024px) {
+  .note-page.is-focus {
+    max-width: 50rem;
+  }
 }
 
 @keyframes notePageIn {
@@ -643,12 +670,25 @@ async function handleExtractEvents() {
 
 .save-status {
   display: flex;
+  flex: 1 1 auto;
   align-items: center;
   gap: 0.375rem;
   min-width: 0;
+  overflow: hidden;
   font-size: 0.75rem;
   color: var(--text-tertiary);
   white-space: nowrap;
+}
+
+/* Narrow phones: the status text gives way to the action buttons */
+.save-status > span:not(.dirty-dot) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.save-status > :deep(svg),
+.save-status > .dirty-dot {
+  flex-shrink: 0;
 }
 
 .dirty-dot {
@@ -689,6 +729,7 @@ async function handleExtractEvents() {
   font-size: 0.8125rem;
   color: var(--text-secondary);
   text-align: left;
+  white-space: nowrap;
 }
 
 .note-menu button:hover:not(:disabled) {
@@ -743,6 +784,15 @@ async function handleExtractEvents() {
 @media (max-width: 640px) {
   .note-title {
     font-size: 1.625rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .note-title {
+    font-size: 2.375rem;
+  }
+  .note-topbar {
+    margin-bottom: 1.75rem;
   }
 }
 

@@ -405,7 +405,6 @@ useEventListener(window, 'keydown', (e: KeyboardEvent) => {
           </button>
         </div>
       </template>
-      <span class="toolbar-hint">{{ t('editor.slashHint') }}</span>
     </div>
 
     <!-- Bubble menu on text selection -->
@@ -547,17 +546,18 @@ useEventListener(window, 'keydown', (e: KeyboardEvent) => {
   background: var(--border-default);
 }
 
-.toolbar-hint {
-  margin-left: auto;
-  padding: 0 6px 0 12px;
-  font-size: 0.6875rem;
-  color: var(--text-disabled);
-  white-space: nowrap;
-}
-
-@media (max-width: 900px) {
-  .toolbar-hint {
-    display: none;
+@media (min-width: 1024px) {
+  .editor-toolbar {
+    padding: 5px 6px;
+    margin-bottom: 1.5rem;
+  }
+  .toolbar-group button {
+    width: 34px;
+    height: 34px;
+  }
+  .toolbar-divider {
+    height: 20px;
+    margin: 0 6px;
   }
 }
 
@@ -677,7 +677,7 @@ useEventListener(window, 'keydown', (e: KeyboardEvent) => {
   padding: 1px 5px;
   color: var(--accent-text, var(--accent));
 }
-[data-theme='light'] .editor-content .tiptap code {
+[data-theme='light'] .editor-content .tiptap :not(pre) > code {
   color: var(--accent-hover);
 }
 

@@ -8,6 +8,7 @@ import { useEventListener } from '@/composables/useEventListener'
 import { Search, Plus, LayoutGrid, List, Pin, Clock, FileText, X, Hash, ArrowDownUp } from 'lucide-vue-next'
 import type { NoteSort } from '@/types'
 import NoteCard from '@/components/notes/NoteCard.vue'
+import MenuSelect from '@/components/ui/MenuSelect.vue'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -25,10 +26,10 @@ const filters = computed(() => [
   { key: 'recent' as const, label: t('notes.filterRecent'), icon: Clock }
 ])
 
-const sortOptions = computed<{ key: NoteSort; label: string }[]>(() => [
-  { key: 'updated', label: t('notes.sortUpdated') },
-  { key: 'created', label: t('notes.sortCreated') },
-  { key: 'title', label: t('notes.sortTitle') }
+const sortOptions = computed<{ value: NoteSort; label: string }[]>(() => [
+  { value: 'updated', label: t('notes.sortUpdated') },
+  { value: 'created', label: t('notes.sortCreated') },
+  { value: 'title', label: t('notes.sortTitle') }
 ])
 
 const isFiltering = computed(
@@ -108,7 +109,7 @@ function handleSearchKeydown(e: KeyboardEvent) {
 </script>
 
 <template>
-  <div class="notes-page mx-auto max-w-[85rem]">
+  <div class="notes-page w-full">
     <!-- Header -->
     <header class="mb-5 flex items-center justify-between gap-3">
       <div class="min-w-0">
@@ -126,7 +127,7 @@ function handleSearchKeydown(e: KeyboardEvent) {
     </header>
 
     <!-- Toolbar -->
-    <div class="mb-4 flex flex-col gap-3 md:flex-row md:items-center">
+    <div class="notes-toolbar mb-4">
       <div class="search-box relative flex-1">
         <Search :size="16" class="text-text-tertiary pointer-events-none absolute top-1/2 left-3 -translate-y-1/2" />
         <input
@@ -151,7 +152,8 @@ function handleSearchKeydown(e: KeyboardEvent) {
         <kbd v-else class="search-kbd">{{ isMac ? '⌘' : 'Ctrl' }} K</kbd>
       </div>
 
-      <div class="flex items-center gap-2 overflow-x-auto">
+      <!-- No overflow clipping here: the sort dropdown pops out of this row -->
+      <div class="flex flex-wrap items-center gap-2">
         <div class="segmented" role="tablist">
           <button
             v-for="f in filters"
@@ -167,12 +169,14 @@ function handleSearchKeydown(e: KeyboardEvent) {
           </button>
         </div>
 
-        <label class="sort-select" :title="t('notes.sortBy')">
-          <ArrowDownUp :size="14" class="text-text-tertiary" />
-          <select v-model="notesStore.sortBy" :aria-label="t('notes.sortBy')">
-            <option v-for="opt in sortOptions" :key="opt.key" :value="opt.key">{{ opt.label }}</option>
-          </select>
-        </label>
+        <MenuSelect
+          v-model="notesStore.sortBy"
+          :options="sortOptions"
+          :label="t('notes.sortBy')"
+          :icon="ArrowDownUp"
+          align="right"
+          class="sort-menu"
+        />
 
         <div class="segmented">
           <button
@@ -272,8 +276,30 @@ function handleSearchKeydown(e: KeyboardEvent) {
 </template>
 
 <style scoped>
+/*
+ * Layout responds to the width the page actually gets (the sidebar takes ~260px on tablets),
+ * not the viewport: it is a size container and the rules below use container queries.
+ */
 .notes-page {
+  container: notes / inline-size;
   animation: notesFadeIn 0.25s ease both;
+}
+
+.notes-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.search-box {
+  min-width: 0;
+}
+
+@container notes (min-width: 52rem) {
+  .notes-toolbar {
+    flex-direction: row;
+    align-items: center;
+  }
 }
 
 @keyframes notesFadeIn {
@@ -390,35 +416,21 @@ function handleSearchKeydown(e: KeyboardEvent) {
   color: var(--text-tertiary);
 }
 
-.sort-select {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  flex-shrink: 0;
-  height: 2.5rem;
-  padding: 0 0.625rem;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-default);
-  background: var(--bg-surface);
-  cursor: pointer;
-}
-
-.sort-select select {
-  background: transparent;
-  color: var(--text-secondary);
-  font-size: 0.8125rem;
-  border: none;
-  outline: none;
-  cursor: pointer;
-}
-
-.sort-select select option {
-  background: var(--bg-surface);
-  color: var(--text-primary);
-}
-
-.sort-select:focus-within {
-  border-color: var(--accent);
+/* Phones: tighter filters and an icon-only sort button so the row fits on one line */
+@container notes (max-width: 30rem) {
+  .segmented__item {
+    padding: 0 0.625rem;
+  }
+  .segmented__item:not(.segmented__item--icon) :deep(svg) {
+    display: none;
+  }
+  .sort-menu :deep(.menu-select__value),
+  .sort-menu :deep(.menu-select__chevron) {
+    display: none;
+  }
+  .sort-menu :deep(.menu-select__button) {
+    padding: 0 0.6875rem;
+  }
 }
 
 /* ── Tags ── */
@@ -428,6 +440,8 @@ function handleSearchKeydown(e: KeyboardEvent) {
   overflow-x: auto;
   scrollbar-width: none;
   padding-bottom: 2px;
+  /* Fade the trailing edge so a horizontally scrollable row reads as "more →" */
+  mask-image: linear-gradient(to right, #000 calc(100% - 2.5rem), transparent);
 }
 
 .tag-bar::-webkit-scrollbar {
@@ -482,11 +496,22 @@ function handleSearchKeydown(e: KeyboardEvent) {
 }
 
 .notes-grid--grid {
-  grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+  /* min(100%, …) keeps a single column from overflowing on very narrow screens */
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr));
+}
+
+@container notes (min-width: 60rem) {
+  .notes-grid {
+    gap: 1rem;
+  }
+  .notes-grid--grid {
+    grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr));
+  }
 }
 
 .notes-grid--list {
-  grid-template-columns: 1fr;
+  /* minmax(0, …): long titles/tags must not stretch the column past the page */
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.5rem;
 }
 

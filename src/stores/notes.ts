@@ -166,7 +166,7 @@ export const useNotesStore = defineStore('notes', () => {
       const data = await httpClient.post<Note>('/api/notes', note)
       if (data) {
         upsertListItem(data)
-        await obsidian.syncToVault(data)
+        void obsidian.syncToVault(data)
       }
       return data || null
     } catch (err) {
@@ -189,7 +189,7 @@ export const useNotesStore = defineStore('notes', () => {
       if (data) {
         if (currentNote.value?.id === id) currentNote.value = data
         upsertListItem(data)
-        await obsidian.syncToVault(data)
+        void obsidian.syncToVault(data)
       }
       return data || null
     } catch (err) {

@@ -68,25 +68,7 @@ const hiddenTagCount = computed(() => Math.max(0, props.note.tags.length - 3))
           <HighlightText v-if="note.title" :text="note.title" :query="query" />
           <template v-else>{{ t('notes.untitled') }}</template>
         </h3>
-        <div class="note-card__actions" @click.prevent.stop>
-          <button
-            class="note-card__action"
-            :class="{ 'is-pinned': note.pinned }"
-            :title="note.pinned ? t('notes.unpin') : t('notes.pin')"
-            :aria-label="note.pinned ? t('notes.unpin') : t('notes.pin')"
-            @click="emit('pin', note.id)"
-          >
-            <Pin :size="15" :class="{ 'fill-current': note.pinned }" />
-          </button>
-          <button
-            class="note-card__action note-card__action--danger"
-            :title="t('common.delete')"
-            :aria-label="t('common.delete')"
-            @click="emit('delete', note.id)"
-          >
-            <Trash2 :size="15" />
-          </button>
-        </div>
+        <Pin v-if="note.pinned" :size="14" class="note-card__pin-badge" :aria-label="t('notes.filterPinned')" />
       </div>
 
       <p class="note-card__preview" :class="{ 'is-empty': !preview }">
@@ -112,11 +94,33 @@ const hiddenTagCount = computed(() => Math.max(0, props.note.tags.length - 3))
         <time :datetime="note.updatedAt" :title="new Date(note.updatedAt).toLocaleString()">{{ updatedLabel }}</time>
       </div>
     </div>
+
+    <!-- Floating actions: shown on hover/focus, always on touch screens -->
+    <div class="note-card__actions" @click.prevent.stop>
+      <button
+        class="note-card__action"
+        :class="{ 'is-pinned': note.pinned }"
+        :title="note.pinned ? t('notes.unpin') : t('notes.pin')"
+        :aria-label="note.pinned ? t('notes.unpin') : t('notes.pin')"
+        @click="emit('pin', note.id)"
+      >
+        <Pin :size="15" :class="{ 'fill-current': note.pinned }" />
+      </button>
+      <button
+        class="note-card__action note-card__action--danger"
+        :title="t('common.delete')"
+        :aria-label="t('common.delete')"
+        @click="emit('delete', note.id)"
+      >
+        <Trash2 :size="15" />
+      </button>
+    </div>
   </router-link>
 </template>
 
 <style scoped>
 .note-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -149,12 +153,32 @@ const hiddenTagCount = computed(() => Math.max(0, props.note.tags.length - 3))
   min-height: 9.5rem;
 }
 
+/*
+ * Breakpoints below query the notes page container (`container: notes` in NotesView) rather than
+ * the viewport, so layouts follow the space left beside the sidebar.
+ */
+
+/* Roomier cards with a longer preview when the page is wide */
+@container notes (min-width: 60rem) {
+  .note-card--grid {
+    min-height: 11rem;
+    padding: 1.125rem 1.25rem;
+  }
+  .note-card--grid .note-card__title {
+    font-size: 1rem;
+  }
+  .note-card--grid .note-card__preview {
+    -webkit-line-clamp: 4;
+    font-size: 0.84375rem;
+  }
+}
+
 .note-card--list {
   min-height: 0;
   padding: 0.75rem 1rem;
 }
 
-@media (min-width: 768px) {
+@container notes (min-width: 44rem) {
   .note-card--list {
     flex-direction: row;
     align-items: center;
@@ -162,22 +186,35 @@ const hiddenTagCount = computed(() => Math.max(0, props.note.tags.length - 3))
   }
   .note-card--list .note-card__main {
     display: flex;
+    /* Must be explicit: the base rule sets column, which turned the 15rem title basis into a height */
+    flex-direction: row;
     align-items: center;
     gap: 1rem;
     min-width: 0;
     flex: 1;
   }
   .note-card--list .note-card__head {
-    flex: 0 0 15rem;
+    flex: 0 0 clamp(10rem, 28%, 18rem);
     min-width: 0;
   }
   .note-card--list .note-card__preview {
     -webkit-line-clamp: 1;
     flex: 1;
+    min-width: 0;
   }
   .note-card--list .note-card__meta {
-    flex: 0 0 auto;
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 45%;
     gap: 1rem;
+  }
+  /* One line of tags; extras are clipped rather than pushing the row wider */
+  .note-card--list .note-card__tags {
+    flex-wrap: nowrap;
+    overflow: hidden;
+  }
+  .note-card--list .note-card__tag {
+    flex-shrink: 0;
   }
 }
 
@@ -214,11 +251,46 @@ const hiddenTagCount = computed(() => Math.max(0, props.note.tags.length - 3))
   font-weight: 500;
 }
 
+.note-card__pin-badge {
+  flex-shrink: 0;
+  margin-top: 0.1875rem;
+  color: var(--warning);
+  fill: currentColor;
+}
+
+/* Floating action pill in the top-right corner; it doesn't take layout space */
 .note-card__actions {
+  position: absolute;
+  top: 0.625rem;
+  right: 0.625rem;
   display: flex;
   gap: 0.125rem;
-  margin: -0.25rem -0.375rem 0 0;
-  flex-shrink: 0;
+  padding: 0.125rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-default);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-sm);
+  opacity: 0;
+  transform: translateY(-2px);
+  pointer-events: none;
+  transition: opacity var(--transition-fast), transform var(--transition-fast);
+}
+
+.note-card:hover .note-card__actions,
+.note-card:focus-within .note-card__actions {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+.note-card--list .note-card__actions {
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.note-card--list:hover .note-card__actions,
+.note-card--list:focus-within .note-card__actions {
+  transform: translateY(-50%);
 }
 
 .note-card__action {
@@ -229,20 +301,28 @@ const hiddenTagCount = computed(() => Math.max(0, props.note.tags.length - 3))
   height: 1.875rem;
   border-radius: var(--radius-sm);
   color: var(--text-tertiary);
-  opacity: 0;
-  transition: opacity var(--transition-fast), background var(--transition-fast), color var(--transition-fast);
+  transition: background var(--transition-fast), color var(--transition-fast);
 }
 
-.note-card:hover .note-card__action,
-.note-card:focus-within .note-card__action,
-.note-card__action.is-pinned {
-  opacity: 1;
-}
-
-/* Touch screens have no hover: keep actions reachable */
+/* Touch screens have no hover: actions sit inline in the corner, always visible */
 @media (hover: none) {
-  .note-card__action {
+  .note-card__actions {
     opacity: 1;
+    transform: none;
+    pointer-events: auto;
+    border-color: transparent;
+    background: transparent;
+    box-shadow: none;
+  }
+  .note-card--list .note-card__actions {
+    top: 0.375rem;
+    transform: none;
+  }
+  .note-card__head {
+    padding-right: 4rem;
+  }
+  .note-card__pin-badge {
+    display: none;
   }
 }
 
