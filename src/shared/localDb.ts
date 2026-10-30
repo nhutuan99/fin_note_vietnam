@@ -1,4 +1,5 @@
 import type { Wallet, Transaction, Reminder, Note, StockPosition, FundPosition, FinanceStats } from '@/types'
+import { deriveNoteText } from '@/shared/utils/noteText'
 
 const LOCAL_STORAGE_KEY = 'smart_note_guest_data'
 
@@ -215,9 +216,12 @@ export const localDbMock = async (method: string, url: string, body?: any) => {
 
   // ── NOTES ──
   if (path === '/api/notes') {
-    if (method === 'GET') return sendResponse(db.notes)
+    // Same list shape as the worker's notes index (plain-text excerpt, no full content)
+    if (method === 'GET') {
+      return sendResponse(db.notes.map(({ content, isPublic: _p, sharedWith: _s, ...rest }) => ({ ...rest, ...deriveNoteText(content) })))
+    }
     if (method === 'POST') {
-      const n = { ...body, id: generateId(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+      const n = { title: '', content: '', tags: [], pinned: false, ...body, id: generateId(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
       db.notes.push(n)
       saveDb(db)
       return sendResponse(n)
@@ -232,7 +236,8 @@ export const localDbMock = async (method: string, url: string, body?: any) => {
     const id = path.split('/').pop()
     const idx = db.notes.findIndex(r => r.id === id)
     if (idx !== -1) {
-      db.notes[idx] = { ...db.notes[idx], ...body, updatedAt: new Date().toISOString() }
+      const { baseUpdatedAt: _base, force: _force, ...updates } = body || {}
+      db.notes[idx] = { ...db.notes[idx], ...updates, updatedAt: new Date().toISOString() }
       saveDb(db)
       return sendResponse(db.notes[idx])
     }

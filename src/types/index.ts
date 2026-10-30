@@ -27,13 +27,20 @@ export interface Note {
 export interface NoteListItem {
   id: string
   title: string
+  /** Plain-text preview */
   excerpt: string
+  /** Plain-text body prefix used for full-text search */
+  text?: string
+  wordCount?: number
+  hasImages?: boolean
   tags: string[]
   pinned: boolean
+  createdAt?: string
   updatedAt: string
 }
 
 export type NoteFilter = 'all' | 'pinned' | 'recent'
+export type NoteSort = 'updated' | 'created' | 'title'
 export type ViewMode = 'grid' | 'list'
 
 // ── Finance: Wallets ──

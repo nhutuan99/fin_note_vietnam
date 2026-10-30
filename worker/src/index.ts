@@ -309,7 +309,7 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
       if (path === '/api/notes' && request.method === 'POST') {
         return handleCreateNote(userId, request, env)
       }
-      const noteMatch = path.match(/^\/api\/notes\/(.+)$/)
+      const noteMatch = path.match(/^\/api\/notes\/([^/]+)$/)
       if (noteMatch) {
         const noteId = noteMatch[1]
         if (request.method === 'GET') return handleGetNote(userId, noteId, env)

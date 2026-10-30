@@ -3,6 +3,7 @@ import { errorResponse, jsonResponse } from '../utils/response'
 import { generateId } from '../utils/crypto'
 import { getJSON, putJSON } from '../services/kv.service'
 import { sendPushToUser } from './push.controller'
+import { upsertNoteIndexItem } from './note.controller'
 
 // ====== Telegram Webhook (OpenClaw) ======
 
@@ -405,23 +406,7 @@ Nhiệm vụ của bạn là nhận dữ liệu cảnh báo thị trường (Mar
   await putJSON(env.SMART_NOTE_KV, `users/${userId}/notes/${noteId}`, note)
 
   // 3. Update the note index
-  const index = (await getJSON<{ notes: any[] }>(
-    env.SMART_NOTE_KV,
-    `users/${userId}/notes/_index`
-  )) || { notes: [] }
-
-  const cleanExcerpt = cleanHtml.replace(/<[^>]*>/g, '').substring(0, 120).trim()
-
-  index.notes.push({
-    id: note.id,
-    title: note.title,
-    excerpt: cleanExcerpt || 'Trading signal analysis details...',
-    tags: note.tags,
-    pinned: note.pinned,
-    updatedAt: note.updatedAt
-  })
-  
-  await putJSON(env.SMART_NOTE_KV, `users/${userId}/notes/_index`, index)
+  await upsertNoteIndexItem(userId, note, env)
 
   // 4. Create in-app notification
   const notiList = (await getJSON<NotificationData[]>(env.SMART_NOTE_KV, `users/${userId}/notifications`)) || []

@@ -120,7 +120,7 @@ const hasJsonBlocks = computed(() => parsedJsonBlocks.value.length > 0)
   <div class="flex flex-col max-w-6xl mx-auto w-full pb-16 px-2 sm:px-4 pt-4 sm:pt-6">
     <div class="mb-4 flex items-start gap-3">
       <h1 v-if="!loading && note" class="text-text-primary min-w-0 break-words text-xl font-bold leading-snug">
-        {{ note.title || 'Untitled Note' }}
+        {{ note.title || t('notes.untitled') }}
       </h1>
       <span v-if="note?.isPublic" class="bg-accent-subtle text-accent mt-0.5 shrink-0 rounded-md px-2 py-0.5 text-xs font-semibold">{{ t('notes.share.public') }}</span>
       <span v-else-if="note" class="bg-bg-elevated border-border-default text-text-secondary mt-0.5 shrink-0 flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-semibold">
@@ -158,7 +158,7 @@ const hasJsonBlocks = computed(() => parsedJsonBlocks.value.length > 0)
         
         <SocialShare 
           :url="shareUrl"
-          :title="note.title || 'Untitled Note'"
+          :title="note.title || t('notes.untitled')"
           :description="note.content.substring(0, 100).replace(/<[^>]+>/g, '')"
           :shareLabel="t('sharedNote.shareLabel')"
         />

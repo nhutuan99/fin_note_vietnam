@@ -369,7 +369,7 @@ function onDragEnd() {
               <GripVertical :size="11" class="shrink-0 text-text-disabled/30 cursor-grab drag-handle" />
               <FileText :size="13" class="shrink-0 text-text-disabled" />
               <span class="truncate text-[0.75rem] text-text-secondary flex-1">
-                {{ note.title || t('notes.untitledNote') }}
+                {{ note.title || t('notes.untitled') }}
               </span>
               <ChevronRightIcon :size="11" class="shrink-0 text-text-disabled/40 opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>

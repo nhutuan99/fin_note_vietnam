@@ -119,7 +119,7 @@ function safeExcerpt(html: string, maxLen = 60): string {
 
         <!-- Content -->
         <div class="min-w-0 flex-1">
-          <p class="text-sm font-semibold text-text-primary truncate leading-tight">{{ note.title }}</p>
+          <p class="text-sm font-semibold text-text-primary truncate leading-tight">{{ note.title || t('notes.untitled') }}</p>
           <p v-if="safeExcerpt(note.excerpt)" class="text-[11px] text-text-disabled leading-tight mt-0.5 line-clamp-1">
             {{ safeExcerpt(note.excerpt) }}
           </p>

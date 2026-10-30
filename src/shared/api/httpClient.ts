@@ -160,6 +160,18 @@ function buildHeaders(hasBody: boolean, isExternal: boolean = false): HeadersIni
   return headers
 }
 
+/** Error from a `{ success: false }` API response; keeps the HTTP status and any `data` payload. */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public status: number,
+    public data?: unknown
+  ) {
+    super(message)
+    this.name = 'ApiError'
+  }
+}
+
 async function handleResponse<T>(
   response: Response,
   retryFn?: () => Promise<T>,
@@ -214,7 +226,7 @@ async function handleResponse<T>(
         useUiStore().showToast('error', errorMsg)
       } catch (e) {}
     }
-    throw new Error(errorMsg)
+    throw new ApiError(errorMsg, response.status, json.data)
   }
 
   return json.data as T
@@ -270,28 +282,40 @@ async function post<T>(url: string, body?: unknown, options?: { silent?: boolean
   return handleResponse<T>(response, doRequest, silent)
 }
 
-async function put<T>(url: string, body?: unknown): Promise<T> {
+// Browsers cap the total body size of in-flight keepalive requests at 64 KiB
+const KEEPALIVE_MAX_BYTES = 60_000
+
+async function put<T>(
+  url: string,
+  body?: unknown,
+  options?: { silent?: boolean; keepalive?: boolean }
+): Promise<T> {
   const mock = await tryLocalMock('PUT', url, body)
   if (mock) return mock.data as T
 
   const isExternal = url.startsWith('http')
   const fullUrl = isExternal ? url : `${API_BASE}${url}`
+  const silent = options?.silent
+  const payload = body ? JSON.stringify(body) : undefined
+  // keepalive lets the request survive page unload (e.g. saving a note while the tab closes)
+  const keepalive = !!options?.keepalive && (payload?.length ?? 0) < KEEPALIVE_MAX_BYTES
 
   const doRequest = async (): Promise<T> => {
     const response = await fetch(fullUrl, {
       method: 'PUT',
       headers: buildHeaders(true, isExternal),
-      body: body ? JSON.stringify(body) : undefined
+      body: payload
     })
-    return handleResponse<T>(response)
+    return handleResponse<T>(response, undefined, silent)
   }
 
   const response = await fetch(fullUrl, {
     method: 'PUT',
     headers: buildHeaders(true, isExternal),
-    body: body ? JSON.stringify(body) : undefined
+    body: payload,
+    keepalive
   })
-  return handleResponse<T>(response, doRequest)
+  return handleResponse<T>(response, doRequest, silent)
 }
 
 async function del(url: string): Promise<void> {

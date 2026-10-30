@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import { useEditor, EditorContent } from '@tiptap/vue-3'
+import { useEditor, EditorContent, VueNodeViewRenderer } from '@tiptap/vue-3'
+import { BubbleMenu } from '@tiptap/vue-3/menus'
+import type { Editor } from '@tiptap/core'
 import StarterKit from '@tiptap/starter-kit'
-import Link from '@tiptap/extension-link'
 import Image from '@tiptap/extension-image'
-import { VueNodeViewRenderer } from '@tiptap/vue-3'
-import CustomImageNode from './CustomImageNode.vue'
 import Placeholder from '@tiptap/extension-placeholder'
 import CharacterCount from '@tiptap/extension-character-count'
 import TaskList from '@tiptap/extension-task-list'
@@ -13,12 +12,19 @@ import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
 import Typography from '@tiptap/extension-typography'
 import Highlight from '@tiptap/extension-highlight'
 import { createLowlight, common } from 'lowlight'
-import { watch, onBeforeUnmount, ref, onMounted, onUnmounted, computed } from 'vue'
+import { watch, onBeforeUnmount, ref, computed, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import {
-  Bold, Italic, Strikethrough, Code, Link2, Image as ImageIcon,
-  List, ListOrdered, ListChecks, Quote, Minus, Undo, Redo,
-  Heading1, Heading2, Heading3, Highlighter, Code2, ImagePlus, X, ChevronLeft, ChevronRight
+  Bold, Italic, Underline, Strikethrough, Code, Link2, Image as ImageIcon,
+  List, ListOrdered, ListChecks, Quote, Minus, Undo, Redo, Type,
+  Heading1, Heading2, Heading3, Highlighter, Code2, ImagePlus, X, ChevronLeft, ChevronRight,
+  ExternalLink, Unlink, Check
 } from 'lucide-vue-next'
+import CustomImageNode from './CustomImageNode.vue'
+import { createSlashCommand, type SlashCommandItem } from './slashCommand'
+import { autoFormatJsonContent } from '@/shared/utils/jsonFormatter'
+import { compressImageFile } from '@/shared/utils/imageCompress'
+import { useEventListener } from '@/composables/useEventListener'
 
 const props = defineProps<{
   modelValue: string
@@ -27,21 +33,15 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:modelValue': [value: string]
+  stats: [value: { words: number; characters: number }]
 }>()
 
+const { t } = useI18n()
 const lowlight = createLowlight(common)
+const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform)
+const mod = isMac ? '⌘' : 'Ctrl+'
 
-// Link dialog
-const showLinkDialog = ref(false)
-const linkUrl = ref('')
-const linkInput = ref<HTMLInputElement | null>(null)
-
-// Image dialog
-const showImageDialog = ref(false)
-const imageUrl = ref('')
-const imageInput = ref<HTMLInputElement | null>(null)
-
-import { autoFormatJsonContent } from '@/shared/utils/jsonFormatter'
+const fileInputRef = ref<HTMLInputElement | null>(null)
 
 const CustomImage = Image.extend({
   inline: true,
@@ -51,66 +51,151 @@ const CustomImage = Image.extend({
   }
 })
 
+// ── Images ──
+
+async function insertImageFiles(editor: Editor, files: File[], pos?: number) {
+  const sources = await Promise.all(files.map(compressImageFile))
+  const content = sources.map((src) => ({ type: 'image', attrs: { src } }))
+  const chain = editor.chain().focus()
+  if (pos !== undefined) chain.insertContentAt(pos, content)
+  else chain.insertContent(content)
+  chain.run()
+}
+
+function imageFilesFrom(list: FileList | DataTransferItemList | undefined | null): File[] {
+  if (!list) return []
+  const files: File[] = []
+  for (const entry of Array.from(list as ArrayLike<File | DataTransferItem>)) {
+    const file = entry instanceof File ? entry : entry.kind === 'file' ? entry.getAsFile() : null
+    if (file && file.type.startsWith('image/')) files.push(file)
+  }
+  return files
+}
+
+function triggerImageUpload() {
+  fileInputRef.value?.click()
+}
+
+async function handleFileUpload(event: Event) {
+  const files = imageFilesFrom((event.target as HTMLInputElement).files)
+  if (files.length && editor.value) await insertImageFiles(editor.value, files)
+  // Reset so picking the same file again still fires `change`
+  if (fileInputRef.value) fileInputRef.value.value = ''
+}
+
+// ── Slash menu ──
+
+const slashItems = (): SlashCommandItem[] => {
+  const basic = t('editor.slash.groupBasic')
+  const media = t('editor.slash.groupMedia')
+  return [
+    { id: 'text', group: basic, icon: Type, title: t('editor.text'), description: t('editor.slash.textDesc'), keywords: ['paragraph', 'p'],
+      run: (e, range) => e.chain().focus().deleteRange(range).setParagraph().run() },
+    { id: 'h1', group: basic, icon: Heading1, title: t('editor.heading1'), description: t('editor.slash.h1Desc'), keywords: ['heading', 'title', '#'],
+      run: (e, range) => e.chain().focus().deleteRange(range).setNode('heading', { level: 1 }).run() },
+    { id: 'h2', group: basic, icon: Heading2, title: t('editor.heading2'), description: t('editor.slash.h2Desc'), keywords: ['heading', 'subtitle', '##'],
+      run: (e, range) => e.chain().focus().deleteRange(range).setNode('heading', { level: 2 }).run() },
+    { id: 'h3', group: basic, icon: Heading3, title: t('editor.heading3'), description: t('editor.slash.h3Desc'), keywords: ['heading', '###'],
+      run: (e, range) => e.chain().focus().deleteRange(range).setNode('heading', { level: 3 }).run() },
+    { id: 'bullet', group: basic, icon: List, title: t('editor.bulletList'), description: t('editor.slash.bulletDesc'), keywords: ['list', 'ul', '-'],
+      run: (e, range) => e.chain().focus().deleteRange(range).toggleBulletList().run() },
+    { id: 'numbered', group: basic, icon: ListOrdered, title: t('editor.orderedList'), description: t('editor.slash.numberedDesc'), keywords: ['list', 'ol', '1.'],
+      run: (e, range) => e.chain().focus().deleteRange(range).toggleOrderedList().run() },
+    { id: 'todo', group: basic, icon: ListChecks, title: t('editor.taskList'), description: t('editor.slash.todoDesc'), keywords: ['todo', 'task', 'checkbox', '[]'],
+      run: (e, range) => e.chain().focus().deleteRange(range).toggleTaskList().run() },
+    { id: 'quote', group: basic, icon: Quote, title: t('editor.quote'), description: t('editor.slash.quoteDesc'), keywords: ['blockquote', '>'],
+      run: (e, range) => e.chain().focus().deleteRange(range).toggleBlockquote().run() },
+    { id: 'code', group: basic, icon: Code2, title: t('editor.codeBlock'), description: t('editor.slash.codeDesc'), keywords: ['code', 'snippet', '```'],
+      run: (e, range) => e.chain().focus().deleteRange(range).toggleCodeBlock().run() },
+    { id: 'divider', group: basic, icon: Minus, title: t('editor.divider'), description: t('editor.slash.dividerDesc'), keywords: ['hr', 'line', '---'],
+      run: (e, range) => e.chain().focus().deleteRange(range).setHorizontalRule().run() },
+    { id: 'image', group: media, icon: ImagePlus, title: t('editor.uploadImage'), description: t('editor.slash.imageDesc'), keywords: ['image', 'photo', 'picture', 'upload'],
+      run: (e, range) => {
+        e.chain().focus().deleteRange(range).run()
+        triggerImageUpload()
+      } }
+  ]
+}
+
+// ── Editor ──
+
+function emitStats(editor: Editor) {
+  emit('stats', {
+    words: editor.storage.characterCount.words(),
+    characters: editor.storage.characterCount.characters()
+  })
+}
+
 const editor = useEditor({
   content: props.modelValue,
   editable: !props.readonly,
   extensions: [
     StarterKit.configure({
       codeBlock: false,
+      link: {
+        openOnClick: false,
+        autolink: true,
+        defaultProtocol: 'https',
+        HTMLAttributes: { rel: 'noopener noreferrer', target: '_blank' }
+      }
     }),
     CodeBlockLowlight.configure({ lowlight }),
-    Link.configure({
-      openOnClick: false,
-      HTMLAttributes: { rel: 'noopener noreferrer', target: '_blank' }
-    }),
     CustomImage.configure({ allowBase64: true }),
-    Placeholder.configure({ placeholder: 'Start writing... (supports rich text, links, images)' }),
+    Placeholder.configure({
+      placeholder: ({ node }) => {
+        if (node.type.name === 'heading') return t('editor.placeholderHeading')
+        return t('editor.placeholder')
+      }
+    }),
     CharacterCount,
     TaskList,
     TaskItem.configure({ nested: true }),
     Typography,
     Highlight.configure({ multicolor: false }),
+    createSlashCommand(slashItems)
   ],
+  onCreate({ editor }) {
+    emitStats(editor)
+  },
   onUpdate({ editor }) {
     emit('update:modelValue', editor.getHTML())
+    emitStats(editor)
   },
   editorProps: {
-    handlePaste(view, event) {
+    attributes: { spellcheck: 'true' },
+    handlePaste(_view, event) {
+      const images = imageFilesFrom(event.clipboardData?.items)
+      if (images.length && editor.value) {
+        insertImageFiles(editor.value, images)
+        return true
+      }
+
+      // Pasting raw JSON / NDJSON turns it into a formatted code block
       const text = event.clipboardData?.getData('text/plain')
-      if (text) {
+      const hasHtml = !!event.clipboardData?.getData('text/html')
+      if (text && !hasHtml) {
         const formatted = autoFormatJsonContent(text)
-        if (formatted) {
-          if (editor.value) {
-            editor.value.commands.insertContent(formatted)
-          }
+        if (formatted && editor.value) {
+          editor.value.commands.insertContent(formatted)
           return true
         }
       }
-
-      const items = event.clipboardData?.items
-      if (!items) return false
-      
-      const imageFiles: File[] = []
-      for (const item of Array.from(items)) {
-        if (item.type.startsWith('image/')) {
-          const file = item.getAsFile()
-          if (file) imageFiles.push(file)
-        }
-      }
-
-      if (imageFiles.length > 0) {
-        Promise.all(imageFiles.map(file => {
-          return new Promise<string>((resolve) => {
-            const reader = new FileReader()
-            reader.onload = (e) => resolve(e.target?.result as string)
-            reader.readAsDataURL(file)
-          })
-        })).then(sources => {
-          if (editor.value) {
-            const htmlString = sources.map(src => `<img src="${src}" />`).join('')
-            editor.value.commands.insertContent(htmlString)
-          }
-        })
+      return false
+    },
+    handleDrop(view, event, _slice, moved) {
+      if (moved) return false
+      const images = imageFilesFrom(event.dataTransfer?.files)
+      if (!images.length || !editor.value) return false
+      event.preventDefault()
+      const pos = view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos
+      insertImageFiles(editor.value, images, pos)
+      return true
+    },
+    handleClick(_view, _pos, event) {
+      // Links open on Ctrl/⌘+click (plain click places the caret for editing)
+      const link = (event.target as HTMLElement).closest('a')
+      if (link?.href && (event.metaKey || event.ctrlKey || props.readonly)) {
+        window.open(link.href, '_blank', 'noopener,noreferrer')
         return true
       }
       return false
@@ -118,389 +203,267 @@ const editor = useEditor({
   }
 })
 
-watch(() => props.modelValue, (val) => {
-  if (editor.value && editor.value.getHTML() !== val) {
-    editor.value.commands.setContent(val)
+watch(
+  () => props.modelValue,
+  (val) => {
+    if (editor.value && editor.value.getHTML() !== val) {
+      editor.value.commands.setContent(val, { emitUpdate: false })
+      emitStats(editor.value)
+    }
   }
-})
+)
+
+watch(
+  () => props.readonly,
+  (readonly) => editor.value?.setEditable(!readonly)
+)
 
 onBeforeUnmount(() => editor.value?.destroy())
 
-// ── Toolbar Actions ──
+/** Focus the editor; used by the title field (Enter / ArrowDown moves into the body). */
+function focus(position: 'start' | 'end' = 'start') {
+  const ed = editor.value
+  if (!ed) return
+  // commands.focus() moves DOM focus on the next animation frame; focus the view synchronously
+  // so keystrokes typed right after (e.g. Enter in the title, then typing) land in the editor
+  ed.view.focus()
+  ed.commands.focus(position)
+}
 
-function openLinkDialog() {
-  const prevUrl = editor.value?.getAttributes('link').href || ''
-  linkUrl.value = prevUrl
-  showLinkDialog.value = true
-  setTimeout(() => linkInput.value?.focus(), 50)
+defineExpose({ focus })
+
+// ── Bubble menu: link editing ──
+
+const linkEditing = ref(false)
+const linkUrl = ref('')
+const linkInput = ref<HTMLInputElement | null>(null)
+
+function startLinkEdit() {
+  linkUrl.value = editor.value?.getAttributes('link').href || ''
+  linkEditing.value = true
+  nextTick(() => linkInput.value?.focus())
 }
 
 function applyLink() {
-  if (!linkUrl.value.trim()) {
-    editor.value?.chain().focus().extendMarkRange('link').unsetLink().run()
-  } else {
-    const href = linkUrl.value.startsWith('http') ? linkUrl.value : `https://${linkUrl.value}`
-    editor.value?.chain().focus().extendMarkRange('link').setLink({ href }).run()
+  const url = linkUrl.value.trim()
+  const chain = editor.value?.chain().focus().extendMarkRange('link')
+  if (!url) chain?.unsetLink().run()
+  else chain?.setLink({ href: /^(https?:|mailto:|tel:)/i.test(url) ? url : `https://${url}` }).run()
+  linkEditing.value = false
+}
+
+function removeLink() {
+  editor.value?.chain().focus().extendMarkRange('link').unsetLink().run()
+  linkEditing.value = false
+}
+
+function openLink() {
+  const href = editor.value?.getAttributes('link').href
+  if (href) window.open(href, '_blank', 'noopener,noreferrer')
+}
+
+function handleLinkKeydown(e: KeyboardEvent) {
+  if (e.key === 'Enter') {
+    e.preventDefault()
+    applyLink()
+  } else if (e.key === 'Escape') {
+    e.preventDefault()
+    linkEditing.value = false
+    editor.value?.commands.focus()
   }
-  showLinkDialog.value = false
-  linkUrl.value = ''
 }
 
-function openImageDialog() {
-  imageUrl.value = ''
-  showImageDialog.value = true
-  setTimeout(() => imageInput.value?.focus(), 50)
-}
-
-function applyImage() {
-  if (imageUrl.value.trim()) {
-    editor.value?.chain().focus().setImage({ src: imageUrl.value.trim() }).run()
+/** Show the bubble only for a real text selection (not images, not inside code blocks) */
+function shouldShowBubble({ editor: ed, from, to }: { editor: Editor; from: number; to: number }) {
+  if (!ed.isEditable || from === to) {
+    linkEditing.value = false
+    return false
   }
-  showImageDialog.value = false
-  imageUrl.value = ''
+  if (ed.isActive('codeBlock') || ed.isActive('image')) return false
+  return ed.state.doc.textBetween(from, to, ' ').trim().length > 0 || linkEditing.value
 }
 
-const wordCount = () => editor.value?.storage.characterCount.words() ?? 0
-const charCount = () => editor.value?.storage.characterCount.characters() ?? 0
+// ── Toolbar definition ──
 
-// Image upload from device
-const fileInputRef = ref<HTMLInputElement | null>(null)
-
-function triggerImageUpload() {
-  fileInputRef.value?.click()
+type ToolbarButton = {
+  key: string
+  icon: unknown
+  label: string
+  active?: () => boolean
+  disabled?: () => boolean
+  run: () => void
 }
 
-async function handleFileUpload(event: Event) {
-  const target = event.target as HTMLInputElement
-  const files = target.files
-  if (!files || files.length === 0) return
+const chain = () => editor.value!.chain().focus()
 
-  const imageFiles = Array.from(files).filter(f => f.type.startsWith('image/'))
-  if (imageFiles.length > 0) {
-    const sources = await Promise.all(imageFiles.map(file => {
-      return new Promise<string>((resolve) => {
-        const reader = new FileReader()
-        reader.onload = (e) => resolve(e.target?.result as string)
-        reader.readAsDataURL(file)
-      })
-    }))
-    
-    if (editor.value) {
-      const htmlString = sources.map(src => `<img src="${src}" />`).join('')
-      editor.value.commands.insertContent(htmlString)
+const toolbarGroups = computed<ToolbarButton[][]>(() => [
+  [
+    { key: 'undo', icon: Undo, label: `${t('editor.undo')} (${mod}Z)`, disabled: () => !editor.value?.can().undo(), run: () => chain().undo().run() },
+    { key: 'redo', icon: Redo, label: `${t('editor.redo')} (${mod}${isMac ? '⇧Z' : 'Y'})`, disabled: () => !editor.value?.can().redo(), run: () => chain().redo().run() }
+  ],
+  [
+    { key: 'h1', icon: Heading1, label: t('editor.heading1'), active: () => !!editor.value?.isActive('heading', { level: 1 }), run: () => chain().toggleHeading({ level: 1 }).run() },
+    { key: 'h2', icon: Heading2, label: t('editor.heading2'), active: () => !!editor.value?.isActive('heading', { level: 2 }), run: () => chain().toggleHeading({ level: 2 }).run() },
+    { key: 'h3', icon: Heading3, label: t('editor.heading3'), active: () => !!editor.value?.isActive('heading', { level: 3 }), run: () => chain().toggleHeading({ level: 3 }).run() }
+  ],
+  [
+    { key: 'bold', icon: Bold, label: `${t('editor.bold')} (${mod}B)`, active: () => !!editor.value?.isActive('bold'), run: () => chain().toggleBold().run() },
+    { key: 'italic', icon: Italic, label: `${t('editor.italic')} (${mod}I)`, active: () => !!editor.value?.isActive('italic'), run: () => chain().toggleItalic().run() },
+    { key: 'underline', icon: Underline, label: `${t('editor.underline')} (${mod}U)`, active: () => !!editor.value?.isActive('underline'), run: () => chain().toggleUnderline().run() },
+    { key: 'strike', icon: Strikethrough, label: t('editor.strike'), active: () => !!editor.value?.isActive('strike'), run: () => chain().toggleStrike().run() },
+    { key: 'highlight', icon: Highlighter, label: t('editor.highlight'), active: () => !!editor.value?.isActive('highlight'), run: () => chain().toggleHighlight().run() },
+    { key: 'code', icon: Code, label: t('editor.inlineCode'), active: () => !!editor.value?.isActive('code'), run: () => chain().toggleCode().run() }
+  ],
+  [
+    { key: 'bullet', icon: List, label: t('editor.bulletList'), active: () => !!editor.value?.isActive('bulletList'), run: () => chain().toggleBulletList().run() },
+    { key: 'ordered', icon: ListOrdered, label: t('editor.orderedList'), active: () => !!editor.value?.isActive('orderedList'), run: () => chain().toggleOrderedList().run() },
+    { key: 'task', icon: ListChecks, label: t('editor.taskList'), active: () => !!editor.value?.isActive('taskList'), run: () => chain().toggleTaskList().run() }
+  ],
+  [
+    { key: 'quote', icon: Quote, label: t('editor.quote'), active: () => !!editor.value?.isActive('blockquote'), run: () => chain().toggleBlockquote().run() },
+    { key: 'codeBlock', icon: Code2, label: t('editor.codeBlock'), active: () => !!editor.value?.isActive('codeBlock'), run: () => chain().toggleCodeBlock().run() },
+    { key: 'divider', icon: Minus, label: t('editor.divider'), run: () => chain().setHorizontalRule().run() }
+  ],
+  [
+    { key: 'link', icon: Link2, label: t('editor.link'), active: () => !!editor.value?.isActive('link'), run: () => openToolbarLink() },
+    { key: 'image', icon: ImageIcon, label: t('editor.uploadImage'), run: () => triggerImageUpload() }
+  ]
+])
+
+/** Toolbar link button: select the word under the caret first so the bubble menu can edit it */
+function openToolbarLink() {
+  const ed = editor.value
+  if (!ed) return
+  if (ed.state.selection.empty) {
+    ed.chain().focus().extendMarkRange('link').run()
+    if (ed.state.selection.empty) {
+      // No link and no selection: insert the URL as a new link
+      const url = window.prompt(t('editor.linkPrompt'), 'https://')
+      if (url && url.trim() && url.trim() !== 'https://') {
+        ed.chain().focus().insertContent({ type: 'text', text: url.trim(), marks: [{ type: 'link', attrs: { href: url.trim() } }] }).run()
+      }
+      return
     }
   }
-
-  // Reset input so the same file can be selected again
-  if (fileInputRef.value) fileInputRef.value.value = ''
+  startLinkEdit()
 }
 
-// Image Zoom
-const zoomedImageIndex = ref<number | null>(null)
-const allImages = ref<string[]>([])
-const zoomedImage = computed(() => {
-  if (zoomedImageIndex.value !== null && allImages.value.length > 0) {
-    return allImages.value[zoomedImageIndex.value]
-  }
-  return null
-})
+// ── Image zoom (lightbox) ──
+
+const zoomedIndex = ref<number | null>(null)
+const zoomImages = ref<string[]>([])
+const zoomedImage = computed(() => (zoomedIndex.value !== null ? zoomImages.value[zoomedIndex.value] : null))
 
 function handleEditorClick(event: MouseEvent) {
   const target = event.target as HTMLElement
-  if (target.tagName === 'IMG') {
-    const src = (target as HTMLImageElement).src
-    if (editor.value) {
-      const srcs: string[] = []
-      editor.value.state.doc.descendants((node) => {
-        if (node.type.name === 'image' && node.attrs.src) {
-          srcs.push(node.attrs.src)
-        }
-      })
-      
-      // Resolve relative/absolute differences to properly match target.src
-      const absoluteSrcs = srcs.map(s => {
-        try {
-          return new URL(s, window.location.href).href
-        } catch {
-          return s
-        }
-      })
-      
-      const uniqueSrcs = Array.from(new Set(absoluteSrcs))
-      allImages.value = uniqueSrcs
-      const idx = allImages.value.indexOf(src)
-      zoomedImageIndex.value = idx !== -1 ? idx : 0
-    } else {
-      const container = target.closest('.editor-content')
-      if (container) {
-        const imgs = Array.from(container.querySelectorAll('img'))
-        const uniqueSrcs = Array.from(new Set(imgs.map(img => img.src)))
-        allImages.value = uniqueSrcs
-        const idx = allImages.value.indexOf(src)
-        zoomedImageIndex.value = idx !== -1 ? idx : 0
-      } else {
-        allImages.value = [src]
-        zoomedImageIndex.value = 0
-      }
-    }
-  }
+  if (target.tagName !== 'IMG' || !editor.value) return
+  const srcs: string[] = []
+  editor.value.state.doc.descendants((node) => {
+    if (node.type.name === 'image' && node.attrs.src) srcs.push(new URL(node.attrs.src, window.location.href).href)
+  })
+  zoomImages.value = Array.from(new Set(srcs))
+  zoomedIndex.value = Math.max(0, zoomImages.value.indexOf((target as HTMLImageElement).src))
 }
 
 function closeZoom() {
-  zoomedImageIndex.value = null
-  allImages.value = []
+  zoomedIndex.value = null
 }
 
-function prevImage() {
-  if (zoomedImageIndex.value !== null && zoomedImageIndex.value > 0) {
-    zoomedImageIndex.value--
-  }
+function stepZoom(delta: number) {
+  if (zoomedIndex.value === null) return
+  const next = zoomedIndex.value + delta
+  if (next >= 0 && next < zoomImages.value.length) zoomedIndex.value = next
 }
 
-function nextImage() {
-  if (zoomedImageIndex.value !== null && zoomedImageIndex.value < allImages.value.length - 1) {
-    zoomedImageIndex.value++
-  }
-}
-
-function handleKeydown(e: KeyboardEvent) {
-  if (zoomedImageIndex.value !== null) {
-    if (e.key === 'Escape') closeZoom()
-    else if (e.key === 'ArrowLeft') prevImage()
-    else if (e.key === 'ArrowRight') nextImage()
-  }
-}
-
-onMounted(() => {
-  window.addEventListener('keydown', handleKeydown)
-})
-
-onUnmounted(() => {
-  window.removeEventListener('keydown', handleKeydown)
+useEventListener(window, 'keydown', (e: KeyboardEvent) => {
+  if (zoomedIndex.value === null) return
+  if (e.key === 'Escape') closeZoom()
+  else if (e.key === 'ArrowLeft') stepZoom(-1)
+  else if (e.key === 'ArrowRight') stepZoom(1)
 })
 </script>
 
 <template>
   <div class="rich-editor-wrapper">
     <!-- Toolbar -->
-    <div v-if="editor && !readonly" class="editor-toolbar">
-      <!-- Headings -->
-      <div class="toolbar-group">
-        <button
-          title="Heading 1"
-          :class="{ active: editor.isActive('heading', { level: 1 }) }"
-          @click="editor.chain().focus().toggleHeading({ level: 1 }).run()"
-        ><Heading1 :size="15" /></button>
-        <button
-          title="Heading 2"
-          :class="{ active: editor.isActive('heading', { level: 2 }) }"
-          @click="editor.chain().focus().toggleHeading({ level: 2 }).run()"
-        ><Heading2 :size="15" /></button>
-        <button
-          title="Heading 3"
-          :class="{ active: editor.isActive('heading', { level: 3 }) }"
-          @click="editor.chain().focus().toggleHeading({ level: 3 }).run()"
-        ><Heading3 :size="15" /></button>
-      </div>
-
-      <div class="toolbar-divider" />
-
-      <!-- Text Formatting -->
-      <div class="toolbar-group">
-        <button
-          title="Bold (Ctrl+B)"
-          :class="{ active: editor.isActive('bold') }"
-          @click="editor.chain().focus().toggleBold().run()"
-        ><Bold :size="15" /></button>
-        <button
-          title="Italic (Ctrl+I)"
-          :class="{ active: editor.isActive('italic') }"
-          @click="editor.chain().focus().toggleItalic().run()"
-        ><Italic :size="15" /></button>
-        <button
-          title="Strikethrough"
-          :class="{ active: editor.isActive('strike') }"
-          @click="editor.chain().focus().toggleStrike().run()"
-        ><Strikethrough :size="15" /></button>
-        <button
-          title="Highlight"
-          :class="{ active: editor.isActive('highlight') }"
-          @click="editor.chain().focus().toggleHighlight().run()"
-        ><Highlighter :size="15" /></button>
-        <button
-          title="Inline Code"
-          :class="{ active: editor.isActive('code') }"
-          @click="editor.chain().focus().toggleCode().run()"
-        ><Code :size="15" /></button>
-      </div>
-
-      <div class="toolbar-divider" />
-
-      <!-- Lists -->
-      <div class="toolbar-group">
-        <button
-          title="Bullet List"
-          :class="{ active: editor.isActive('bulletList') }"
-          @click="editor.chain().focus().toggleBulletList().run()"
-        ><List :size="15" /></button>
-        <button
-          title="Numbered List"
-          :class="{ active: editor.isActive('orderedList') }"
-          @click="editor.chain().focus().toggleOrderedList().run()"
-        ><ListOrdered :size="15" /></button>
-        <button
-          title="Task List"
-          :class="{ active: editor.isActive('taskList') }"
-          @click="editor.chain().focus().toggleTaskList().run()"
-        ><ListChecks :size="15" /></button>
-      </div>
-
-      <div class="toolbar-divider" />
-
-      <!-- Blocks -->
-      <div class="toolbar-group">
-        <button
-          title="Blockquote"
-          :class="{ active: editor.isActive('blockquote') }"
-          @click="editor.chain().focus().toggleBlockquote().run()"
-        ><Quote :size="15" /></button>
-        <button
-          title="Code Block"
-          :class="{ active: editor.isActive('codeBlock') }"
-          @click="editor.chain().focus().toggleCodeBlock().run()"
-        ><Code2 :size="15" /></button>
-        <button
-          title="Horizontal Rule"
-          @click="editor.chain().focus().setHorizontalRule().run()"
-        ><Minus :size="15" /></button>
-      </div>
-
-      <div class="toolbar-divider" />
-
-      <!-- Media -->
-      <div class="toolbar-group">
-        <button
-          title="Insert Link"
-          :class="{ active: editor.isActive('link') }"
-          @click="openLinkDialog"
-        ><Link2 :size="15" /></button>
-        <button title="Insert Image URL" @click="openImageDialog">
-          <ImageIcon :size="15" />
-        </button>
-        <button title="Upload Image" @click="triggerImageUpload">
-          <ImagePlus :size="15" />
-        </button>
-      </div>
-
-      <div class="toolbar-divider" />
-
-      <!-- History -->
-      <div class="toolbar-group">
-        <button
-          title="Undo (Ctrl+Z)"
-          :disabled="!editor.can().undo()"
-          @click="editor.chain().focus().undo().run()"
-        ><Undo :size="15" /></button>
-        <button
-          title="Redo (Ctrl+Y)"
-          :disabled="!editor.can().redo()"
-          @click="editor.chain().focus().redo().run()"
-        ><Redo :size="15" /></button>
-      </div>
-
-      <!-- Word Count -->
-      <div class="toolbar-count">
-        {{ wordCount() }} words · {{ charCount() }} chars
-      </div>
+    <div v-if="editor && !readonly" class="editor-toolbar" role="toolbar" :aria-label="t('editor.toolbar')">
+      <template v-for="(group, gi) in toolbarGroups" :key="gi">
+        <div v-if="gi > 0" class="toolbar-divider" />
+        <div class="toolbar-group">
+          <button
+            v-for="btn in group"
+            :key="btn.key"
+            type="button"
+            :title="btn.label"
+            :aria-label="btn.label"
+            :aria-pressed="btn.active ? btn.active() : undefined"
+            :class="{ active: btn.active?.() }"
+            :disabled="btn.disabled?.()"
+            @click="btn.run()"
+          >
+            <component :is="btn.icon" :size="16" />
+          </button>
+        </div>
+      </template>
+      <span class="toolbar-hint">{{ t('editor.slashHint') }}</span>
     </div>
+
+    <!-- Bubble menu on text selection -->
+    <BubbleMenu
+      v-if="editor && !readonly"
+      :editor="editor"
+      :should-show="shouldShowBubble"
+      :options="{ placement: 'top', offset: 8 }"
+      class="bubble-menu"
+    >
+      <template v-if="linkEditing">
+        <input
+          ref="linkInput"
+          v-model="linkUrl"
+          type="url"
+          class="bubble-link-input"
+          :placeholder="t('editor.linkPlaceholder')"
+          @keydown="handleLinkKeydown"
+        />
+        <button type="button" :title="t('editor.apply')" @click="applyLink"><Check :size="15" /></button>
+        <button v-if="editor.isActive('link')" type="button" :title="t('editor.removeLink')" @click="removeLink"><Unlink :size="15" /></button>
+      </template>
+      <template v-else>
+        <button type="button" :title="t('editor.bold')" :class="{ active: editor.isActive('bold') }" @click="chain().toggleBold().run()"><Bold :size="15" /></button>
+        <button type="button" :title="t('editor.italic')" :class="{ active: editor.isActive('italic') }" @click="chain().toggleItalic().run()"><Italic :size="15" /></button>
+        <button type="button" :title="t('editor.underline')" :class="{ active: editor.isActive('underline') }" @click="chain().toggleUnderline().run()"><Underline :size="15" /></button>
+        <button type="button" :title="t('editor.strike')" :class="{ active: editor.isActive('strike') }" @click="chain().toggleStrike().run()"><Strikethrough :size="15" /></button>
+        <button type="button" :title="t('editor.highlight')" :class="{ active: editor.isActive('highlight') }" @click="chain().toggleHighlight().run()"><Highlighter :size="15" /></button>
+        <button type="button" :title="t('editor.inlineCode')" :class="{ active: editor.isActive('code') }" @click="chain().toggleCode().run()"><Code :size="15" /></button>
+        <span class="bubble-divider" />
+        <button type="button" :title="t('editor.link')" :class="{ active: editor.isActive('link') }" @click="startLinkEdit"><Link2 :size="15" /></button>
+        <button v-if="editor.isActive('link')" type="button" :title="t('editor.openLink')" @click="openLink"><ExternalLink :size="15" /></button>
+      </template>
+    </BubbleMenu>
 
     <!-- Editor Area -->
     <div class="editor-content" @click="handleEditorClick">
       <EditorContent :editor="editor" :class="{ 'is-readonly': readonly }" />
     </div>
 
-    <!-- Link Dialog -->
-    <Teleport to="body">
-      <Transition name="fade">
-        <div v-if="showLinkDialog" class="editor-dialog-overlay" @click.self="showLinkDialog = false">
-          <div class="editor-dialog">
-            <p class="editor-dialog-title">Insert Link</p>
-            <input
-              ref="linkInput"
-              v-model="linkUrl"
-              type="url"
-              placeholder="https://example.com"
-              class="editor-dialog-input"
-              @keyup.enter="applyLink"
-              @keyup.escape="showLinkDialog = false"
-            />
-            <div class="editor-dialog-actions">
-              <button class="editor-dialog-btn-cancel" @click="showLinkDialog = false">Cancel</button>
-              <button class="editor-dialog-btn-apply" @click="applyLink">Apply</button>
-            </div>
-          </div>
-        </div>
-      </Transition>
-    </Teleport>
-
-    <!-- Image Dialog -->
-    <Teleport to="body">
-      <Transition name="fade">
-        <div v-if="showImageDialog" class="editor-dialog-overlay" @click.self="showImageDialog = false">
-          <div class="editor-dialog">
-            <p class="editor-dialog-title">Insert Image</p>
-            <p class="editor-dialog-hint">Paste a URL or paste an image directly into the editor</p>
-            <input
-              ref="imageInput"
-              v-model="imageUrl"
-              type="url"
-              placeholder="https://example.com/image.png"
-              class="editor-dialog-input"
-              @keyup.enter="applyImage"
-              @keyup.escape="showImageDialog = false"
-            />
-            <div class="editor-dialog-actions">
-              <button class="editor-dialog-btn-cancel" @click="showImageDialog = false">Cancel</button>
-              <button class="editor-dialog-btn-apply" @click="applyImage">Insert</button>
-            </div>
-          </div>
-        </div>
-      </Transition>
-    </Teleport>
-
     <!-- Hidden file input for image upload -->
-    <input
-      type="file"
-      ref="fileInputRef"
-      accept="image/*"
-      style="display: none"
-      @change="handleFileUpload"
-      multiple
-    />
+    <input ref="fileInputRef" type="file" accept="image/*" multiple hidden @change="handleFileUpload" />
 
     <!-- Zoom Overlay -->
     <Teleport to="body">
       <Transition name="fade-zoom">
         <div v-if="zoomedImage" class="image-zoom-overlay" @click="closeZoom">
-          <div class="zoom-counter" v-if="allImages.length > 1" @click.stop>
-            {{ zoomedImageIndex! + 1 }} / {{ allImages.length }}
+          <div v-if="zoomImages.length > 1" class="zoom-counter" @click.stop>
+            {{ zoomedIndex! + 1 }} / {{ zoomImages.length }}
           </div>
-          <button 
-            v-if="allImages.length > 1 && zoomedImageIndex! > 0" 
-            class="zoom-nav-btn zoom-prev-btn" 
-            @click.stop="prevImage"
-          >
+          <button v-if="zoomedIndex! > 0" class="zoom-nav-btn zoom-prev-btn" :aria-label="t('editor.prevImage')" @click.stop="stepZoom(-1)">
             <ChevronLeft :size="32" />
           </button>
-          <img :src="zoomedImage" class="zoomed-img" @click.stop />
-          <button 
-            v-if="allImages.length > 1 && zoomedImageIndex! < allImages.length - 1" 
-            class="zoom-nav-btn zoom-next-btn" 
-            @click.stop="nextImage"
-          >
+          <img :src="zoomedImage" class="zoomed-img" alt="" @click.stop />
+          <button v-if="zoomedIndex! < zoomImages.length - 1" class="zoom-nav-btn zoom-next-btn" :aria-label="t('editor.nextImage')" @click.stop="stepZoom(1)">
             <ChevronRight :size="32" />
           </button>
-          <button class="zoom-close-btn" @click="closeZoom">
+          <button class="zoom-close-btn" :aria-label="t('common.close')" @click="closeZoom">
             <X :size="24" />
           </button>
         </div>
@@ -517,17 +480,367 @@ onUnmounted(() => {
   flex: 1;
 }
 
+/* ── Toolbar ── */
+.editor-toolbar {
+  position: sticky;
+  top: var(--header-height, 56px);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-bottom: 1rem;
+  padding: 4px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--bg-surface) 88%, transparent);
+  backdrop-filter: blur(10px);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.editor-toolbar::-webkit-scrollbar {
+  display: none;
+}
+
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  flex-shrink: 0;
+}
+
+.toolbar-group button,
+.bubble-menu button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  background: transparent;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.toolbar-group button:hover:not(:disabled),
+.bubble-menu button:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.toolbar-group button.active,
+.bubble-menu button.active {
+  background: var(--accent-subtle);
+  color: var(--accent);
+}
+
+.toolbar-group button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.toolbar-divider {
+  flex-shrink: 0;
+  width: 1px;
+  height: 18px;
+  margin: 0 4px;
+  background: var(--border-default);
+}
+
+.toolbar-hint {
+  margin-left: auto;
+  padding: 0 6px 0 12px;
+  font-size: 0.6875rem;
+  color: var(--text-disabled);
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .toolbar-hint {
+    display: none;
+  }
+}
+
+/* ── Bubble menu ── */
+.bubble-menu {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  padding: 3px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-lg);
+}
+
+.bubble-divider {
+  width: 1px;
+  height: 18px;
+  margin: 0 3px;
+  background: var(--border-default);
+}
+
+.bubble-link-input {
+  width: 15rem;
+  height: 30px;
+  padding: 0 0.5rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  font-size: 0.8125rem;
+  outline: none;
+}
+
+/* ── Editor Content ── */
+.editor-content {
+  flex: 1;
+}
+
+.editor-content .tiptap {
+  min-height: 50vh;
+  padding: 4px 0 30vh;
+  outline: none;
+  font-size: 1rem;
+  line-height: 1.75;
+  color: var(--text-primary);
+  caret-color: var(--accent);
+  word-break: break-word;
+}
+
+.editor-content .tiptap > * + * {
+  margin-top: 0.5em;
+}
+
+.editor-content .tiptap ::selection {
+  background: var(--accent-glow);
+}
+
+/* Placeholder on the current empty line (and for an empty document) */
+.editor-content .tiptap .is-empty::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  color: var(--text-disabled);
+  pointer-events: none;
+}
+
+.editor-content .is-readonly .tiptap {
+  min-height: 0;
+  padding-bottom: 0;
+}
+
+.editor-content .is-readonly .tiptap .is-empty::before {
+  content: none;
+}
+
+/* Headings */
+.editor-content .tiptap h1 {
+  margin-top: 1.4em;
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+.editor-content .tiptap h2 {
+  margin-top: 1.25em;
+  font-size: 1.375rem;
+  font-weight: 650;
+  line-height: 1.3;
+}
+.editor-content .tiptap h3 {
+  margin-top: 1.1em;
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.editor-content .tiptap > :is(h1, h2, h3):first-child {
+  margin-top: 0;
+}
+
+/* Inline formatting */
+.editor-content .tiptap strong { font-weight: 650; }
+.editor-content .tiptap s { text-decoration: line-through; color: var(--text-tertiary); }
+.editor-content .tiptap u { text-underline-offset: 3px; }
+.editor-content .tiptap mark {
+  background: color-mix(in srgb, var(--warning) 32%, transparent);
+  color: inherit;
+  border-radius: 3px;
+  padding: 0 2px;
+}
+.editor-content .tiptap code {
+  font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+  font-size: 0.85em;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: 4px;
+  padding: 1px 5px;
+  color: var(--accent-text, var(--accent));
+}
+[data-theme='light'] .editor-content .tiptap code {
+  color: var(--accent-hover);
+}
+
+/* Links */
+.editor-content .tiptap a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  text-underline-offset: 3px;
+  cursor: text;
+}
+.editor-content .is-readonly .tiptap a {
+  cursor: pointer;
+}
+
+/* Lists */
+.editor-content .tiptap ul,
+.editor-content .tiptap ol {
+  padding-left: 1.5rem;
+}
+.editor-content .tiptap ul { list-style: disc; }
+.editor-content .tiptap ol { list-style: decimal; }
+.editor-content .tiptap li + li { margin-top: 0.2em; }
+.editor-content .tiptap li p { margin: 0; }
+.editor-content .tiptap li::marker { color: var(--text-tertiary); }
+
+/* Task list */
+.editor-content .tiptap ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0.125rem;
+}
+.editor-content .tiptap ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+.editor-content .tiptap ul[data-type="taskList"] li > label {
+  flex-shrink: 0;
+  margin-top: 0.3em;
+  cursor: pointer;
+  user-select: none;
+}
+.editor-content .tiptap ul[data-type="taskList"] li > div {
+  flex: 1;
+  min-width: 0;
+}
+.editor-content .tiptap ul[data-type="taskList"] input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.editor-content .tiptap ul[data-type="taskList"] li[data-checked="true"] > div {
+  color: var(--text-tertiary);
+  text-decoration: line-through;
+}
+
+/* Blockquote */
+.editor-content .tiptap blockquote {
+  margin: 0.75em 0;
+  padding: 0.25em 0 0.25em 1em;
+  border-left: 3px solid var(--accent);
+  color: var(--text-secondary);
+}
+
+/* Code block */
+.editor-content .tiptap pre {
+  margin: 0.75em 0;
+  padding: 0.875rem 1rem;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  overflow-x: auto;
+}
+.editor-content .tiptap pre code {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text-primary);
+  font-size: 0.8125rem;
+  line-height: 1.6;
+}
+
+/* Syntax highlighting (lowlight / highlight.js classes) */
+.editor-content .hljs-comment,
+.editor-content .hljs-quote { color: var(--text-tertiary); font-style: italic; }
+.editor-content .hljs-keyword,
+.editor-content .hljs-selector-tag,
+.editor-content .hljs-built_in { color: #c792ea; }
+.editor-content .hljs-string,
+.editor-content .hljs-attr,
+.editor-content .hljs-template-variable { color: #8bd49c; }
+.editor-content .hljs-number,
+.editor-content .hljs-literal { color: #f78c6c; }
+.editor-content .hljs-title,
+.editor-content .hljs-section,
+.editor-content .hljs-name { color: #82aaff; }
+.editor-content .hljs-variable,
+.editor-content .hljs-params { color: #f07178; }
+[data-theme='light'] .editor-content .hljs-keyword,
+[data-theme='light'] .editor-content .hljs-built_in { color: #7c3aed; }
+[data-theme='light'] .editor-content .hljs-string,
+[data-theme='light'] .editor-content .hljs-attr { color: #15803d; }
+[data-theme='light'] .editor-content .hljs-number,
+[data-theme='light'] .editor-content .hljs-literal { color: #c2410c; }
+[data-theme='light'] .editor-content .hljs-title,
+[data-theme='light'] .editor-content .hljs-name { color: #1d4ed8; }
+[data-theme='light'] .editor-content .hljs-variable,
+[data-theme='light'] .editor-content .hljs-params { color: #be123c; }
+
+/* Horizontal rule */
+.editor-content .tiptap hr {
+  margin: 1.5em 0;
+  border: none;
+  border-top: 1px solid var(--border-default);
+}
+.editor-content .tiptap hr.ProseMirror-selectednode {
+  border-top-color: var(--accent);
+}
+
+/* Images: inline nodes laid out as a grid when several share a paragraph */
+.editor-content .tiptap p:has(> .custom-image-wrapper) {
+  display: grid;
+  gap: 12px;
+  align-items: start;
+  margin: 0.75em 0;
+}
+.editor-content .tiptap p:has(> .custom-image-wrapper:nth-child(1):last-child) { grid-template-columns: 1fr; }
+.editor-content .tiptap p:has(> .custom-image-wrapper:nth-child(2):last-child) { grid-template-columns: 1fr 1fr; }
+.editor-content .tiptap p:has(> .custom-image-wrapper:nth-child(3):last-child) { grid-template-columns: 1fr 1fr 1fr; }
+.editor-content .tiptap p:has(> .custom-image-wrapper:nth-child(4):last-child) { grid-template-columns: 1fr 1fr; }
+.editor-content .tiptap p:has(> .custom-image-wrapper:nth-child(5)) { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+
+.editor-content .tiptap p:has(> .custom-image-wrapper) > .custom-image-wrapper {
+  width: 100%;
+  margin: 0;
+}
+.editor-content .tiptap p:has(> .custom-image-wrapper) > .custom-image-wrapper img {
+  width: 100%;
+  height: auto;
+  max-height: 520px;
+  object-fit: contain;
+  border-radius: var(--radius-md);
+  background-color: var(--bg-elevated);
+}
+
+/* Drop cursor while dragging blocks or images */
+.ProseMirror .ProseMirror-dropcursor,
+.tiptap-dropcursor {
+  background: var(--accent);
+}
+
 /* ── Image Zoom ── */
 .image-zoom-overlay {
   position: fixed;
   inset: 0;
   z-index: 9999;
-  background: rgba(0, 0, 0, 0.85);
-  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 2rem;
+  background: rgba(0, 0, 0, 0.88);
+  backdrop-filter: blur(4px);
   cursor: zoom-out;
 }
 .zoomed-img {
@@ -538,62 +851,44 @@ onUnmounted(() => {
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
   cursor: default;
 }
-.zoom-close-btn {
-  position: absolute;
-  top: 1.5rem;
-  right: 1.5rem;
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
-  border: none;
-  border-radius: 50%;
-  width: 44px;
-  height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-.zoom-close-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
-}
+.zoom-close-btn,
 .zoom-nav-btn {
   position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  background: rgba(0, 0, 0, 0.5);
-  color: white;
-  border: none;
-  border-radius: 50%;
-  width: 50px;
-  height: 50px;
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
-  transition: background 0.2s, transform 0.2s;
-  z-index: 10000;
+  border-radius: 50%;
+  color: white;
+  background: rgba(255, 255, 255, 0.12);
+  transition: background 0.2s;
 }
+.zoom-close-btn:hover,
 .zoom-nav-btn:hover {
-  background: rgba(0, 0, 0, 0.8);
-  transform: translateY(-50%) scale(1.1);
+  background: rgba(255, 255, 255, 0.24);
 }
-.zoom-prev-btn {
-  left: 2rem;
+.zoom-close-btn {
+  top: 1.5rem;
+  right: 1.5rem;
+  width: 44px;
+  height: 44px;
 }
-.zoom-next-btn {
-  right: 2rem;
+.zoom-nav-btn {
+  top: 50%;
+  width: 50px;
+  height: 50px;
+  transform: translateY(-50%);
 }
+.zoom-prev-btn { left: 1.5rem; }
+.zoom-next-btn { right: 1.5rem; }
 .zoom-counter {
   position: absolute;
   top: 1.5rem;
   left: 1.5rem;
-  background: rgba(0, 0, 0, 0.5);
-  color: white;
   padding: 0.5rem 1rem;
   border-radius: 20px;
+  background: rgba(0, 0, 0, 0.5);
+  color: white;
   font-size: 0.875rem;
-  font-weight: 500;
   pointer-events: none;
 }
 .fade-zoom-enter-active,
@@ -605,361 +900,4 @@ onUnmounted(() => {
   opacity: 0;
   transform: scale(0.98);
 }
-
-/* ── Toolbar ── */
-.editor-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 2px;
-  padding: 4px;
-  border: 1px solid var(--border-subtle, rgba(255,255,255,0.06));
-  border-radius: 10px;
-  background: var(--bg-elevated);
-  margin-bottom: 16px;
-  position: sticky;
-  top: 56px;
-  z-index: 10;
-  opacity: 0.55;
-  transition: opacity 200ms ease;
-}
-
-.editor-toolbar:hover,
-.editor-toolbar:focus-within {
-  opacity: 1;
-}
-
-.toolbar-group {
-  display: flex;
-  align-items: center;
-  gap: 1px;
-}
-
-.toolbar-group button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  color: var(--text-tertiary);
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  transition: all 120ms ease;
-  font-size: 0.75rem;
-}
-
-.toolbar-group button:hover:not(:disabled),
-.toolbar-group button:active:not(:disabled) {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-}
-
-.toolbar-group button.active {
-  background: var(--accent-subtle);
-  color: var(--accent);
-  opacity: 1;
-}
-
-.toolbar-group button:disabled {
-  opacity: 0.2;
-  cursor: not-allowed;
-}
-
-.toolbar-divider {
-  width: 1px;
-  height: 16px;
-  background: var(--border-default);
-  margin: 0 3px;
-  opacity: 0.5;
-}
-
-.toolbar-count {
-  margin-left: auto;
-  font-size: 0.625rem;
-  color: var(--text-disabled);
-  padding-right: 4px;
-  white-space: nowrap;
-  letter-spacing: 0.02em;
-}
-
-/* ── Editor Content ── */
-.editor-content {
-  flex: 1;
-}
-
-.editor-content .tiptap {
-  min-height: 400px;
-  outline: none;
-  font-size: 0.9375rem;
-  line-height: 1.8;
-  color: var(--text-secondary);
-  padding: 4px 0;
-}
-
-.editor-content .tiptap p.is-editor-empty:first-child::before {
-  content: attr(data-placeholder);
-  color: var(--text-disabled);
-  pointer-events: none;
-  float: left;
-  height: 0;
-}
-
-/* Headings */
-.editor-content .tiptap h1 {
-  font-size: 1.625rem;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 1.25rem 0 0.5rem;
-  line-height: 1.3;
-}
-.editor-content .tiptap h2 {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 1rem 0 0.4rem;
-  line-height: 1.4;
-}
-.editor-content .tiptap h3 {
-  font-size: 1.0625rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin: 0.875rem 0 0.35rem;
-}
-
-/* Inline formatting */
-.editor-content .tiptap strong { color: var(--text-primary); font-weight: 600; }
-.editor-content .tiptap em { font-style: italic; }
-.editor-content .tiptap s { text-decoration: line-through; opacity: 0.6; }
-.editor-content .tiptap mark {
-  background: rgba(251, 191, 36, 0.25);
-  color: inherit;
-  border-radius: 2px;
-  padding: 0 2px;
-}
-.editor-content .tiptap code {
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  font-size: 0.8125rem;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-default);
-  border-radius: 4px;
-  padding: 1px 5px;
-  color: var(--accent);
-}
-
-/* Links */
-.editor-content .tiptap a {
-  color: var(--accent);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  cursor: pointer;
-}
-.editor-content .tiptap a:hover { opacity: 0.8; }
-
-/* Lists */
-.editor-content .tiptap ul,
-.editor-content .tiptap ol {
-  padding-left: 1.5rem;
-  margin: 0.5rem 0;
-}
-.editor-content .tiptap li { margin: 0.25rem 0; }
-.editor-content .tiptap li p { margin: 0; }
-
-/* Task List */
-.editor-content .tiptap ul[data-type="taskList"] {
-  list-style: none;
-  padding-left: 0.25rem;
-}
-.editor-content .tiptap ul[data-type="taskList"] li {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.5rem;
-}
-.editor-content .tiptap ul[data-type="taskList"] li label {
-  cursor: pointer;
-  user-select: none;
-  margin-top: 3px;
-}
-.editor-content .tiptap ul[data-type="taskList"] li input[type="checkbox"] {
-  width: 15px;
-  height: 15px;
-  accent-color: var(--accent);
-  cursor: pointer;
-  flex-shrink: 0;
-}
-.editor-content .tiptap ul[data-type="taskList"] li[data-checked="true"] > div {
-  opacity: 0.55;
-  text-decoration: line-through;
-}
-
-/* Blockquote */
-.editor-content .tiptap blockquote {
-  border-left: 3px solid var(--accent);
-  margin: 0.75rem 0;
-  padding: 0.5rem 0 0.5rem 1rem;
-  color: var(--text-tertiary);
-  font-style: italic;
-  background: var(--accent-subtle);
-  border-radius: 0 6px 6px 0;
-}
-
-/* Code Block */
-.editor-content .tiptap pre {
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-default);
-  border-radius: 8px;
-  padding: 1rem;
-  margin: 0.75rem 0;
-  overflow-x: auto;
-}
-.editor-content .tiptap pre code {
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  font-size: 0.8125rem;
-  background: none;
-  border: none;
-  padding: 0;
-  color: var(--text-primary);
-}
-
-/* Horizontal Rule */
-.editor-content .tiptap hr {
-  border: none;
-  border-top: 1px solid var(--border-default);
-  margin: 1.25rem 0;
-}
-
-/* Images Grid Layout */
-.editor-content .tiptap p:has(> .custom-image-wrapper) {
-  display: grid;
-  gap: 12px;
-  align-items: start;
-  margin: 0.75rem 0;
-}
-/* 1 image */
-.editor-content .tiptap p:has(> .custom-image-wrapper:nth-child(1):last-child) {
-  grid-template-columns: 1fr;
-}
-/* 2 images */
-.editor-content .tiptap p:has(> .custom-image-wrapper:nth-child(2):last-child) {
-  grid-template-columns: 1fr 1fr;
-}
-/* 3 images */
-.editor-content .tiptap p:has(> .custom-image-wrapper:nth-child(3):last-child) {
-  grid-template-columns: 1fr 1fr 1fr;
-}
-/* 4 images */
-.editor-content .tiptap p:has(> .custom-image-wrapper:nth-child(4):last-child) {
-  grid-template-columns: 1fr 1fr;
-}
-/* 5+ images */
-.editor-content .tiptap p:has(> .custom-image-wrapper:nth-child(5)) {
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-}
-
-.editor-content .tiptap p:has(> .custom-image-wrapper) > .custom-image-wrapper {
-  margin: 0;
-  max-width: none;
-  flex: none;
-  width: 100%;
-}
-.editor-content .tiptap p:has(> .custom-image-wrapper) > .custom-image-wrapper img {
-  width: 100%;
-  height: auto;
-  max-height: 500px;
-  object-fit: contain;
-  margin: 0;
-  border-radius: 8px;
-  background-color: var(--bg-surface);
-}
-
-/* ── Inline Dialog ── */
-.editor-dialog-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 100;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
-  padding: 1rem;
-}
-
-.editor-dialog {
-  background: var(--bg-surface);
-  border: 1px solid var(--border-default);
-  border-radius: 14px;
-  padding: 1.25rem;
-  width: 100%;
-  max-width: 22rem;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.4);
-}
-
-.editor-dialog-title {
-  font-weight: 600;
-  font-size: 0.9375rem;
-  margin-bottom: 0.75rem;
-  color: var(--text-primary);
-}
-
-.editor-dialog-hint {
-  font-size: 0.75rem;
-  color: var(--text-tertiary);
-  margin-bottom: 0.5rem;
-  margin-top: -0.25rem;
-}
-
-.editor-dialog-input {
-  width: 100%;
-  border: 1px solid var(--border-default);
-  background: var(--bg-elevated);
-  color: var(--text-primary);
-  border-radius: 8px;
-  padding: 0.5rem 0.75rem;
-  font-size: 0.875rem;
-  outline: none;
-  transition: border-color 150ms;
-  box-sizing: border-box;
-}
-.editor-dialog-input:focus { border-color: var(--accent); }
-.editor-dialog-input::placeholder { color: var(--text-disabled); }
-
-.editor-dialog-actions {
-  display: flex;
-  gap: 0.5rem;
-  margin-top: 0.875rem;
-  justify-content: flex-end;
-}
-
-.editor-dialog-btn-cancel {
-  padding: 0.4rem 1rem;
-  font-size: 0.875rem;
-  border-radius: 7px;
-  border: 1px solid var(--border-default);
-  background: transparent;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all 120ms;
-}
-.editor-dialog-btn-cancel:hover,
-.editor-dialog-btn-cancel:active { background: var(--bg-hover); }
-
-.editor-dialog-btn-apply {
-  padding: 0.4rem 1rem;
-  font-size: 0.875rem;
-  border-radius: 7px;
-  border: none;
-  background: var(--accent);
-  color: #000;
-  font-weight: 600;
-  cursor: pointer;
-  transition: opacity 120ms;
-}
-.editor-dialog-btn-apply:hover,
-.editor-dialog-btn-apply:active { opacity: 0.85; }
-
-/* ── Fade Transition ── */
-.fade-enter-active, .fade-leave-active { transition: opacity 150ms ease; }
-.fade-enter-from, .fade-leave-to { opacity: 0; }
 </style>

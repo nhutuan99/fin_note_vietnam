@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { NodeViewWrapper, nodeViewProps } from '@tiptap/vue-3'
 import { X } from 'lucide-vue-next'
+import { useI18n } from 'vue-i18n'
 
 defineProps(nodeViewProps)
+const { t } = useI18n()
 </script>
 
 <template>
@@ -14,7 +16,8 @@ defineProps(nodeViewProps)
       v-if="editor.isEditable"
       class="image-remove-btn" 
       @click.stop="deleteNode"
-      title="Remove Image"
+      :title="t('editor.removeImage')"
+      :aria-label="t('editor.removeImage')"
     >
       <X :size="14" />
     </button>
@@ -29,14 +32,14 @@ defineProps(nodeViewProps)
   margin: 0;
   border-radius: 12px;
   overflow: hidden;
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
   border: 1px solid var(--border-default);
 }
 
+/* No scale on hover: moving content under the cursor makes selection jumpy */
 .custom-image-wrapper:hover {
-  transform: scale(1.02);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
-  z-index: 5;
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-md);
 }
 
 .custom-image-wrapper::after {

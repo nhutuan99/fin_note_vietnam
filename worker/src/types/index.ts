@@ -50,6 +50,24 @@ export interface NoteData {
   updatedAt: string
 }
 
+/** Lightweight note entry stored in `users/{userId}/notes/_index` and returned by the list endpoint. */
+export interface NoteIndexItem {
+  id: string
+  title: string
+  /** Plain-text preview (first ~160 chars) */
+  excerpt: string
+  /** Plain-text body (first ~2000 chars) for client-side full-text search */
+  text: string
+  wordCount: number
+  hasImages: boolean
+  tags: string[]
+  pinned: boolean
+  createdAt: string
+  updatedAt: string
+  /** Index item schema version */
+  v: number
+}
+
 export interface TransactionData {
   id: string
   type: 'income' | 'expense'

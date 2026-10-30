@@ -1,376 +1,560 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
-import { useEventListener } from '@/composables/useEventListener'
-import { useRoute, useRouter } from 'vue-router'
+import { ref, watch, onMounted, onBeforeUnmount, computed, nextTick } from 'vue'
+import { useRoute, useRouter, onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router'
+import { useI18n } from 'vue-i18n'
+import { marked } from 'marked'
 import { useNotesStore } from '@/stores/notes'
 import { useReminderStore } from '@/stores/reminders'
 import { useUiStore } from '@/stores/ui'
+import { useEventListener } from '@/composables/useEventListener'
+import { ApiError } from '@/shared/api/httpClient'
+import { htmlToPlainText, readingMinutes } from '@/shared/utils/noteText'
 import RichEditor from '@/components/editor/RichEditor.vue'
 import AiPanel from '@/components/editor/AiPanel.vue'
 import ShareNoteModal from '@/components/ui/ShareNoteModal.vue'
 import ReminderSuggestionModal from '@/components/ui/ReminderSuggestionModal.vue'
-import type { ReminderSuggestion } from '@/types'
-import { ArrowLeft, Save, Pin, Trash2, Tag, X, Plus, Check, Sparkles, Bell, Share2 } from 'lucide-vue-next'
-import { useI18n } from 'vue-i18n'
-import { autoFormatJsonContent } from '@/shared/utils/jsonFormatter'
+import type { Note, ReminderSuggestion } from '@/types'
+import {
+  ArrowLeft, Pin, Trash2, X, Check, Sparkles, Bell, Share2, MoreHorizontal, Copy, CloudOff, Hash
+} from 'lucide-vue-next'
+
+/** Debounce between the last keystroke and the autosave request */
+const AUTOSAVE_DELAY_MS = 1000
+/** Retry delay after a failed save (network hiccup, worker error) */
+const RETRY_DELAY_MS = 5000
 
 const route = useRoute()
 const router = useRouter()
 const notesStore = useNotesStore()
+const reminderStore = useReminderStore()
 const ui = useUiStore()
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
+const noteId = computed(() => route.params.id as string)
+
+// ── Editable fields ──
 const title = ref('')
 const content = ref('')
 const tags = ref<string[]>([])
 const pinned = ref(false)
 const isPublic = ref(false)
 const sharedWith = ref<string[]>([])
-const newTag = ref('')
-const saving = ref(false)
-const lastSaved = ref('')
-const hasChanges = ref(false)
-const showTagInput = ref(false)
-let saveTimeout: ReturnType<typeof setTimeout> | null = null
+const createdAt = ref('')
+
 const loadingNote = ref(true)
-const noteId = computed(() => route.params.id as string)
+const titleRef = ref<HTMLTextAreaElement | null>(null)
+const editorRef = ref<InstanceType<typeof RichEditor> | null>(null)
+const stats = ref({ words: 0, characters: 0 })
 
-// AI Panel
-const showAiPanel = ref(false)
+// ── Autosave state ──
+type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
+const saveStatus = ref<SaveStatus>('idle')
+const lastSavedAt = ref<Date | null>(null)
+/** Server `updatedAt` this editor is based on (optimistic concurrency) */
+let baseUpdatedAt = ''
+/** Serialized fields as last persisted; anything different is unsaved */
+const savedSnapshot = ref('')
+let saveTimer: ReturnType<typeof setTimeout> | null = null
+let inFlight: Promise<void> | null = null
+let conflictOpen = false
+/** Set once the note is deleted from this page, so leaving it neither saves nor deletes again */
+let deleted = false
 
-async function loadNote(id: string) {
+const snapshot = computed(() =>
+  JSON.stringify({ title: title.value, content: content.value, tags: tags.value, pinned: pinned.value })
+)
+const isDirty = computed(() => !loadingNote.value && snapshot.value !== savedSnapshot.value)
+
+function applyNote(note: Note) {
+  title.value = note.title
+  content.value = note.content
+  tags.value = [...note.tags]
+  pinned.value = note.pinned
+  isPublic.value = !!note.isPublic
+  sharedWith.value = note.sharedWith || []
+  createdAt.value = note.createdAt
+  baseUpdatedAt = note.updatedAt
+  lastSavedAt.value = new Date(note.updatedAt)
+  savedSnapshot.value = snapshot.value
+}
+
+async function loadNote(id: string, isNew = route.query.new === '1') {
   loadingNote.value = true
-  hasChanges.value = false
-  if (saveTimeout) clearTimeout(saveTimeout)
+  clearSaveTimer()
+  saveStatus.value = 'idle'
   const note = await notesStore.fetchNote(id)
-  if (note) {
-    title.value = note.title
-    content.value = note.content
-    tags.value = [...note.tags]
-    pinned.value = note.pinned
-    isPublic.value = !!note.isPublic
-    sharedWith.value = note.sharedWith || []
-    lastSaved.value = new Date(note.updatedAt).toLocaleTimeString()
-  } else {
-    ui.showToast('error', t('common.somethingWentWrong'))
-    router.push('/notes')
+  if (!note) {
+    ui.showToast('error', t('notes.loadError'))
+    router.replace('/notes')
+    return
   }
+  applyNote(note)
   loadingNote.value = false
+  await nextTick()
+  autoResizeTitle()
+  // Fresh notes start with the cursor in the title
+  if (isNew) titleRef.value?.focus()
+}
+
+function clearSaveTimer() {
+  if (saveTimer) clearTimeout(saveTimer)
+  saveTimer = null
+}
+
+function scheduleSave(delay = AUTOSAVE_DELAY_MS) {
+  clearSaveTimer()
+  saveTimer = setTimeout(() => void saveNote(), delay)
+}
+
+watch(snapshot, () => {
+  if (isDirty.value) scheduleSave()
+})
+
+/**
+ * Persists the current fields. Saves are serialized: a change made while a request is in flight
+ * triggers one more save afterwards, so nothing typed during a slow request is lost.
+ */
+async function saveNote(options: { force?: boolean; keepalive?: boolean } = {}): Promise<void> {
+  clearSaveTimer()
+  if (inFlight) {
+    await inFlight
+    if (isDirty.value) return saveNote(options)
+    return
+  }
+  if (!isDirty.value || !noteId.value) return
+
+  const id = noteId.value
+  const sent = snapshot.value
+  saveStatus.value = 'saving'
+
+  let succeeded = false
+  inFlight = (async () => {
+    try {
+      const saved = await notesStore.updateNote(
+        id,
+        { title: title.value, content: content.value, tags: tags.value, pinned: pinned.value },
+        { baseUpdatedAt, force: options.force, keepalive: options.keepalive }
+      )
+      if (!saved) throw new Error('save failed')
+      baseUpdatedAt = saved.updatedAt
+      savedSnapshot.value = sent
+      lastSavedAt.value = new Date(saved.updatedAt)
+      saveStatus.value = 'saved'
+      succeeded = true
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        saveStatus.value = 'idle'
+        void resolveConflict(err.data as Note)
+      } else {
+        saveStatus.value = 'error'
+        scheduleSave(RETRY_DELAY_MS)
+      }
+    }
+  })()
+
+  try {
+    await inFlight
+  } finally {
+    inFlight = null
+  }
+  // Typed more while saving → persist that too (debounced like a normal edit)
+  if (succeeded && isDirty.value) scheduleSave()
+}
+
+/** The note changed on another device/tab since we loaded it */
+async function resolveConflict(serverNote: Note) {
+  if (conflictOpen) return
+  conflictOpen = true
+  const keepMine = await ui.requestConfirm({
+    title: t('notes.conflictTitle'),
+    message: t('notes.conflictMessage'),
+    confirmText: t('notes.conflictKeepMine'),
+    cancelText: t('notes.conflictLoadTheirs')
+  })
+  conflictOpen = false
+  if (keepMine) {
+    await saveNote({ force: true })
+    return
+  }
+  // Load the latest version, but keep the unsaved local edits as a separate note so nothing is lost
+  // (this branch also runs when the dialog is dismissed)
+  const copy = await notesStore.createNote({
+    title: `${title.value || t('notes.untitled')} ${t('notes.conflictCopySuffix')}`,
+    content: content.value,
+    tags: tags.value,
+    pinned: false
+  })
+  applyNote(serverNote)
+  ui.showToast('info', copy ? t('notes.conflictLoadedWithCopy') : t('notes.conflictLoaded'))
+}
+
+/** Saves pending edits now (route change, tab hidden). Resolves once the latest edits are stored. */
+async function flush(keepalive = false) {
+  if (deleted) return
+  if (isDirty.value || inFlight) await saveNote({ keepalive })
+}
+
+/** A note created with "New note" and left untouched is removed instead of cluttering the list */
+async function discardIfEmpty(): Promise<boolean> {
+  if (deleted) return true
+  if (route.query.new !== '1' || loadingNote.value) return false
+  const empty = !title.value.trim() && !htmlToPlainText(content.value) && !/<img[\s>]/i.test(content.value) && !tags.value.length
+  if (!empty) return false
+  clearSaveTimer()
+  deleted = true
+  await notesStore.deleteNote(noteId.value)
+  return true
 }
 
 onMounted(() => loadNote(noteId.value))
 
-// Re-fetch when navigating to a different note (e.g. sidebar click)
-watch(noteId, (newId, oldId) => {
-  if (newId && newId !== oldId) loadNote(newId)
+onBeforeRouteUpdate(async (to, from) => {
+  if (to.params.id === from.params.id) return
+  if (!(await discardIfEmpty())) await flush()
+  deleted = false
+  await loadNote(to.params.id as string, to.query.new === '1')
 })
 
-useEventListener(document, 'keydown', handleKeydown)
-
-onUnmounted(() => {
-  if (saveTimeout) clearTimeout(saveTimeout)
-  if (hasChanges.value) saveNote()
+onBeforeRouteLeave(async () => {
+  if (!(await discardIfEmpty())) await flush()
 })
 
-watch(
-  [title, content, tags, pinned],
-  () => {
-    hasChanges.value = true
-    if (saveTimeout) clearTimeout(saveTimeout)
-    saveTimeout = setTimeout(() => saveNote(), 2000)
-  },
-  { deep: true }
-)
+onBeforeUnmount(clearSaveTimer)
 
+// Tab hidden / app backgrounded (mobile) → save right away; keepalive lets it finish if the tab closes
+useEventListener(document, 'visibilitychange', () => {
+  if (document.visibilityState === 'hidden') void flush(true)
+  else void refreshIfStale()
+})
 
+// Last resort: warn before closing the tab with unsaved edits
+useEventListener(window, 'beforeunload', (e: BeforeUnloadEvent) => {
+  if (isDirty.value || inFlight) {
+    void flush(true)
+    e.preventDefault()
+  }
+})
 
-async function saveNote() {
-  if (!noteId.value || saving.value) return
-  saving.value = true
-  try {
-    // Auto-format JSON data
-    const formattedJson = autoFormatJsonContent(content.value)
-    if (formattedJson && content.value !== formattedJson) {
-      content.value = formattedJson
-    }
+/** Coming back to the tab: pick up edits made elsewhere if we have nothing unsaved */
+async function refreshIfStale() {
+  if (loadingNote.value || isDirty.value || inFlight || !noteId.value) return
+  const latest = await notesStore.fetchNote(noteId.value)
+  if (latest && latest.updatedAt !== baseUpdatedAt && !isDirty.value) applyNote(latest)
+}
 
-    await notesStore.updateNote(noteId.value, {
-      title: title.value,
-      content: content.value,
-      tags: tags.value,
-      pinned: pinned.value
+// ── Save status label ──
+const now = ref(Date.now())
+const clock = setInterval(() => (now.value = Date.now()), 30_000)
+onBeforeUnmount(() => clearInterval(clock))
+
+const savedLabel = computed(() => {
+  if (!lastSavedAt.value) return ''
+  const minutes = Math.floor((now.value - lastSavedAt.value.getTime()) / 60_000)
+  if (minutes < 1) return t('notes.savedJustNow')
+  if (minutes < 60) return t('notes.savedMinutesAgo', { n: minutes })
+  return t('notes.savedAt', {
+    time: lastSavedAt.value.toLocaleString(locale.value === 'vi' ? 'vi-VN' : 'en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      day: 'numeric',
+      month: 'short'
     })
-    hasChanges.value = false
-    lastSaved.value = new Date().toLocaleTimeString()
-  } catch {
-    ui.showToast('error', t('common.somethingWentWrong'))
-  } finally {
-    saving.value = false
+  })
+})
+
+const metaLine = computed(() => {
+  const parts = [t('notes.words', { n: stats.value.words })]
+  if (stats.value.words > 0) parts.push(t('notes.readingTime', { n: readingMinutes(stats.value.words) }))
+  if (createdAt.value) {
+    parts.push(
+      t('notes.createdOn', {
+        date: new Date(createdAt.value).toLocaleDateString(locale.value === 'vi' ? 'vi-VN' : 'en-US', {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric'
+        })
+      })
+    )
+  }
+  return parts.join(' · ')
+})
+
+// ── Keyboard ──
+useEventListener(document, 'keydown', (e: KeyboardEvent) => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+    e.preventDefault()
+    void saveNote()
+  }
+})
+
+// ── Title ──
+function autoResizeTitle() {
+  const el = titleRef.value
+  if (!el) return
+  el.style.height = 'auto'
+  el.style.height = `${el.scrollHeight}px`
+}
+
+watch(title, () => nextTick(autoResizeTitle))
+
+function handleTitleKeydown(e: KeyboardEvent) {
+  const el = e.target as HTMLTextAreaElement
+  const atEnd = el.selectionStart === el.value.length
+  if (e.key === 'Enter' && !e.isComposing) {
+    e.preventDefault()
+    editorRef.value?.focus('start')
+  } else if (e.key === 'ArrowDown' && atEnd) {
+    e.preventDefault()
+    editorRef.value?.focus('start')
   }
 }
 
+function handleTitleInput(e: Event) {
+  // Titles are single-line: pasted line breaks become spaces
+  const el = e.target as HTMLTextAreaElement
+  if (/\r|\n/.test(el.value)) title.value = el.value.replace(/[\r\n]+/g, ' ')
+}
+
+// ── Tags ──
+const newTag = ref('')
+const tagInputRef = ref<HTMLInputElement | null>(null)
+const tagSuggestions = computed(() =>
+  notesStore.allTags.map((x) => x.tag).filter((tag) => !tags.value.includes(tag))
+)
+
+function addTag(raw = newTag.value) {
+  const tag = raw.trim().replace(/^#/, '').toLowerCase()
+  if (tag && !tags.value.includes(tag)) tags.value.push(tag)
+  newTag.value = ''
+}
+
+function removeTag(tag: string) {
+  tags.value = tags.value.filter((x) => x !== tag)
+}
+
+function handleTagKeydown(e: KeyboardEvent) {
+  if ((e.key === 'Enter' || e.key === ',') && !e.isComposing) {
+    e.preventDefault()
+    addTag()
+  } else if (e.key === 'Backspace' && !newTag.value && tags.value.length) {
+    tags.value.pop()
+  } else if (e.key === 'Escape') {
+    newTag.value = ''
+    tagInputRef.value?.blur()
+  }
+}
+
+// ── Actions ──
+const showMenu = ref(false)
+const menuRef = ref<HTMLElement | null>(null)
+useEventListener(document, 'click', (e: MouseEvent) => {
+  if (showMenu.value && menuRef.value && !menuRef.value.contains(e.target as Node)) showMenu.value = false
+})
+
 async function handleDelete() {
+  showMenu.value = false
   const confirmed = await ui.requestConfirm({
     title: t('notes.deleteTitle'),
     message: t('notes.deleteMessage'),
     danger: true,
     confirmText: t('notes.deleteConfirm')
   })
-
-  if (confirmed) {
-    if (await notesStore.deleteNote(noteId.value)) {
-      ui.showToast('success', t('notes.noteDeleted'))
-      router.push('/notes')
-    }
+  if (!confirmed) return
+  clearSaveTimer()
+  if (await notesStore.deleteNote(noteId.value)) {
+    deleted = true
+    ui.showToast('success', t('notes.noteDeleted'))
+    router.push('/notes')
   }
 }
 
-function addTag() {
-  const t = newTag.value.trim().toLowerCase()
-  if (t && !tags.value.includes(t)) {
-    tags.value.push(t)
-    newTag.value = ''
+async function copyAsText() {
+  showMenu.value = false
+  const text = [title.value, htmlToPlainText(content.value.replace(/<\/(p|h[1-6]|li|pre|blockquote)>/gi, '\n'))]
+    .filter(Boolean)
+    .join('\n\n')
+  try {
+    await navigator.clipboard.writeText(text)
+    ui.showToast('success', t('notes.copied'))
+  } catch {
+    ui.showToast('error', t('common.somethingWentWrong'))
   }
 }
 
-function handleTagKeydown(e: KeyboardEvent) {
-  if (e.key === 'Enter') {
-    e.preventDefault()
-    addTag()
-  }
-  if (e.key === 'Escape') showTagInput.value = false
-}
-
-function handleKeydown(e: KeyboardEvent) {
-  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-    e.preventDefault()
-    saveNote()
-  }
-}
-
-// AI handlers
-function toggleAiPanel() {
-  showAiPanel.value = !showAiPanel.value
-}
-
-import { marked } from 'marked'
+// ── AI ──
+const showAiPanel = ref(false)
 
 function handleAiInsert(text: string, isHtml = false) {
-  if (isHtml) {
-    content.value += `\n${text}`
-  } else {
-    // Parse markdown so code blocks and formatting from AI render correctly in Tiptap
-    const html = marked.parse(text) as string
-    content.value += `\n${html}`
-  }
+  // Parse markdown so code blocks and formatting from AI render correctly in Tiptap
+  content.value += isHtml ? `\n${text}` : `\n${marked.parse(text) as string}`
   ui.showToast('success', t('notes.ai.insert'))
 }
 
 function handleAiReplace(text: string) {
-  // Parse markdown so code blocks and formatting from AI render correctly
-  const html = marked.parse(text) as string
-  content.value = html
+  content.value = marked.parse(text) as string
   ui.showToast('success', t('notes.ai.insert'))
   showAiPanel.value = false
 }
 
-// Sharing logic
+function handleApplyTags(aiTags: string[]) {
+  const added = aiTags.filter((tag) => !tags.value.includes(tag))
+  tags.value.push(...added)
+  ui.showToast('success', t('common.tagsAdded', { n: added.length }))
+}
+
+// ── Sharing ──
 const showShareModal = ref(false)
 async function handleSaveShare(newIsPublic: boolean, newSharedWith: string[]) {
   isPublic.value = newIsPublic
   sharedWith.value = newSharedWith
   const success = await notesStore.updateNoteShare(noteId.value, newIsPublic, newSharedWith)
-  if (success) {
-    ui.showToast('success', t('notes.share.updateSuccess'))
-  } else {
-    ui.showToast('error', t('notes.share.updateError'))
-  }
+  ui.showToast(success ? 'success' : 'error', success ? t('notes.share.updateSuccess') : t('notes.share.updateError'))
   showShareModal.value = false
 }
 
-const reminderStore = useReminderStore()
+// ── Reminders from note content ──
 const extractingEvents = ref(false)
 const reminderSuggestions = ref<ReminderSuggestion[]>([])
 
 async function handleExtractEvents() {
-  if (!content.value.trim() || extractingEvents.value) return
+  showMenu.value = false
+  const text = htmlToPlainText(content.value.replace(/<\/(p|div|li|h[1-6])>/gi, '\n'))
+  if (!text || extractingEvents.value) return
   extractingEvents.value = true
   try {
-    // Convert HTML to readable plain text for AI
-    const rawText = content.value
-      .replace(/<br\s*\/?>/gi, '\n')
-      .replace(/<\/(p|div|li|h[1-6])>/gi, '\n')
-      .replace(/<[^>]*>?/gm, '')
-      .replace(/&amp;/g, '&')
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .replace(/&quot;/g, '"')
-      .replace(/&#039;/g, "'")
-      .replace(/&nbsp;/g, ' ')
-      .replace(/\n{3,}/g, '\n\n')
-      .trim()
-    const suggestions = await reminderStore.detectFromText(rawText)
-    if (suggestions.length > 0) {
-      reminderSuggestions.value = suggestions
-    } else {
-      ui.showToast('info', t('reminders.noEventsFound'))
-    }
-  } catch (e) {
+    const suggestions = await reminderStore.detectFromText(text)
+    if (suggestions.length > 0) reminderSuggestions.value = suggestions
+    else ui.showToast('info', t('reminders.noEventsFound'))
+  } catch {
     ui.showToast('error', t('common.somethingWentWrong'))
   } finally {
     extractingEvents.value = false
   }
 }
-
-function handleApplyTags(aiTags: string[]) {
-  const newTags = aiTags.filter(t => !tags.value.includes(t))
-  tags.value.push(...newTags)
-  ui.showToast('success', t('common.tagsAdded', { n: newTags.length }))
-}
 </script>
 
 <template>
-  <div class="mx-auto flex min-h-[calc(100vh-3.5rem-3rem)] max-w-[68rem] flex-col">
-    <!-- Toolbar -->
-    <div
-      class="border-border-default mb-4 flex flex-col items-start justify-between gap-3 border-b pb-4 sm:flex-row sm:items-center"
-    >
-      <div class="flex items-center gap-3">
-        <button
-          id="back-to-notes-btn"
-          @click="router.push('/notes')"
-          class="text-text-secondary hover:bg-bg-hover hover:text-text-primary flex h-[2.125rem] w-[2.125rem] items-center justify-center rounded-lg transition-all duration-150"
-        >
-          <ArrowLeft :size="18" />
-        </button>
-        <div class="flex items-center gap-1 text-sm">
-          <template v-if="saving"><span class="text-warning">{{ t('common.saving') }}</span></template>
-          <template v-else-if="hasChanges">
-            <span class="text-text-tertiary">{{ t('common.unsavedChanges') }}</span>
-          </template>
-          <template v-else-if="lastSaved">
-            <Check :size="14" class="text-success" />
-            <span class="text-text-disabled">{{ t('common.saved', { time: lastSaved }) }}</span>
-          </template>
-        </div>
-      </div>
-      <div class="flex items-center gap-1">
-        <button
-          id="extract-events-btn"
-          :title="t('notes.scanEvents')"
-          class="flex h-[2.125rem] items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium transition-all duration-150 text-text-secondary hover:bg-bg-hover hover:text-text-primary"
-          @click="handleExtractEvents"
-          :disabled="extractingEvents"
-        >
-          <AppSpinner v-if="extractingEvents" :size="15"  />
-          <Bell v-else :size="15" />
-          <span class="hidden sm:inline">{{ t('notes.scanEvents') }}</span>
-        </button>
+  <div class="note-page mx-auto flex min-h-[calc(100vh-3.5rem-3rem)] max-w-[52rem] flex-col">
+    <!-- Top bar -->
+    <div class="note-topbar">
+      <button id="back-to-notes-btn" class="icon-btn" :title="t('notes.backToNotes')" :aria-label="t('notes.backToNotes')" @click="router.push('/notes')">
+        <ArrowLeft :size="18" />
+      </button>
 
-        <button
-          id="share-note-btn"
-          :title="t('notes.shareBtn')"
-          class="flex h-[2.125rem] items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium transition-all duration-150 text-text-secondary hover:bg-bg-hover hover:text-text-primary"
-          @click="showShareModal = true"
-        >
-          <Share2 :size="15" />
+      <div class="save-status" role="status" aria-live="polite">
+        <template v-if="saveStatus === 'saving'">
+          <AppSpinner :size="13" />
+          <span>{{ t('common.saving') }}</span>
+        </template>
+        <template v-else-if="saveStatus === 'error'">
+          <CloudOff :size="14" class="text-error" />
+          <span class="text-error">{{ t('notes.saveFailed') }}</span>
+          <button class="save-retry" @click="saveNote()">{{ t('notes.retry') }}</button>
+        </template>
+        <template v-else-if="isDirty">
+          <span class="dirty-dot" />
+          <span>{{ t('common.unsavedChanges') }}</span>
+        </template>
+        <template v-else-if="lastSavedAt">
+          <Check :size="14" class="text-success" />
+          <span>{{ savedLabel }}</span>
+        </template>
+      </div>
+
+      <div class="ml-auto flex items-center gap-1">
+        <button id="share-note-btn" class="action-btn" :class="{ 'is-active': isPublic || sharedWith.length }" :title="t('notes.shareBtn')" @click="showShareModal = true">
+          <Share2 :size="16" />
           <span class="hidden sm:inline">{{ t('notes.shareBtn') }}</span>
         </button>
-
-        <!-- AI Button -->
-        <button
-          id="ai-panel-btn"
-          :title="t('notes.ai.assistant')"
-          class="flex h-[2.125rem] items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium transition-all duration-150"
-          :class="showAiPanel
-            ? 'bg-accent-subtle text-accent'
-            : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'"
-          @click="toggleAiPanel"
-        >
-          <Sparkles :size="15" />
+        <button id="ai-panel-btn" class="action-btn" :class="{ 'is-active': showAiPanel }" :title="t('notes.ai.assistant')" @click="showAiPanel = !showAiPanel">
+          <Sparkles :size="16" />
           <span class="hidden sm:inline">AI</span>
         </button>
-
         <button
           id="pin-note-btn"
-          :title="pinned ? 'Unpin' : 'Pin'"
-          class="text-text-secondary hover:bg-bg-hover hover:text-text-primary flex h-[2.125rem] w-[2.125rem] items-center justify-center rounded-lg transition-all duration-150"
-          :class="pinned ? 'text-warning' : ''"
+          class="icon-btn"
+          :class="{ 'is-pinned': pinned }"
+          :title="pinned ? t('notes.unpin') : t('notes.pin')"
+          :aria-label="pinned ? t('notes.unpin') : t('notes.pin')"
+          :aria-pressed="pinned"
           @click="pinned = !pinned"
         >
-          <Pin :size="16" />
+          <Pin :size="16" :class="{ 'fill-current': pinned }" />
         </button>
-        <button
-          id="save-note-btn"
-          :title="t('common.save')"
-          @click="saveNote"
-          class="text-text-secondary hover:bg-bg-hover hover:text-text-primary flex h-[2.125rem] w-[2.125rem] items-center justify-center rounded-lg transition-all duration-150"
-        >
-          <Save :size="16" />
-        </button>
-        <button
-          id="delete-note-btn"
-          :title="t('common.delete')"
-          @click="handleDelete"
-          class="text-text-secondary hover:bg-bg-hover hover:text-error flex h-[2.125rem] w-[2.125rem] items-center justify-center rounded-lg transition-all duration-150"
-        >
-          <Trash2 :size="16" />
-        </button>
-      </div>
-    </div>
 
-    <!-- Tags -->
-    <div class="mb-2 flex items-center gap-2 pb-4">
-      <Tag :size="14" class="text-text-disabled shrink-0" />
-      <div class="flex flex-wrap items-center gap-2">
-        <span
-          v-for="tag in tags"
-          :key="tag"
-          class="bg-accent-subtle text-accent flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[0.6875rem] font-medium"
-        >
-          {{ tag }}
-          <button
-            class="text-accent opacity-60 transition-opacity duration-150 hover:opacity-100"
-            @click="tags = tags.filter((t) => t !== tag)"
-          >
-            <X :size="12" />
+        <div ref="menuRef" class="relative">
+          <button class="icon-btn" :title="t('notes.moreActions')" :aria-label="t('notes.moreActions')" :aria-expanded="showMenu" @click="showMenu = !showMenu">
+            <MoreHorizontal :size="18" />
           </button>
-        </span>
-        <button
-          v-if="!showTagInput"
-          class="border-border-default text-text-tertiary hover:border-accent hover:text-accent flex items-center gap-1 rounded-full border border-dashed px-2.5 py-0.5 text-[0.6875rem] transition-all duration-150"
-          @click="showTagInput = true"
-        >
-          <Plus :size="12" />
-          {{ t('notes.addTag') }}
-        </button>
-        <input
-          v-else
-          v-model="newTag"
-          autofocus
-          class="border-accent bg-accent-subtle text-accent w-[6.25rem] rounded-full border px-2.5 py-0.5 text-[0.6875rem] focus:outline-none"
-          :placeholder="t('notes.typeTag')"
-          @keydown="handleTagKeydown"
-          @blur="showTagInput = false"
-        />
+          <Transition name="menu">
+            <div v-if="showMenu" class="note-menu" role="menu">
+              <button id="extract-events-btn" role="menuitem" :disabled="extractingEvents" @click="handleExtractEvents">
+                <AppSpinner v-if="extractingEvents" :size="15" />
+                <Bell v-else :size="15" />
+                {{ t('notes.scanEvents') }}
+              </button>
+              <button role="menuitem" @click="copyAsText">
+                <Copy :size="15" />
+                {{ t('notes.copyText') }}
+              </button>
+              <div class="note-menu__divider" />
+              <button id="delete-note-btn" role="menuitem" class="is-danger" @click="handleDelete">
+                <Trash2 :size="15" />
+                {{ t('notes.deleteTitle') }}
+              </button>
+            </div>
+          </Transition>
+        </div>
       </div>
     </div>
 
     <template v-if="loadingNote">
-      <div class="skeleton mb-4 h-[2.5rem] w-3/4"></div>
+      <div class="skeleton mt-6 mb-4 h-[2.5rem] w-3/4"></div>
+      <div class="skeleton mb-6 h-4 w-1/3"></div>
       <div class="skeleton mb-2 h-4 w-full"></div>
       <div class="skeleton mb-2 h-4 w-full"></div>
       <div class="skeleton mb-2 h-4 w-4/5"></div>
-      <div class="skeleton mb-2 h-4 w-5/6"></div>
     </template>
+
     <template v-else>
       <!-- Title -->
-      <input
+      <textarea
         id="note-title-input"
+        ref="titleRef"
         v-model="title"
-        :placeholder="t('notes.untitledNote')"
-        class="text-text-primary placeholder:text-text-disabled mb-4 w-full border-none bg-transparent py-2 text-[1.875rem] leading-tight font-bold tracking-tight focus:outline-none"
+        rows="1"
+        :placeholder="t('notes.titlePlaceholder')"
+        :aria-label="t('notes.titlePlaceholder')"
+        class="note-title"
+        @keydown="handleTitleKeydown"
+        @input="handleTitleInput"
       />
+
+      <!-- Meta + tags -->
+      <div class="note-meta">
+        <span class="note-meta__info">{{ metaLine }}</span>
+        <div class="note-tags">
+          <span v-for="tag in tags" :key="tag" class="note-tag">
+            #{{ tag }}
+            <button :aria-label="t('notes.removeTag', { tag })" @click="removeTag(tag)"><X :size="11" /></button>
+          </span>
+          <label class="note-tag-input">
+            <Hash :size="12" />
+            <input
+              ref="tagInputRef"
+              v-model="newTag"
+              list="note-tag-suggestions"
+              :placeholder="tags.length ? t('notes.addTagShort') : t('notes.addTag')"
+              @keydown="handleTagKeydown"
+              @change="addTag()"
+              @blur="addTag()"
+            />
+            <datalist id="note-tag-suggestions">
+              <option v-for="tag in tagSuggestions" :key="tag" :value="tag" />
+            </datalist>
+          </label>
+        </div>
+      </div>
 
       <!-- AI Panel -->
       <AiPanel
@@ -383,8 +567,7 @@ function handleApplyTags(aiTags: string[]) {
         @apply-tags="handleApplyTags"
       />
 
-      <!-- Rich Editor -->
-      <RichEditor v-model="content" />
+      <RichEditor ref="editorRef" v-model="content" @stats="stats = $event" />
     </template>
 
     <ReminderSuggestionModal
@@ -403,3 +586,245 @@ function handleApplyTags(aiTags: string[]) {
     />
   </div>
 </template>
+
+<style scoped>
+.note-page {
+  animation: notePageIn 0.2s ease both;
+}
+
+@keyframes notePageIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.note-topbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.icon-btn,
+.action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  height: 2.25rem;
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.icon-btn {
+  width: 2.25rem;
+}
+
+.action-btn {
+  padding: 0 0.75rem;
+}
+
+.icon-btn:hover,
+.action-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.action-btn.is-active {
+  background: var(--accent-subtle);
+  color: var(--accent);
+}
+
+.icon-btn.is-pinned {
+  color: var(--warning);
+}
+
+.save-status {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-width: 0;
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+.dirty-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--warning);
+}
+
+.save-retry {
+  margin-left: 0.25rem;
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* ── More menu ── */
+.note-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 30;
+  min-width: 13rem;
+  padding: 0.375rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-default);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-lg);
+}
+
+.note-menu button {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  width: 100%;
+  padding: 0.5rem 0.625rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  text-align: left;
+}
+
+.note-menu button:hover:not(:disabled) {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.note-menu button.is-danger:hover {
+  color: var(--error);
+}
+
+.note-menu__divider {
+  height: 1px;
+  margin: 0.25rem 0;
+  background: var(--border-subtle);
+}
+
+.menu-enter-active,
+.menu-leave-active {
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+.menu-enter-from,
+.menu-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+/* ── Title ── */
+.note-title {
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  resize: none;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+}
+
+.note-title::placeholder {
+  color: var(--text-disabled);
+}
+
+.note-title:focus {
+  outline: none;
+}
+
+@media (max-width: 640px) {
+  .note-title {
+    font-size: 1.625rem;
+  }
+}
+
+/* ── Meta & tags ── */
+.note-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  margin: 0.625rem 0 1.25rem;
+}
+
+.note-meta__info {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+}
+
+.note-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.note-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  height: 1.5rem;
+  padding: 0 0.375rem 0 0.5rem;
+  border-radius: var(--radius-full);
+  background: var(--accent-subtle);
+  color: var(--accent);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.note-tag button {
+  display: flex;
+  border-radius: 50%;
+  padding: 1px;
+  opacity: 0.6;
+}
+
+.note-tag button:hover {
+  opacity: 1;
+  background: var(--accent-glow);
+}
+
+.note-tag-input {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  height: 1.5rem;
+  padding: 0 0.5rem;
+  border-radius: var(--radius-full);
+  border: 1px dashed var(--border-default);
+  color: var(--text-tertiary);
+  transition: border-color var(--transition-fast);
+}
+
+.note-tag-input:focus-within {
+  border-style: solid;
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.note-tag-input input {
+  width: 6.5rem;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 0.75rem;
+  outline: none;
+}
+
+.note-tag-input input::placeholder {
+  color: var(--text-tertiary);
+}
+
+/* Hide the native datalist arrow in Chromium */
+.note-tag-input input::-webkit-calendar-picker-indicator {
+  display: none !important;
+}
+</style>

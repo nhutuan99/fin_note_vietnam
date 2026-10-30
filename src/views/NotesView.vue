@@ -1,29 +1,50 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useNotesStore } from '@/stores/notes'
 import { useUiStore } from '@/stores/ui'
 import { useI18n } from 'vue-i18n'
-import { Search, Plus, LayoutGrid, List, Pin, Trash2, Clock, FileText } from 'lucide-vue-next'
+import { useEventListener } from '@/composables/useEventListener'
+import { Search, Plus, LayoutGrid, List, Pin, Clock, FileText, X, Hash, ArrowDownUp } from 'lucide-vue-next'
+import type { NoteSort } from '@/types'
+import NoteCard from '@/components/notes/NoteCard.vue'
 
 const { t } = useI18n()
 const router = useRouter()
 const notesStore = useNotesStore()
 const ui = useUiStore()
 
+const searchInput = ref<HTMLInputElement | null>(null)
+const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform)
+
 onMounted(() => notesStore.fetchNotes())
 
-function formatDate(d: string) {
-  const diff = Date.now() - new Date(d).getTime()
-  const m = Math.floor(diff / 60000)
-  if (m < 60) return t('time.mAgo', { n: m })
-  const h = Math.floor(m / 60)
-  if (h < 24) return t('time.hAgo', { n: h })
-  const days = Math.floor(h / 24)
-  return days < 7
-    ? t('time.dAgo', { n: days })
-    : new Date(d).toLocaleDateString()
-}
+const filters = computed(() => [
+  { key: 'all' as const, label: t('notes.filterAll'), icon: null },
+  { key: 'pinned' as const, label: t('notes.filterPinned'), icon: Pin },
+  { key: 'recent' as const, label: t('notes.filterRecent'), icon: Clock }
+])
+
+const sortOptions = computed<{ key: NoteSort; label: string }[]>(() => [
+  { key: 'updated', label: t('notes.sortUpdated') },
+  { key: 'created', label: t('notes.sortCreated') },
+  { key: 'title', label: t('notes.sortTitle') }
+])
+
+const isFiltering = computed(
+  () => !!notesStore.searchQuery.trim() || !!notesStore.activeTag || notesStore.filter !== 'all'
+)
+
+/** Split into "Pinned" / "Others" sections only when browsing everything and both have notes */
+const sections = computed(() => {
+  if (notesStore.filter === 'all' && notesStore.pinnedNotes.length && notesStore.otherNotes.length) {
+    return [
+      { key: 'pinned', label: t('notes.sectionPinned'), notes: notesStore.pinnedNotes },
+      { key: 'others', label: t('notes.sectionOthers'), notes: notesStore.otherNotes }
+    ]
+  }
+  return [{ key: 'all', label: '', notes: notesStore.filteredNotes }]
+})
 
 const isCreating = ref(false)
 
@@ -31,13 +52,9 @@ async function createNote() {
   if (isCreating.value) return
   isCreating.value = true
   try {
-    const note = await notesStore.createNote({
-      title: t('notes.untitledNote'),
-      content: '',
-      tags: [],
-      pinned: false
-    })
-    if (note) router.push(`/notes/${note.id}`)
+    const note = await notesStore.createNote({ title: '', content: '', tags: [], pinned: false })
+    if (note) router.push({ path: `/notes/${note.id}`, query: { new: '1' } })
+    else ui.showToast('error', t('common.somethingWentWrong'))
   } finally {
     isCreating.value = false
   }
@@ -50,140 +67,161 @@ async function handleDelete(id: string) {
     danger: true,
     confirmText: t('notes.deleteConfirm')
   })
-
-  if (confirmed) {
-    if (await notesStore.deleteNote(id)) {
-      ui.showToast('success', t('notes.noteDeleted'))
-    }
+  if (confirmed && (await notesStore.deleteNote(id))) {
+    ui.showToast('success', t('notes.noteDeleted'))
   }
 }
 
-async function handleTogglePin(id: string, e: Event) {
-  e.preventDefault()
-  e.stopPropagation()
-  await notesStore.togglePin(id)
+function toggleTag(tag: string) {
+  notesStore.activeTag = notesStore.activeTag === tag ? null : tag
 }
 
-function formatExcerpt(html: string) {
-  if (!html) return ''
-  
-  let text = html.replace(/<br\s*\/?>/gi, ' ')
-  text = text.replace(/<\/?(p|div|h[1-6]|li|ul|ol|table|tr|th|td|blockquote)[^>]*>/gi, ' ')
-  
-  const doc = new DOMParser().parseFromString(text, 'text/html')
-  text = doc.body.textContent || ''
-  
-  text = text.replace(/(?:^|\s)#{1,6}\s+(.*)/g, ' $1 ') 
-  text = text.replace(/(\*\*|__)(.*?)\1/g, '$2') 
-  text = text.replace(/(\*|_)(.*?)\1/g, '$2') 
-  text = text.replace(/!\[(.*?)\]\(.*?\)/g, '$1') 
-  text = text.replace(/\[(.*?)\]\(.*?\)/g, '$1') 
-  text = text.replace(/`(.*?)`/g, '$1') 
-  text = text.replace(/```[\s\S]*?```/g, ' ') 
-  
-  text = text.replace(/[\n\r]+/g, ' ')
-  text = text.replace(/\s{2,}/g, ' ')
-  
-  return text.trim()
+function clearFilters() {
+  notesStore.searchQuery = ''
+  notesStore.activeTag = null
+  notesStore.filter = 'all'
+}
+
+function isTypingTarget(el: EventTarget | null) {
+  const node = el as HTMLElement | null
+  return !!node && (node.tagName === 'INPUT' || node.tagName === 'TEXTAREA' || node.isContentEditable)
+}
+
+// Ctrl/⌘+K or "/" focuses search, Esc clears it
+useEventListener(document, 'keydown', (e: KeyboardEvent) => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+    e.preventDefault()
+    searchInput.value?.focus()
+    searchInput.value?.select()
+  } else if (e.key === '/' && !isTypingTarget(e.target)) {
+    e.preventDefault()
+    searchInput.value?.focus()
+  }
+})
+
+function handleSearchKeydown(e: KeyboardEvent) {
+  if (e.key === 'Escape') {
+    if (notesStore.searchQuery) notesStore.searchQuery = ''
+    else searchInput.value?.blur()
+  }
 }
 </script>
 
 <template>
-  <div class="notes-page max-w-[85rem]">
-    <!-- Ambient background orbs -->
-    <div class="ambient-orbs" aria-hidden="true">
-      <div class="orb orb-1"></div>
-      <div class="orb orb-2"></div>
-      <div class="orb orb-3"></div>
-    </div>
-
+  <div class="notes-page mx-auto max-w-[85rem]">
     <!-- Header -->
-    <div class="mb-6 flex items-center justify-between header-row">
-      <div class="flex items-baseline gap-3">
+    <header class="mb-5 flex items-center justify-between gap-3">
+      <div class="min-w-0">
         <h1 class="text-2xl font-bold tracking-tight">{{ t('notes.title') }}</h1>
-        <span class="text-text-tertiary text-sm">{{ t('notes.count', { n: notesStore.filteredNotes.length }) }}</span>
+        <p class="text-text-tertiary mt-0.5 text-sm">
+          <template v-if="isFiltering">{{ t('notes.countFiltered', { n: notesStore.filteredNotes.length, total: notesStore.totalNotes }) }}</template>
+          <template v-else>{{ t('notes.count', { n: notesStore.totalNotes }) }}</template>
+        </p>
       </div>
-      <button
-        id="notes-new-btn"
-        @click="createNote"
-        class="btn-primary"
-        :disabled="isCreating"
-      >
-        <Plus :size="16" />
+      <button id="notes-new-btn" class="btn-primary shrink-0" :disabled="isCreating" @click="createNote">
+        <AppSpinner v-if="isCreating" :size="16" />
+        <Plus v-else :size="16" />
         {{ t('notes.newNote') }}
       </button>
-    </div>
+    </header>
 
     <!-- Toolbar -->
-    <div class="mb-6 flex flex-col items-stretch gap-3 md:flex-row md:items-center md:gap-4">
-      <div class="relative flex-1">
-        <Search
-          :size="16"
-          class="text-text-tertiary pointer-events-none absolute top-1/2 left-3 -translate-y-1/2"
-        />
+    <div class="mb-4 flex flex-col gap-3 md:flex-row md:items-center">
+      <div class="search-box relative flex-1">
+        <Search :size="16" class="text-text-tertiary pointer-events-none absolute top-1/2 left-3 -translate-y-1/2" />
         <input
           id="notes-search-input"
+          ref="searchInput"
           v-model="notesStore.searchQuery"
-          type="text"
+          type="search"
+          autocomplete="off"
           :placeholder="t('notes.searchPlaceholder')"
-          class="border-border-default bg-bg-surface text-text-primary placeholder:text-text-disabled focus:border-accent focus:ring-accent-subtle w-full rounded-lg border py-2.5 pr-3 pl-[2.375rem] text-sm transition-all duration-150 focus:ring-2 focus:outline-none"
+          :aria-label="t('notes.searchPlaceholder')"
+          class="search-input"
+          @keydown="handleSearchKeydown"
         />
+        <button
+          v-if="notesStore.searchQuery"
+          class="search-clear"
+          :aria-label="t('notes.clearSearch')"
+          @click="notesStore.searchQuery = ''; searchInput?.focus()"
+        >
+          <X :size="14" />
+        </button>
+        <kbd v-else class="search-kbd">{{ isMac ? '⌘' : 'Ctrl' }} K</kbd>
       </div>
-      <div class="flex items-center gap-3">
-        <!-- Filters -->
-        <div class="border-border-default flex overflow-hidden rounded-lg border">
+
+      <div class="flex items-center gap-2 overflow-x-auto">
+        <div class="segmented" role="tablist">
           <button
-            v-for="f in [
-              { key: 'all', labelKey: 'notes.filterAll' },
-              { key: 'pinned', labelKey: 'notes.filterPinned', icon: Pin },
-              { key: 'recent', labelKey: 'notes.filterRecent', icon: Clock }
-            ]"
+            v-for="f in filters"
             :key="f.key"
-            class="text-text-secondary bg-bg-surface border-border-default hover:bg-bg-hover flex items-center gap-1 border-r px-3.5 py-2 text-sm transition-all duration-150 last:border-r-0"
-            :class="notesStore.filter === f.key ? 'bg-accent-subtle text-accent' : ''"
-            @click="notesStore.filter = f.key as any"
+            role="tab"
+            :aria-selected="notesStore.filter === f.key"
+            class="segmented__item"
+            :class="{ 'is-active': notesStore.filter === f.key }"
+            @click="notesStore.filter = f.key"
           >
-            <component
-              v-if="f.icon"
-              :is="f.icon"
-              :size="12"
-            />
-            {{ t(f.labelKey) }}
+            <component :is="f.icon" v-if="f.icon" :size="13" />
+            {{ f.label }}
           </button>
         </div>
-        <!-- View toggle -->
-        <div class="border-border-default flex overflow-hidden rounded-lg border">
+
+        <label class="sort-select" :title="t('notes.sortBy')">
+          <ArrowDownUp :size="14" class="text-text-tertiary" />
+          <select v-model="notesStore.sortBy" :aria-label="t('notes.sortBy')">
+            <option v-for="opt in sortOptions" :key="opt.key" :value="opt.key">{{ opt.label }}</option>
+          </select>
+        </label>
+
+        <div class="segmented">
           <button
             id="view-grid-btn"
+            class="segmented__item segmented__item--icon"
+            :class="{ 'is-active': notesStore.viewMode === 'grid' }"
+            :aria-label="t('notes.viewGrid')"
+            :title="t('notes.viewGrid')"
             @click="notesStore.viewMode = 'grid'"
-            class="bg-bg-surface border-border-default text-text-tertiary border-r p-2 transition-all duration-150"
-            :class="notesStore.viewMode === 'grid' ? 'text-accent bg-accent-subtle' : ''"
           >
-            <LayoutGrid :size="16" />
+            <LayoutGrid :size="15" />
           </button>
           <button
             id="view-list-btn"
+            class="segmented__item segmented__item--icon"
+            :class="{ 'is-active': notesStore.viewMode === 'list' }"
+            :aria-label="t('notes.viewList')"
+            :title="t('notes.viewList')"
             @click="notesStore.viewMode = 'list'"
-            class="bg-bg-surface text-text-tertiary p-2 transition-all duration-150"
-            :class="notesStore.viewMode === 'list' ? 'text-accent bg-accent-subtle' : ''"
           >
-            <List :size="16" />
+            <List :size="15" />
           </button>
         </div>
       </div>
     </div>
 
-    <!-- Loading -->
-    <div
-      v-if="notesStore.loading"
-      class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
-      :class="notesStore.viewMode === 'list' ? '!grid-cols-1' : ''"
-    >
-      <div
-        v-for="i in 6"
-        :key="i"
-        class="bg-bg-surface border-border-default rounded-xl border p-5"
+    <!-- Tag filter -->
+    <div v-if="notesStore.allTags.length" class="tag-bar mb-5">
+      <button
+        v-for="{ tag, count } in notesStore.allTags"
+        :key="tag"
+        class="tag-chip"
+        :class="{ 'is-active': notesStore.activeTag === tag }"
+        :aria-pressed="notesStore.activeTag === tag"
+        @click="toggleTag(tag)"
       >
+        <Hash :size="12" />
+        {{ tag }}
+        <span class="tag-chip__count">{{ count }}</span>
+      </button>
+    </div>
+
+    <!-- Loading (first load only — refreshes keep the current list on screen) -->
+    <div
+      v-if="notesStore.loading && !notesStore.notes.length"
+      class="notes-grid"
+      :class="`notes-grid--${notesStore.viewMode}`"
+    >
+      <div v-for="i in 6" :key="i" class="bg-bg-surface border-border-default rounded-xl border p-5">
         <div class="skeleton mb-3 h-5 w-3/5"></div>
         <div class="skeleton mb-2 h-3.5 w-full"></div>
         <div class="skeleton h-3.5 w-4/5"></div>
@@ -191,114 +229,41 @@ function formatExcerpt(html: string) {
     </div>
 
     <!-- Notes -->
-    <div
-      v-else-if="notesStore.filteredNotes.length"
-      class="gap-4"
-      :class="
-        notesStore.viewMode === 'grid'
-          ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
-          : 'flex flex-col'
-      "
-    >
-      <!-- stagger index is set via CSS variable for per-card delay -->
-      <div
-        v-for="(note, idx) in notesStore.filteredNotes"
-        :key="note.id"
-        class="relative note-card-wrapper"
-        :class="notesStore.viewMode === 'grid' ? 'h-full' : ''"
-        :id="`note-item-${note.id}`"
-        :style="`--i: ${idx}`"
-      >
-        <router-link
-          :to="`/notes/${note.id}`"
-          class="bg-bg-surface border-border-default hover:border-border-strong hover:bg-bg-elevated hover:shadow-card group flex flex-col rounded-xl border p-5 no-underline transition-all duration-150 hover:-translate-y-px"
-          :class="
-            notesStore.viewMode === 'list'
-              ? 'md:flex-row md:items-center gap-3 md:gap-4 !py-3 md:!py-4'
-              : 'min-h-[9.375rem] h-full'
-          "
-        >
-          <div
-            class="mb-2 flex items-start justify-between gap-2"
-            :class="notesStore.viewMode === 'list' ? 'mb-0 md:min-w-[12.5rem]' : ''"
-          >
-            <h3 class="text-text-primary text-sm font-semibold">{{ note.title }}</h3>
-            <div
-              class="flex gap-0.5 transition-opacity duration-150"
-              :class="note.pinned ? 'opacity-100' : 'opacity-100 md:opacity-0 md:group-hover:opacity-100'"
-              @click.prevent
-            >
-              <button
-                class="hover:bg-bg-hover rounded p-2 md:p-1 transition-all duration-150 touch-target"
-                :class="note.pinned ? 'text-warning hover:text-warning/80' : 'text-text-tertiary hover:text-text-primary'"
-                @click="handleTogglePin(note.id, $event)"
-              >
-                <Pin :size="16" :class="note.pinned ? 'fill-warning' : ''" />
-              </button>
-              <button
-                class="text-text-tertiary hover:bg-bg-hover hover:text-error rounded p-2 md:p-1 transition-all duration-150 touch-target"
-                @click.prevent.stop="handleDelete(note.id)"
-              >
-                <Trash2 :size="16" />
-              </button>
-            </div>
-          </div>
-          <p
-            class="text-text-tertiary line-clamp-2 flex-1 text-sm leading-relaxed break-words"
-            :class="notesStore.viewMode === 'list' ? 'line-clamp-1' : ''"
-          >
-            {{ formatExcerpt(note.excerpt) || t('notes.noContent') }}
-          </p>
-          <div
-            class="border-border-subtle mt-3 flex items-center justify-between border-t pt-3"
-            :class="
-              notesStore.viewMode === 'list'
-                ? 'mt-0 md:min-w-[11.25rem] justify-between md:justify-end border-t-0 pt-0'
-                : ''
-            "
-          >
-            <div class="flex gap-1">
-              <span
-                v-for="tag in note.tags.slice(0, 3)"
-                :key="tag"
-                class="bg-accent-subtle text-accent rounded-full px-2 py-0.5 text-[0.6875rem] font-medium"
-              >
-                {{ tag }}
-              </span>
-            </div>
-            <span class="text-text-disabled text-[0.6875rem]">
-              {{ formatDate(note.updatedAt) }}
-            </span>
-          </div>
-        </router-link>
-
-      </div>
-    </div>
+    <template v-else-if="notesStore.filteredNotes.length">
+      <section v-for="section in sections" :key="section.key" class="mb-6">
+        <h2 v-if="section.label" class="section-label">{{ section.label }}</h2>
+        <TransitionGroup tag="div" name="note-list" class="notes-grid" :class="`notes-grid--${notesStore.viewMode}`">
+          <NoteCard
+            v-for="note in section.notes"
+            :id="`note-item-${note.id}`"
+            :key="note.id"
+            :note="note"
+            :view="notesStore.viewMode"
+            :query="notesStore.searchQuery"
+            @pin="notesStore.togglePin"
+            @delete="handleDelete"
+            @tag="toggleTag"
+          />
+        </TransitionGroup>
+      </section>
+    </template>
 
     <!-- Empty -->
-    <div
-      v-else
-      class="empty-state flex flex-col items-center py-12 text-center"
-    >
+    <div v-else class="empty-state flex flex-col items-center py-16 text-center">
       <div class="empty-icon-wrap mb-5">
-        <FileText :size="40" class="empty-icon" />
+        <component :is="isFiltering ? Search : FileText" :size="32" class="text-accent" />
       </div>
-      <h3 class="mb-2 text-lg font-semibold">
-        {{ notesStore.searchQuery ? t('notes.noResults') : t('notes.noNotes') }}
+      <h3 class="mb-1.5 text-lg font-semibold">
+        {{ isFiltering ? t('notes.noResults') : t('notes.noNotes') }}
       </h3>
-      <p class="text-text-tertiary mb-6 text-sm">
-        {{
-          notesStore.searchQuery
-            ? t('notes.tryDifferent')
-            : t('notes.createFirst')
-        }}
+      <p class="text-text-tertiary mb-6 max-w-sm text-sm">
+        {{ isFiltering ? t('notes.tryDifferent') : t('notes.createFirst') }}
       </p>
-      <button
-        v-if="!notesStore.searchQuery"
-        @click="createNote"
-        class="btn-secondary empty-cta"
-        :disabled="isCreating"
-      >
+      <button v-if="isFiltering" class="btn-secondary" @click="clearFilters">
+        <X :size="16" />
+        {{ t('notes.clearFilters') }}
+      </button>
+      <button v-else class="btn-primary" :disabled="isCreating" @click="createNote">
         <Plus :size="16" />
         {{ t('notes.createNote') }}
       </button>
@@ -306,132 +271,262 @@ function formatExcerpt(html: string) {
   </div>
 </template>
 
-<style>
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 200ms ease;
-}
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-}
-
-/* ── Page wrapper ─────────────────────────────────────── */
+<style scoped>
 .notes-page {
-  position: relative;
+  animation: notesFadeIn 0.25s ease both;
 }
 
-/* ── Header entrance ─────────────────────────────────── */
-.header-row {
-  animation: headerSlideIn 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-@keyframes headerSlideIn {
-  from { opacity: 0; transform: translateY(-12px); }
-  to   { opacity: 1; transform: translateY(0); }
+@keyframes notesFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
 }
 
-/* ── Note card stagger entrance ──────────────────────── */
-.note-card-wrapper {
-  animation: cardAppear 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
-  animation-delay: calc(var(--i, 0) * 55ms + 80ms);
-}
-@keyframes cardAppear {
-  from { opacity: 0; transform: translateY(18px) scale(0.97); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
+/* ── Search ── */
+.search-input {
+  width: 100%;
+  height: 2.5rem;
+  padding: 0 4.5rem 0 2.375rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-default);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
-/* ── Ambient orbs ────────────────────────────────────── */
-.ambient-orbs {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  overflow: hidden;
+.search-input::placeholder {
+  color: var(--text-disabled);
 }
-.orb {
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-subtle);
+}
+
+/* Native clear button is replaced by our own */
+.search-input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.search-clear {
   position: absolute;
-  border-radius: 50%;
-  filter: blur(90px);
-  opacity: 0.28;
-  animation: orbDrift ease-in-out infinite;
-}
-.orb-1 {
-  width: 36rem;
-  height: 36rem;
-  background: radial-gradient(circle, #7c6ff7 0%, transparent 65%);
-  top: -8rem;
-  left: -6rem;
-  animation-duration: 18s;
-  animation-delay: 0s;
-}
-.orb-2 {
-  width: 22rem;
-  height: 22rem;
-  background: radial-gradient(circle, #a78bfa 0%, transparent 70%);
-  bottom: 10rem;
-  right: -5rem;
-  animation-duration: 22s;
-  animation-delay: -7s;
-}
-.orb-3 {
-  width: 18rem;
-  height: 18rem;
-  background: radial-gradient(circle, #6d60f0 0%, transparent 70%);
   top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  animation-duration: 28s;
-  animation-delay: -14s;
-}
-@keyframes orbDrift {
-  0%   { transform: translate(0, 0) scale(1); }
-  33%  { transform: translate(2%, 3%) scale(1.05); }
-  66%  { transform: translate(-2%, 1%) scale(0.97); }
-  100% { transform: translate(0, 0) scale(1); }
-}
-/* orb-3 has its own base transform */
-.orb-3 {
-  animation-name: orbDrift3;
-}
-@keyframes orbDrift3 {
-  0%   { transform: translate(-50%, -50%) scale(1); }
-  33%  { transform: translate(-48%, -52%) scale(1.07); }
-  66%  { transform: translate(-52%, -48%) scale(0.95); }
-  100% { transform: translate(-50%, -50%) scale(1); }
-}
-
-/* ── Empty state ──────────────────────────────────────── */
-.empty-state {
-  animation: fadeUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) both 0.1s;
-}
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-.empty-icon-wrap {
-  width: 5rem;
-  height: 5rem;
-  border-radius: 50%;
+  right: 0.5rem;
+  transform: translateY(-50%);
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--accent-subtle);
-  border: 1px solid var(--border-default);
-  animation: iconBounce 2.4s ease-in-out infinite;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: var(--radius-sm);
+  color: var(--text-tertiary);
 }
-.empty-icon {
+
+.search-clear:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.search-kbd {
+  position: absolute;
+  top: 50%;
+  right: 0.625rem;
+  transform: translateY(-50%);
+  padding: 0.0625rem 0.375rem;
+  border-radius: 4px;
+  border: 1px solid var(--border-default);
+  background: var(--bg-elevated);
+  color: var(--text-tertiary);
+  font-family: inherit;
+  font-size: 0.6875rem;
+  pointer-events: none;
+}
+
+@media (hover: none) {
+  .search-kbd {
+    display: none;
+  }
+}
+
+/* ── Segmented controls ── */
+.segmented {
+  display: flex;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-default);
+  background: var(--bg-surface);
+}
+
+.segmented__item {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  height: 2.375rem;
+  padding: 0 0.875rem;
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  border-right: 1px solid var(--border-default);
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.segmented__item:last-child {
+  border-right: none;
+}
+
+.segmented__item:hover {
+  background: var(--bg-hover);
+}
+
+.segmented__item.is-active {
+  background: var(--accent-subtle);
   color: var(--accent);
 }
-@keyframes iconBounce {
-  0%, 100% { transform: translateY(0); }
-  45%       { transform: translateY(-6px); }
-  55%       { transform: translateY(-6px); }
+
+.segmented__item--icon {
+  padding: 0 0.625rem;
+  color: var(--text-tertiary);
 }
-.empty-cta {
-  animation: pulseCta 3s ease-in-out infinite;
+
+.sort-select {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  flex-shrink: 0;
+  height: 2.5rem;
+  padding: 0 0.625rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-default);
+  background: var(--bg-surface);
+  cursor: pointer;
 }
-@keyframes pulseCta {
-  0%, 100% { box-shadow: 0 0 0 0 var(--accent-glow); }
-  50%       { box-shadow: 0 0 0 6px transparent; }
+
+.sort-select select {
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  border: none;
+  outline: none;
+  cursor: pointer;
+}
+
+.sort-select select option {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+.sort-select:focus-within {
+  border-color: var(--accent);
+}
+
+/* ── Tags ── */
+.tag-bar {
+  display: flex;
+  gap: 0.375rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+
+.tag-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.tag-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
+  height: 1.75rem;
+  padding: 0 0.625rem;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-default);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  transition: all var(--transition-fast);
+}
+
+.tag-chip:hover {
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+
+.tag-chip.is-active {
+  border-color: var(--accent);
+  background: var(--accent-subtle);
+  color: var(--accent);
+}
+
+.tag-chip__count {
+  color: var(--text-tertiary);
+  font-size: 0.6875rem;
+}
+
+/* ── Grid ── */
+.section-label {
+  margin-bottom: 0.625rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.notes-grid {
+  position: relative;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.notes-grid--grid {
+  grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+}
+
+.notes-grid--list {
+  grid-template-columns: 1fr;
+  gap: 0.5rem;
+}
+
+/* Smoothly reflow cards when pinning, filtering or deleting */
+.note-list-move,
+.note-list-enter-active,
+.note-list-leave-active {
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease;
+}
+
+.note-list-enter-from,
+.note-list-leave-to {
+  opacity: 0;
+  transform: scale(0.97);
+}
+
+.note-list-leave-active {
+  position: absolute;
+  visibility: hidden;
+}
+
+/* ── Empty state ── */
+.empty-icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 4.5rem;
+  height: 4.5rem;
+  border-radius: 50%;
+  background: var(--accent-subtle);
+  border: 1px solid var(--border-default);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notes-page,
+  .note-list-move,
+  .note-list-enter-active,
+  .note-list-leave-active {
+    animation: none;
+    transition: none;
+  }
 }
 </style>
