@@ -116,31 +116,30 @@ const hasJsonBlocks = computed(() => parsedJsonBlocks.value.length > 0)
 </script>
 
 <template>
-  <div class="flex h-full flex-col max-w-6xl mx-auto w-full pb-16 px-2 sm:px-4 pt-4 sm:pt-6">
-    <div class="mb-4 flex items-center justify-between">
-      <div class="flex min-w-0 items-center gap-3">
-        <h1 v-if="!loading && note" class="text-text-primary truncate text-xl font-bold">
-          {{ note.title || 'Untitled Note' }}
-        </h1>
-        <span v-if="note?.isPublic" class="bg-accent-subtle text-accent shrink-0 rounded-md px-2 py-0.5 text-xs font-semibold">{{ t('notes.share.public') }}</span>
-        <span v-else-if="note" class="bg-bg-elevated border-border-default text-text-secondary shrink-0 flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-semibold">
-          <Lock :size="12" /> {{ t('notes.share.private') }}
-        </span>
-      </div>
+  <!-- Content flows with the page scroll (no inner scroll box), so long notes use the full height -->
+  <div class="flex flex-col max-w-6xl mx-auto w-full pb-16 px-2 sm:px-4 pt-4 sm:pt-6">
+    <div class="mb-4 flex items-start gap-3">
+      <h1 v-if="!loading && note" class="text-text-primary min-w-0 break-words text-xl font-bold leading-snug">
+        {{ note.title || 'Untitled Note' }}
+      </h1>
+      <span v-if="note?.isPublic" class="bg-accent-subtle text-accent mt-0.5 shrink-0 rounded-md px-2 py-0.5 text-xs font-semibold">{{ t('notes.share.public') }}</span>
+      <span v-else-if="note" class="bg-bg-elevated border-border-default text-text-secondary mt-0.5 shrink-0 flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-semibold">
+        <Lock :size="12" /> {{ t('notes.share.private') }}
+      </span>
     </div>
 
-    <div v-if="loading" class="flex flex-1 items-center justify-center">
+    <div v-if="loading" class="flex min-h-[50vh] items-center justify-center">
       <LogoLoader :size="40" />
     </div>
 
-    <div v-else-if="error" class="flex flex-1 flex-col items-center justify-center text-center">
+    <div v-else-if="error" class="flex min-h-[50vh] flex-col items-center justify-center text-center">
       <Lock :size="48" class="text-text-tertiary mb-4" />
       <h2 class="text-text-primary mb-2 text-xl font-bold">{{ t('sharedNote.cannotAccess') }}</h2>
       <p class="text-text-secondary mb-6 text-sm">{{ error }}</p>
       <button class="btn-primary" @click="goToDashboard">{{ t('sharedNote.goHome') }}</button>
     </div>
 
-    <div v-else-if="note" class="bg-bg-surface border-border-default flex flex-1 flex-col overflow-hidden rounded-xl border shadow-sm">
+    <div v-else-if="note" class="bg-bg-surface border-border-default flex flex-col rounded-xl border shadow-sm">
       <div class="border-border-default flex flex-wrap items-center justify-between gap-4 border-b px-4 py-3">
         <div class="flex flex-1 flex-wrap items-center gap-2">
           <span
@@ -165,7 +164,7 @@ const hasJsonBlocks = computed(() => parsedJsonBlocks.value.length > 0)
         />
       </div>
 
-      <div class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+      <div class="min-w-0 overflow-x-auto p-4 sm:p-6 lg:p-8">
         <div class="mx-auto w-full">
           <!-- JSON Interactive Viewer -->
           <template v-if="hasJsonBlocks">
