@@ -465,7 +465,23 @@ export default {
     category: 'Category',
     amount: 'Amount',
     wallet: 'Wallet',
-    source: 'Source'
+    source: 'Source',
+    clearData: 'Clear data',
+    clearTitle: 'Clear transaction history',
+    clearDesc: 'Delete income & expense transactions by week, month or year',
+    clearScope: { week: 'Week', month: 'Month', year: 'Year' },
+    clearThis: { week: 'This week', month: 'This month', year: 'This year' },
+    clearLast: { week: 'Last week', month: 'Last month', year: 'Last year' },
+    clearMonthLabel: '{month}/{year}',
+    clearYearLabel: 'Year {year}',
+    clearPrev: 'Previous period',
+    clearNext: 'Next period',
+    clearCount: '{n} transactions (income & expense) will be deleted',
+    clearWarning: 'This action cannot be undone.\nCurrent wallet balances are kept.',
+    clearConfirm: 'Delete {n} transactions',
+    clearPinTitle: 'Confirm history deletion',
+    clearPinMessage: 'Enter your PIN to delete {n} transactions.',
+    clearSuccess: 'Deleted {n} transactions'
   },
 
   // ── Add Transaction ──

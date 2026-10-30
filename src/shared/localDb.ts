@@ -154,6 +154,17 @@ export const localDbMock = async (method: string, url: string, body?: any) => {
       return sendResponse(t)
     }
   }
+  if (path === '/api/transactions/clear' && method === 'POST') {
+    // Same contract as the worker: delete history in [from, to], keep wallet balances
+    const { from, to, dryRun } = body || {}
+    const inRange = (t: Transaction) => t.date >= from && t.date <= to
+    const count = db.transactions.filter(inRange).length
+    if (!dryRun && count > 0) {
+      db.transactions = db.transactions.filter(t => !inRange(t))
+      saveDb(db)
+    }
+    return sendResponse({ count, deleted: dryRun ? 0 : count })
+  }
   if (path.startsWith('/api/transactions/') && method === 'DELETE') {
     const id = path.split('/').pop()
     const tIdx = db.transactions.findIndex(t => t.id === id)

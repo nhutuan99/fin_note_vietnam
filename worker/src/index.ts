@@ -48,6 +48,7 @@ import {
   handleListTransactions,
   handleCreateTransaction,
   handleDeleteTransaction,
+  handleClearTransactions,
   handleGetFinanceStats,
   handleGetBudget,
   handleUpdateBudget,
@@ -444,6 +445,9 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
       }
       if (path === '/api/transactions' && request.method === 'POST') {
         return handleCreateTransaction(userId, request, env)
+      }
+      if (path === '/api/transactions/clear' && request.method === 'POST') {
+        return handleClearTransactions(userId, request, env)
       }
       const txMatch = path.match(/^\/api\/transactions\/(.+)$/)
       if (txMatch && request.method === 'DELETE') {

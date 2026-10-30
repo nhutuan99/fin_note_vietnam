@@ -279,6 +279,8 @@ export interface TradingCheckinData {
   totalPnl: number
   /** Sum of all entry depositAmount values */
   totalDeposit: number
+  /** Set when the user cleared transaction history covering this date — skips auto-sync re-creation */
+  txCleared?: boolean
   createdAt: string
   updatedAt: string
 }

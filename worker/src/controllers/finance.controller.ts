@@ -299,6 +299,60 @@ export async function handleDeleteTransaction(
   return jsonResponse({ success: true })
 }
 
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
+
+/**
+ * Bulk-delete transaction history (income + expense) within [from, to] (inclusive, YYYY-MM-DD).
+ * Wallet balances are intentionally kept as-is: this clears the log, not the money.
+ * With dryRun=true only returns the number of matching transactions.
+ */
+export async function handleClearTransactions(
+  userId: string,
+  request: Request,
+  env: Env
+): Promise<Response> {
+  const body = (await request.json()) as { from?: unknown; to?: unknown; dryRun?: unknown }
+  const from = typeof body.from === 'string' ? body.from : ''
+  const to = typeof body.to === 'string' ? body.to : ''
+  if (!DATE_RE.test(from) || !DATE_RE.test(to) || from > to) {
+    return errorResponse('Khoảng thời gian không hợp lệ (from/to: YYYY-MM-DD)')
+  }
+
+  const txKey = `users/${userId}/finance/transactions`
+  const txs = (await getJSON<TransactionData[]>(env.SMART_NOTE_KV, txKey)) || []
+  const inRange = (date: string) => date >= from && date <= to
+  const removedIds = new Set(txs.filter((t) => inRange(t.date)).map((t) => t.id))
+
+  if (body.dryRun === true || removedIds.size === 0) {
+    return jsonResponse({ success: true, data: { count: removedIds.size, deleted: 0 } })
+  }
+
+  await putJSON(env.SMART_NOTE_KV, txKey, txs.filter((t) => !removedIds.has(t.id)))
+
+  // Drop pending large-transfer confirmations that point at deleted transactions
+  const ptKey = `users/${userId}/finance/pending_transfers`
+  const pendingTransfers = (await getJSON<PendingTransfer[]>(env.SMART_NOTE_KV, ptKey)) || []
+  const keptTransfers = pendingTransfers.filter((p) => !removedIds.has(p.transactionId))
+  if (keptTransfers.length !== pendingTransfers.length) {
+    await putJSON(env.SMART_NOTE_KV, ptKey, keptTransfers)
+  }
+
+  // Stop trading check-in auto-sync from re-creating the deleted P&L/deposit transactions
+  const checkins = (await getJSON<TradingCheckinData[]>(env.SMART_NOTE_KV, TRADING_CHECKINS_KEY(userId))) || []
+  let checkinsChanged = false
+  for (const c of checkins) {
+    if (inRange(c.date) && !c.txCleared) {
+      c.txCleared = true
+      checkinsChanged = true
+    }
+  }
+  if (checkinsChanged) {
+    await putJSON(env.SMART_NOTE_KV, TRADING_CHECKINS_KEY(userId), checkins)
+  }
+
+  return jsonResponse({ success: true, data: { count: removedIds.size, deleted: removedIds.size } })
+}
+
 // ====== Budget Handlers ======
 
 
@@ -405,6 +459,7 @@ export async function handleListTradingCheckins(userId: string, env: Env): Promi
     let needSync = false
 
     for (const checkin of checkins) {
+      if (checkin.txCleared) continue
       for (const e of checkin.entries) {
         if (e.pnlAmount === 0 && e.depositAmount === 0) continue
 

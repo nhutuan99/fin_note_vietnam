@@ -294,6 +294,28 @@ export const useFinanceStore = defineStore('finance', () => {
     }
   }
 
+  /**
+   * Bulk-delete transaction history in [from, to] (YYYY-MM-DD, inclusive).
+   * Wallet balances are kept; stats/list are refetched. dryRun only counts matches.
+   */
+  async function clearTransactions(from: string, to: string, dryRun = false) {
+    try {
+      const res = await httpClient.post<{ count: number; deleted: number }>(
+        '/api/transactions/clear',
+        { from, to, dryRun },
+        { silent: dryRun }
+      )
+      if (!dryRun) {
+        pagination.value.page = 1
+        await Promise.all([fetchStats(), fetchPaginatedTransactions()])
+      }
+      return res
+    } catch (err) {
+      console.error('Failed to clear transactions:', err)
+      return null
+    }
+  }
+
   async function fetchPendingTransfers() {
     if (!isLoggedIn()) return
     try {
@@ -351,6 +373,7 @@ export const useFinanceStore = defineStore('finance', () => {
     deleteWallet,
     addTransaction,
     deleteTransaction,
+    clearTransactions,
     fetchWallets,
     fetchStats,
     fetchPaginatedTransactions,

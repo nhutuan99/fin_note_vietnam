@@ -479,7 +479,23 @@ export default {
     category: 'Danh mục',
     amount: 'Số tiền',
     wallet: 'Ví',
-    source: 'Nguồn'
+    source: 'Nguồn',
+    clearData: 'Xóa dữ liệu',
+    clearTitle: 'Xóa lịch sử giao dịch',
+    clearDesc: 'Xóa giao dịch thu & chi theo tuần, tháng hoặc năm',
+    clearScope: { week: 'Tuần', month: 'Tháng', year: 'Năm' },
+    clearThis: { week: 'Tuần này', month: 'Tháng này', year: 'Năm nay' },
+    clearLast: { week: 'Tuần trước', month: 'Tháng trước', year: 'Năm trước' },
+    clearMonthLabel: 'Tháng {month}/{year}',
+    clearYearLabel: 'Năm {year}',
+    clearPrev: 'Kỳ trước',
+    clearNext: 'Kỳ sau',
+    clearCount: 'Sẽ xóa {n} giao dịch (thu & chi)',
+    clearWarning: 'Hành động này không thể hoàn tác.\nSố dư ví hiện tại được giữ nguyên.',
+    clearConfirm: 'Xóa {n} giao dịch',
+    clearPinTitle: 'Xác nhận xóa lịch sử',
+    clearPinMessage: 'Nhập mã PIN để xóa {n} giao dịch.',
+    clearSuccess: 'Đã xóa {n} giao dịch'
   },
 
   // ── Add Transaction ──

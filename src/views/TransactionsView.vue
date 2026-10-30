@@ -13,10 +13,12 @@ import {
   ChevronDown,
   Check,
   Wallet,
-  Download
+  Download,
+  Trash2
 } from 'lucide-vue-next'
 
 import TransactionTable from '@/components/finance/TransactionTable.vue'
+import ClearTransactionsModal from '@/components/finance/ClearTransactionsModal.vue'
 import { useExportCsv } from '@/composables/useExportCsv'
 import { onMounted, watch } from 'vue'
 
@@ -25,6 +27,8 @@ const router = useRouter()
 const finance = useFinancePolling()
 const ui = useUiStore()
 const { exportTransactions } = useExportCsv()
+
+const showClearModal = ref(false)
 
 const isExporting = ref(false)
 async function doExport() {
@@ -113,6 +117,14 @@ useEventListener(document, 'click', handleClickOutside)
         </p>
       </div>
       <div class="flex items-center gap-2">
+        <button
+          @click="showClearModal = true"
+          class="btn-secondary text-error"
+          :title="t('transactions.clearData')"
+        >
+          <Trash2 :size="16" />
+          <span class="hidden sm:inline">{{ t('transactions.clearData') }}</span>
+        </button>
         <button
           @click="doExport"
           class="btn-secondary"
@@ -287,6 +299,12 @@ useEventListener(document, 'click', handleClickOutside)
       @delete="deleteTx"
       @add="router.push('/transactions/add')"
       @update:page="handlePageChange"
+    />
+
+    <ClearTransactionsModal
+      v-if="showClearModal"
+      @close="showClearModal = false"
+      @cleared="showClearModal = false"
     />
   </div>
 </template>
