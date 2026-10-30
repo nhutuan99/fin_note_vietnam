@@ -2,31 +2,14 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
-import { Target, PieChart, Repeat, CreditCard, PiggyBank, ArrowRight, HandCoins, Bell, ListTodo } from 'lucide-vue-next'
-import { isAdminEmail } from '@/utils/adminCheck'
+import { Target, PieChart, Repeat, CreditCard, PiggyBank, ArrowRight, HandCoins, Bell } from 'lucide-vue-next'
 
 const { t } = useI18n()
 const router = useRouter()
-const auth = useAuthStore()
-
-const isAdmin = computed(() => isAdminEmail(auth.user?.email))
 
 const features = computed(() => {
   const items = []
   
-  // AI To-Do — VIP feature (admin only)
-  if (isAdmin.value) {
-    items.push({
-      id: 'ai-todo',
-      key: 'aiTodo.title',
-      desc: 'aiTodo.subtitle',
-      icon: ListTodo,
-      color: '#06b6d4',
-      route: '/ai-todo'
-    })
-  }
-
   items.push(
     {
       id: 'budget',

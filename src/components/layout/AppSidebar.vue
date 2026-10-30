@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
 import { useUiStore } from '@/stores/ui'
 import { useFinanceStore } from '@/stores/finance'
 import { useNotesStore } from '@/stores/notes'
@@ -10,7 +9,6 @@ import { usePortfolioSummary } from '@/composables/usePortfolioSummary'
 import { formatVNDShort } from '@/constants/finance'
 import { getWalletBrand } from '@/constants/walletBrands'
 import { useI18n } from 'vue-i18n'
-import { isAdminEmail } from '@/utils/adminCheck'
 import {
   LayoutDashboard,
   ArrowLeftRight,
@@ -18,23 +16,18 @@ import {
   FileText,
   Settings,
   Plus,
-  Newspaper,
-  PenLine,
   Target,
   ChevronDown,
   ChevronRight as ChevronRightIcon,
   LineChart,
   Bell,
   GripVertical,
-  Coffee,
-  ListTodo,
-  BookOpen
+  Coffee
 } from 'lucide-vue-next'
 
 const { t } = useI18n()
 const router = useRouter()
 const route = useRoute()
-const auth = useAuthStore()
 const ui = useUiStore()
 const finance = useFinanceStore()
 const notesStore = useNotesStore()
@@ -60,36 +53,16 @@ const navGroups = computed<NavGroup[]>(() => {
     financeItems.push({ key: 'nav.stocks', icon: LineChart, route: '/stocks' })
   }
 
-  if (isAdminEmail(auth.user?.email)) {
-    financeItems.push({ key: 'trading.title', icon: BookOpen, route: '/trading' })
-  }
-
   // 2. Workspace & Tools
   const workspaceItems = [
     { key: 'reminders.title',  icon: Bell,            route: '/reminders' },
+    { key: 'nav.notes',        icon: FileText,        route: '/notes' }
   ]
-
-  if (isAdminEmail(auth.user?.email)) {
-    workspaceItems.push({ key: 'aiTodo.title', icon: ListTodo, route: '/ai-todo' })
-  }
-  
-  workspaceItems.push({ key: 'nav.notes', icon: FileText, route: '/notes' })
-
-  // 3. Other & System
-  const systemItems = [
-    { key: 'nav.blog',         icon: Newspaper,       route: '/blog' },
-  ]
-
-  if (isAdminEmail(auth.user?.email)) {
-    systemItems.push({ key: 'blog.manageTitle', icon: PenLine, route: '/admin/blog' })
-  }
-
-  systemItems.push({ key: 'nav.settings', icon: Settings, route: '/settings' })
 
   return [
     { items: financeItems }, // No label for the primary group to save space
     { labelKey: 'nav.workspace', items: workspaceItems },
-    { labelKey: 'nav.system', items: systemItems }
+    { items: [{ key: 'nav.settings', icon: Settings, route: '/settings' }] }
   ]
 })
 
@@ -521,35 +494,6 @@ function onDragEnd() {
 .nav-item--icon {
   justify-content: center;
   padding: 0.5rem;
-}
-
-/* ══════════════════════════════════════
-   Admin Blog Button
-   ══════════════════════════════════════ */
-.admin-blog-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.625rem;
-  width: 100%;
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.5rem;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--color-accent);
-  background: linear-gradient(135deg, rgba(124, 111, 247, 0.1), rgba(168, 85, 247, 0.06));
-  border: 1px solid rgba(124, 111, 247, 0.2);
-  text-decoration: none;
-  white-space: nowrap;
-  transition: all 0.15s ease;
-}
-.admin-blog-btn:hover,
-.admin-blog-btn:active {
-  background: linear-gradient(135deg, rgba(124, 111, 247, 0.18), rgba(168, 85, 247, 0.12));
-  border-color: rgba(124, 111, 247, 0.35);
-}
-.admin-blog-btn--active {
-  background: linear-gradient(135deg, rgba(124, 111, 247, 0.18), rgba(168, 85, 247, 0.12));
-  border-color: rgba(124, 111, 247, 0.35);
 }
 
 /* ══════════════════════════════════════

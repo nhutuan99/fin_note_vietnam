@@ -21,26 +21,26 @@ const showTooltip = ref(false)
               <img src="/images/logo-512.png" alt="FinNote" class="w-full h-full object-contain rounded-md" />
             </div>
             <div>
-              <h3 class="text-sm font-bold text-text-primary leading-tight">{{ t('blog.appIntroTitle') }}</h3>
-              <p class="text-[0.6875rem] text-text-tertiary mt-0.5">PWA • {{ t('blog.appIntroNote') }}</p>
+              <h3 class="text-sm font-bold text-text-primary leading-tight">{{ t('appIntro.title') }}</h3>
+              <p class="text-[0.6875rem] text-text-tertiary mt-0.5">PWA • {{ t('appIntro.note') }}</p>
             </div>
           </div>
           <div class="space-y-2 mb-4">
             <div class="cta-tooltip__feature">
               <div class="cta-tooltip__feature-icon"><Zap :size="11" /></div>
-              <span>{{ t('blog.appIntroFeature1') }}</span>
+              <span>{{ t('appIntro.feature1') }}</span>
             </div>
             <div class="cta-tooltip__feature">
               <div class="cta-tooltip__feature-icon cta-tooltip__feature-icon--purple"><BrainCircuit :size="11" /></div>
-              <span>{{ t('blog.appIntroFeature2') }}</span>
+              <span>{{ t('appIntro.feature2') }}</span>
             </div>
             <div class="cta-tooltip__feature">
               <div class="cta-tooltip__feature-icon cta-tooltip__feature-icon--green"><LayoutDashboard :size="11" /></div>
-              <span>{{ t('blog.appIntroFeature3') }}</span>
+              <span>{{ t('appIntro.feature3') }}</span>
             </div>
           </div>
           <a href="/login" class="cta-tooltip__action group">
-            <span>{{ t('blog.appIntroCta') }}</span>
+            <span>{{ t('appIntro.cta') }}</span>
             <ArrowRight :size="14" class="transition-transform group-hover:translate-x-1" />
           </a>
         </div>

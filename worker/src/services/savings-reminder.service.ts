@@ -3,7 +3,7 @@ import { getJSON, putJSON } from './kv.service'
 import { sendPushToUser } from '../controllers/push.controller'
 
 const SAVINGS_KEY = (userId: string) => `users/${userId}/savings`
-const ALL_USERS_KEY = 'public/users' // Usually we need a registry, or we can use trading users as a proxy, but let's assume we have a user registry. Wait, do we have a public users list?
+const USERS_INDEX_KEY = 'users/_index' // email -> userId
 
 /** Convert a UTC Date to "HH:MM" string in Vietnam timezone (UTC+7) */
 function toVnTime(date: Date): { hour: number; minute: number; dateStr: string } {
@@ -17,9 +17,8 @@ function toVnTime(date: Date): { hour: number; minute: number; dateStr: string }
 }
 
 export async function checkSavingsReminders(env: Env): Promise<string> {
-  // Try to get all users from push subscriptions or trading reminder users as a proxy
-  // A better way is to maintain a savings-reminder-users registry
-  const userIds = (await getJSON<string[]>(env.SMART_NOTE_KV, 'public/trading-reminder-users')) || []
+  const usersIndex = (await getJSON<Record<string, string>>(env.SMART_NOTE_KV, USERS_INDEX_KEY)) || {}
+  const userIds = [...new Set(Object.values(usersIndex))]
   if (userIds.length === 0) return '[SavingsReminder] No users registered'
 
   const now = new Date()

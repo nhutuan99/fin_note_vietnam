@@ -4,7 +4,6 @@ import { useAuthStore } from '@/stores/auth'
 import { useUiStore } from '@/stores/ui'
 import { useNotificationStore } from '@/stores/notifications'
 import { useFinanceStore } from '@/stores/finance'
-import { useTradingStore } from '@/stores/trading'
 import { useEventListener } from '@/composables/useEventListener'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
@@ -18,19 +17,13 @@ const auth = useAuthStore()
 const ui = useUiStore()
 const notiStore = useNotificationStore()
 const finance = useFinanceStore()
-const trading = useTradingStore()
 const savings = useSavingsStore()
 const router = useRouter()
 const route = useRoute()
 
 // Dynamic back route:
 // - routes with meta.parentRoute use that
-// - /blog when authenticated → go back to '/' (came from in-app)
-const backRoute = computed(() => {
-  if (route.meta.parentRoute) return route.meta.parentRoute as string
-  if (route.path === '/blog' && auth.isAuthenticated) return '/'
-  return null
-})
+const backRoute = computed(() => (route.meta.parentRoute as string | undefined) ?? null)
 
 function goBack() {
   if (backRoute.value) {
@@ -68,7 +61,6 @@ useEventListener(document, 'click', handleOutsideClick as EventListener)
 // ─── Auth ───────────────────────────────────────────────────────────────────
 function handleLogout() {
   finance.reset()   // clear cached transactions/wallets before leaving
-  trading.reset()   // clear trading journal data — prevent leakage between users
   auth.logout()
   router.push('/login')
 }

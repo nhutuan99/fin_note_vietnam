@@ -1,7 +1,7 @@
 import { ref } from 'vue'
 import { httpClient } from '@/shared/api/httpClient'
 
-type AiAction = 'summarize' | 'continue' | 'improve' | 'tags' | 'ask' | 'finance' | 'rewrite_note' | 'create_blog' | 'format_json'
+type AiAction = 'summarize' | 'continue' | 'improve' | 'tags' | 'ask' | 'finance' | 'rewrite_note' | 'format_json'
 
 interface AiPayload {
   action: AiAction
@@ -114,7 +114,6 @@ export function useAi() {
 
   const rewriteNote     = (content: string, imagesBase64?: string[]) => runStream({ action: 'rewrite_note', content, imagesBase64 })
   const formatJson      = (content: string, imagesBase64?: string[]) => runStream({ action: 'format_json', content, imagesBase64 })
-  const createBlog      = async (content: string, imagesBase64?: string[]) => run(() => callAi({ action: 'create_blog', content, imagesBase64 }))
 
   /**
    * Finance Advisor — dedicated action that tells the model it's a finance expert,
@@ -133,8 +132,7 @@ export function useAi() {
     askAbout,
     askFinance,
     rewriteNote,
-    formatJson,
-    createBlog
+    formatJson
   }
 }
 

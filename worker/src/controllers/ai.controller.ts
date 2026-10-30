@@ -22,14 +22,6 @@ Quy tắc quan trọng:
 - Trả lời bằng tiếng Việt, dùng Markdown và emoji
 - Ngắn gọn, tối đa 200 từ
 - Nếu câu hỏi không liên quan đến tài chính, lịch sự từ chối và nhắc lại vai trò`,
-  cat_story: `Bạn là một tác giả viết kịch bản. Hãy viết một đoạn hội thoại rất ngắn (1-2 câu mỗi người) giữa 2 nhân vật:
-- Mèo Xám: Thông thái, cẩn thận, giỏi tiết kiệm.
-- Mèo Cam: Năng động, ham ăn, hay tiêu xài.
-Chủ đề ngẫu nhiên về tiền bạc, tiết kiệm, hoặc mua sắm.
-Yêu cầu bắt buộc:
-- TRẢ VỀ CHUẨN JSON ARRAY, KHÔNG ĐƯỢC CÓ BẤT KỲ TEXT NÀO KHÁC BÊN NGOÀI.
-- Cấu trúc JSON: [{"character": "orange" | "grey", "text": "nội dung thoại", "animation": "wave" | "peek" | "float" | "idle"}]
-- Thoại bằng tiếng Việt, vui nhộn.`,
   weekly_event: `Bạn là một chuyên gia tài chính cá nhân siêu sáng tạo và hài hước. 
 Hãy tạo ra MỘT sự kiện tài chính để giới thiệu tính năng "Quản lý Cổ phiếu (Stocks)" mới ra mắt của ứng dụng.
 Khuyến khích người dùng thêm mã chứng khoán đầu tiên của họ (VD: FPT, VIC, HPG) để theo dõi giá và Lãi/Lỗ tự động.
@@ -44,11 +36,6 @@ Yêu cầu bắt buộc:
   rewrite_note: `Bạn là một trợ lý thông minh. Nhiệm vụ của bạn là viết lại và trình bày nội dung ghi chú được cung cấp một cách chuyên nghiệp, sạch sẽ, súc tích và mạch lạc.
 Nếu trong nội dung có các công việc cần làm (to-do, checklist), hãy sử dụng thẻ HTML để tạo danh sách công việc. Ví dụ: <ul data-type="taskList"><li data-type="taskItem"><label><input type="checkbox"><span>Nội dung việc cần làm</span></label></li></ul>.
 Trả về nội dung được định dạng dưới dạng HTML hợp lệ để hiển thị trong Tiptap editor. Không bao gồm thẻ <html> hay <body>.`,
-  create_blog: `Bạn là một Copywriter chuyên nghiệp. Hãy chuyển đổi ghi chú của người dùng thành một bài Blog hoàn chỉnh, hấp dẫn.
-Yêu cầu bắt buộc:
-- TRẢ VỀ CHUẨN JSON, KHÔNG CÓ TEXT BÊN NGOÀI.
-- Cấu trúc: { "title": "Tiêu đề blog", "excerpt": "Mô tả ngắn gọn (tối đa 150 ký tự)", "content": "Nội dung bài viết (định dạng HTML chuẩn, dùng các thẻ h2, h3, p, strong...)", "tags": ["tag1", "tag2"] }
-- Giọng văn: chuyên nghiệp, thu hút người đọc.`,
   format_json: `Bạn là một công cụ định dạng JSON chuyên nghiệp (JSON Formatter/Beautifier).
 Nhiệm vụ: Lấy đoạn text đầu vào (có thể là JSON lỗi, JSON thu gọn, hoặc log chứa JSON) và định dạng nó thành một JSON object/array hoàn chỉnh, hợp lệ, lề 2 spaces.
 Yêu cầu bắt buộc:
@@ -94,7 +81,7 @@ export async function handleAi(request: Request, env: Env): Promise<Response> {
   const { action, content, question, imagesBase64 } = body
 
   if (!action) return errorResponse('Missing action')
-  if (!content && !['ask', 'cat_story', 'weekly_event'].includes(action)) return errorResponse('Note content is required')
+  if (!content && !['ask', 'weekly_event'].includes(action)) return errorResponse('Note content is required')
   if (action === 'ask' && !question) return errorResponse('Missing question')
 
   const systemPrompt = AI_SYSTEM_PROMPTS[action]
@@ -112,12 +99,8 @@ export async function handleAi(request: Request, env: Env): Promise<Response> {
       : `Question: ${question}`
   } else if (action === 'tags') {
     userMessage = `Title: ${body.title || ''}\nContent: ${fullContent.substring(0, 600)}`
-  } else if (action === 'cat_story') {
-    userMessage = `Tạo một câu chuyện mới. Phải trả về mảng JSON hợp lệ.`
   } else if (action === 'weekly_event') {
     userMessage = `Tạo một sự kiện tài chính mới lạ cho tuần này. Phải trả về JSON hợp lệ.`
-  } else if (action === 'create_blog') {
-    userMessage = `Ghi chú gốc:\n${fullContent}`
   } else if (action === 'rewrite_note') {
     userMessage = fullContent
   } else {
@@ -148,7 +131,7 @@ export async function handleAiStream(request: Request, env: Env): Promise<Respon
   const { action, content, question, imagesBase64 } = body
 
   if (!action) return errorResponse('Missing action')
-  if (!content && !['ask', 'cat_story', 'weekly_event'].includes(action)) return errorResponse('Note content is required')
+  if (!content && !['ask', 'weekly_event'].includes(action)) return errorResponse('Note content is required')
   if (action === 'ask' && !question) return errorResponse('Missing question')
 
   const systemPrompt = AI_SYSTEM_PROMPTS[action]
@@ -168,8 +151,6 @@ export async function handleAiStream(request: Request, env: Env): Promise<Respon
       : `Question: ${question}`
   } else if (action === 'tags') {
     userMessage = `Title: ${body.title || ''}\nContent: ${fullContent.substring(0, 600)}`
-  } else if (action === 'create_blog') {
-    userMessage = `Ghi chú gốc:\n${fullContent}`
   } else if (action === 'rewrite_note') {
     userMessage = fullContent
   } else {

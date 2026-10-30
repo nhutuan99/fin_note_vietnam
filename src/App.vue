@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // 1. Vue core
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted } from 'vue'
 
 // 2. Vue ecosystem
 import { useRoute } from 'vue-router'
@@ -9,7 +9,6 @@ import { setLocale } from '@/i18n'
 
 // 3. Stores
 import { useAuthStore } from '@/stores/auth'
-import { useTradingStore } from '@/stores/trading'
 import { useUiStore } from '@/stores/ui'
 
 // 4. Composables
@@ -19,7 +18,6 @@ import { useSwipeNavigation } from '@/composables/useSwipeNavigation'
 
 // 5. Components
 import AppLayout from '@/components/layout/AppLayout.vue'
-import TradingCheckinModal from '@/modules/finance/components/TradingCheckinModal.vue'
 import ToastContainer from '@/components/ui/ToastContainer.vue'
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 import PinDialog from '@/components/PinDialog.vue'
@@ -27,31 +25,12 @@ import { ArrowLeft } from 'lucide-vue-next'
 
 const route  = useRoute()
 const auth   = useAuthStore()
-const trading = useTradingStore()
 const ui = useUiStore()
 const { t, locale } = useI18n()
 const { deviceType, isMobileOrTablet } = useDevice()
 
 // Enable global edge-swipe navigation
 useSwipeNavigation()
-
-// ── Trading check-in auto-popup (once per calendar day) ──
-const CHECKIN_KEY = 'sn_last_trading_checkin'
-const showTradingCheckin = ref(false)
-
-function maybeTriggerCheckin() {
-  if (!auth.isAuthenticated) return
-  const today = new Date().toISOString().substring(0, 10)
-  const last = localStorage.getItem(CHECKIN_KEY)
-  if (last === today) return
-  // Only show if the user has configured wallets to track
-  if (!trading.hasWalletsConfigured) return
-  // Delay slightly to not block initial render
-  setTimeout(() => {
-    showTradingCheckin.value = true
-    localStorage.setItem(CHECKIN_KEY, today)
-  }, 2000)
-}
 
 /**
  * True when the current route should be rendered standalone (no AppLayout).
@@ -60,7 +39,7 @@ function maybeTriggerCheckin() {
 const isStandalonePage = computed(() => ['login', 'onboarding', 'landing'].includes(route.name as string))
 
 /**
- * Public pages (blog) — rendered without sidebar, accessible without login.
+ * Public pages (landing, shared notes, OTP Hub) — rendered without sidebar, accessible without login.
  */
 const isPublicPage = computed(() => !!route.meta.isPublic)
 
@@ -90,7 +69,7 @@ if (isMobileOrTablet.value) {
 }
 
 // ─── Clear PWA App Badge on open/focus ─────────────────────────────────────────
-onMounted(async () => {
+onMounted(() => {
   const clearBadge = () => {
     if (navigator && 'clearAppBadge' in navigator) {
       ;(navigator as Navigator & { clearAppBadge: () => Promise<void> }).clearAppBadge().catch(() => {})
@@ -104,12 +83,6 @@ onMounted(async () => {
       clearBadge()
     }
   })
-
-  // Load trading data then check if popup should fire
-  if (auth.isAuthenticated) {
-    await trading.fetchAll()
-    maybeTriggerCheckin()
-  }
 })
 </script>
 
@@ -127,7 +100,7 @@ onMounted(async () => {
     </div>
 
     <!--
-      Public pages (blog) — full-width, no sidebar, no auth required.
+      Public pages — full-width, no sidebar, no auth required.
     -->
     <div v-else-if="isPublicPage" class="public-layout">
       <!-- Public Header for Unauthenticated Users to discover the app -->
@@ -181,9 +154,6 @@ onMounted(async () => {
     -->
     <AppLayout v-else-if="showLayout" />
 
-    <!-- Global Trading Check-in popup (auto-trigger once per day) -->
-    <TradingCheckinModal v-model="showTradingCheckin" />
-
     <!-- Global Dialogs and Toasts -->
     <ToastContainer />
     <ConfirmDialog />
@@ -215,7 +185,7 @@ onMounted(async () => {
   overscroll-behavior-y: none;
 }
 
-/* ── Public Layout (Blog pages — no sidebar) ── */
+/* ── Public Layout (no sidebar) ── */
 .public-layout {
   height: 100vh;
   height: 100dvh;
@@ -388,7 +358,7 @@ onMounted(async () => {
     padding-bottom: max(env(safe-area-inset-bottom), 16px) !important;
   }
 
-  /* ── Safe Area: Public Layout (Blog pages) ── */
+  /* ── Safe Area: Public Layout ── */
   .public-layout {
     height: 100%;
     height: 100dvh;
@@ -414,7 +384,7 @@ onMounted(async () => {
     flex-shrink: 0;
   }
 
-  /* Blog CTA floating button — push above home indicator */
+  /* App intro CTA floating button — push above home indicator */
   .cta-float {
     bottom: calc(1.5rem + max(env(safe-area-inset-bottom), 16px)) !important;
   }

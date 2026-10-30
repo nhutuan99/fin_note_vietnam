@@ -42,14 +42,6 @@ async function copyAccount() {
       <div 
         class="relative w-full max-w-md overflow-hidden rounded-3xl bg-bg-primary shadow-2xl ring-1 ring-white/10 transition-all transform mt-16"
       >
-        <!-- Cat Mascots (Absolute positioned at the top of the modal) -->
-        <div class="absolute -top-[4.5rem] left-8 z-20" style="pointer-events: none;">
-          <CatMascot type="orange" size="md" :animation="show ? 'jump' : 'hide'" />
-        </div>
-        <div class="absolute -top-[4.5rem] right-8 z-20" style="pointer-events: none;">
-          <CatMascot type="grey" size="md" :animation="show ? 'jump' : 'hide'" />
-        </div>
-
         <!-- Header background -->
         <div class="h-32 w-full bg-gradient-to-br from-accent/20 to-accent/5 absolute top-0 left-0">
           <div class="absolute inset-0 bg-[url('/noise.png')] opacity-10 mix-blend-overlay"></div>

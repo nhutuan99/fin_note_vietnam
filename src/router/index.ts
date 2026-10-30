@@ -94,18 +94,6 @@ const router = createRouter({
       meta: { parentRoute: '/planning' }
     },
     {
-      path: '/trading',
-      name: 'trading',
-      component: () => import('@/views/TradingView.vue'),
-      meta: { parentRoute: '/' }
-    },
-    {
-      path: '/ai-todo',
-      name: 'ai-todo',
-      component: () => import('@/views/AiTodoView.vue'),
-      meta: { parentRoute: '/planning' }
-    },
-    {
       path: '/notes',
       name: 'notes',
       component: () => import('@/views/NotesView.vue')
@@ -133,24 +121,6 @@ const router = createRouter({
       component: () => import('@/views/AutoSyncView.vue')
     },
     {
-      path: '/blog',
-      name: 'blog-list',
-      component: () => import('@/views/BlogListView.vue'),
-      meta: { isPublic: true }
-    },
-    {
-      path: '/blog/:slug',
-      name: 'blog-detail',
-      component: () => import('@/views/BlogDetailView.vue'),
-      meta: { isPublic: true, parentRoute: '/blog' }
-    },
-    {
-      path: '/admin/blog',
-      name: 'admin-blog',
-      component: () => import('@/views/AdminBlogView.vue'),
-      meta: { parentRoute: '/' }
-    },
-    {
       path: '/otp-hub',
       name: 'otp-hub',
       component: () => import('@/views/OtpHubView.vue'),
@@ -175,6 +145,11 @@ const router = createRouter({
         return { path: '/landing' }
       },
       meta: { isPublic: true }
+    },
+    {
+      // Unknown or removed pages (e.g. old /blog, /trading, /ai-todo links) → home
+      path: '/:pathMatch(.*)*',
+      redirect: '/'
     }
   ]
 })

@@ -121,16 +121,6 @@ function skip() {
                 <X :size="18" />
               </button>
             </div>
-
-            <!-- Mascots pinned to bottom-right of hero -->
-            <div class="event-card__mascots">
-              <div class="mascot-grey">
-                <CatMascot type="grey" size="sm" animation="idle" />
-              </div>
-              <div class="mascot-orange">
-                <CatMascot type="orange" size="md" animation="idle" />
-              </div>
-            </div>
           </div>
 
           <!-- ── CONTENT PANEL (bottom 60%) ── -->
@@ -323,20 +313,6 @@ function skip() {
   background: rgba(0,0,0,0.6);
   transform: scale(0.95);
 }
-
-/* ── Mascots ── */
-.event-card__mascots {
-  position: absolute;
-  bottom: -4px;
-  right: 1rem;
-  z-index: 2;
-  display: flex;
-  align-items: flex-end;
-  gap: 0.25rem;
-}
-
-.mascot-grey  { width: 3rem;  height: 3rem;  }
-.mascot-orange { width: 4rem;  height: 4rem;  }
 
 /* ══════════════════════════════════════════════
    Content panel

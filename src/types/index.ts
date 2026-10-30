@@ -135,31 +135,6 @@ export interface PaginatedApiResponse<T> {
   error?: string
 }
 
-// ── Blog ──
-
-export interface Blog {
-  id: string
-  slug: string
-  title: string
-  content: string
-  excerpt: string
-  tags: string[]
-  imageUrl?: string
-  author: {
-    name: string
-    email: string
-  }
-  seoMeta: {
-    title: string
-    description: string
-    keywords: string
-  }
-  published: boolean
-  viewCount?: number
-  createdAt: string
-  updatedAt: string
-}
-
 // ── Re-exports ──
 export type { RecurringTransaction, RecurringFrequency } from './recurring'
 export type { BudgetGoal, CategoryBudget } from './budget'
@@ -215,67 +190,6 @@ export interface ReminderSuggestion {
   eventDate: string
   description: string
   url?: string
-}
-
-export interface TodoItem {
-  id: string
-  title: string
-  description: string
-  time: string
-  priority: 'low' | 'medium' | 'high' | 'urgent'
-  status: 'pending' | 'in_progress' | 'done'
-  category?: string
-  reminderId?: string
-  createdAt: string
-  updatedAt: string
-}
-
-export interface TodoSuggestion {
-  title: string
-  description: string
-  time: string
-  priority: 'low' | 'medium' | 'high' | 'urgent'
-  category?: string
-}
-
-// ── Trading Journal ──
-
-/** User config: which wallets to include in the daily trading check-in */
-export interface TradingConfig {
-  selectedWalletIds: string[]
-  /** Daily reminder time "HH:MM" in VN timezone (UTC+7). Null/absent = disabled. */
-  reminderTime?: string | null
-  createdAt: string
-  updatedAt: string
-}
-
-/** P&L entry for one wallet within a daily check-in */
-export interface TradingCheckinEntry {
-  walletId: string
-  walletName: string
-  /** 'percent' = user typed %, 'amount' = user typed VND, 'usd' = user typed USD (converted to VND) */
-  inputMode: 'percent' | 'amount' | 'usd'
-  /** Raw value: % (e.g. 2.5), VND absolute (e.g. 250000), or USD (e.g. 10) */
-  inputValue: number
-  /** Calculated VND P&L (positive = profit, negative = loss) */
-  pnlAmount: number
-  /** Additional capital deposited this session (≥ 0) */
-  depositAmount: number
-  balanceBefore: number
-  balanceAfter: number
-}
-
-/** One daily trading journal record */
-export interface TradingCheckin {
-  id: string
-  /** YYYY-MM-DD */
-  date: string
-  entries: TradingCheckinEntry[]
-  note: string
-  totalPnl: number
-  totalDeposit: number
-  createdAt: string
-  updatedAt: string
 }
 
 export interface PendingTransfer {

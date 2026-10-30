@@ -52,11 +52,6 @@ import {
   handleGetFinanceStats,
   handleGetBudget,
   handleUpdateBudget,
-  handleGetTradingConfig,
-  handleUpdateTradingConfig,
-  handleListTradingCheckins,
-  handleCreateTradingCheckin,
-  handleUpdateTradingCheckin,
   handleListPendingTransfers,
   handleResolvePendingTransfer,
 } from './controllers/finance.controller'
@@ -97,20 +92,6 @@ import {
   handleGetWebhookHistory,
 } from './controllers/misc.controller'
 
-import {
-  handleListBlogs,
-  handleGetBlog,
-  handleBlogView,
-  handleCreateBlog,
-  handleUpdateBlog,
-  handleDeleteBlog,
-  handleGenerateBlogContent,
-  handleRefineBlogContent,
-  handleGenerateBlogImage,
-  handleGetImage,
-  handleUploadImage,
-} from './controllers/blog.controller'
-
 import { handleProxyLocation, handleProxyWeather, handleProxyExchangeRate, handleProxyStockPrice, handleProxyStockHistory, handleProxyLogo, handleProxyFundNav, handleProxyFundHistory, handleProxyFundList } from './controllers/proxy.controller'
 
 import {
@@ -142,15 +123,6 @@ import {
 } from './controllers/reminder.controller'
 
 import {
-  handleListTodos,
-  handleCreateTodo,
-  handleUpdateTodo,
-  handleDeleteTodo,
-  handleClearTodos,
-  handleAiGenerateTodos,
-} from './controllers/todo.controller'
-
-import {
   handleListOtpCodes,
   handleCreateOtpCode,
   handleDeleteOtpCode,
@@ -164,7 +136,6 @@ import {
 
 import { checkAllStockAlerts } from './services/stock-alert.service'
 import { checkAllReminders } from './services/reminder.service'
-import { checkTradingReminders } from './services/trading-reminder.service'
 import { checkSavingsReminders } from './services/savings-reminder.service'
 
 
@@ -245,56 +216,18 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
         return handleEmailOtpWebhook(request, env)
       }
 
-      // Public Blog Routes
-      if (path === '/api/blogs' && request.method === 'GET') {
-        return handleListBlogs(request, env)
-      }
-      const publicBlogMatch = path.match(/^\/api\/blogs\/([^\/]+)$/)
-      if (publicBlogMatch && request.method === 'GET') {
-        return handleGetBlog(publicBlogMatch[1], env)
-      }
-      // Blog view tracking (public, no auth needed)
-      const blogViewMatch = path.match(/^\/api\/blogs\/([^\/]+)\/view$/)
-      if (blogViewMatch && request.method === 'POST') {
-        return handleBlogView(blogViewMatch[1], request, env)
-      }
-      const imageMatch = path.match(/^\/api\/images\/([^\/]+)$/)
-      if (imageMatch && request.method === 'GET') {
-        return handleGetImage(imageMatch[1], env)
-      }
-
       // Dynamic Sitemap for SEO
       if (path === '/api/sitemap.xml' && request.method === 'GET') {
-        const blogsIndex = await env.SMART_NOTE_KV.get('public/blogs/_index', 'json') as { blogs: any[] } | null
-        const blogs = (blogsIndex?.blogs || []).filter((b: any) => b.published !== false)
         const siteUrl = env.FRONTEND_URL || 'https://finnote-f4n.pages.dev'
 
-        let xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
-        xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">
+        const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>${siteUrl}</loc>
     <priority>1.0</priority>
     <changefreq>daily</changefreq>
   </url>
-  <url>
-    <loc>${siteUrl}/blog</loc>
-    <priority>0.9</priority>
-    <changefreq>daily</changefreq>
-  </url>`
-
-        for (const blog of blogs) {
-          const lastmod = blog.updatedAt || blog.createdAt || new Date().toISOString()
-          xml += `
-  <url>
-    <loc>${siteUrl}/blog/${blog.slug}</loc>
-    <lastmod>${lastmod.split('T')[0]}</lastmod>
-    <priority>0.8</priority>
-    <changefreq>weekly</changefreq>
-  </url>`
-        }
-
-        xml += '\n</urlset>'
+</urlset>`
 
         return new Response(xml, {
           headers: {
@@ -340,30 +273,6 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
       }
       if (path === '/api/auth/delete-account' && request.method === 'POST') {
         return handleDeleteAccount(userId, request, env)
-      }
-
-      // Admin Blog Routes
-      if (path === '/api/blogs' && request.method === 'POST') {
-        return handleCreateBlog(userId, request, env)
-      }
-      if (path === '/api/blogs/generate-content' && request.method === 'POST') {
-        return handleGenerateBlogContent(userId, request, env)
-      }
-      if (path === '/api/blogs/refine-content' && request.method === 'POST') {
-        return handleRefineBlogContent(userId, request, env)
-      }
-      if (path === '/api/blogs/generate-image' && request.method === 'POST') {
-        return handleGenerateBlogImage(userId, request, env)
-      }
-      if (path === '/api/images' && request.method === 'POST') {
-        return handleUploadImage(userId, request, env)
-      }
-      const adminBlogMatch = path.match(/^\/api\/blogs\/([^\/]+)$/)
-      if (adminBlogMatch && request.method === 'PUT') {
-        return handleUpdateBlog(userId, adminBlogMatch[1], request, env)
-      }
-      if (adminBlogMatch && request.method === 'DELETE') {
-        return handleDeleteBlog(userId, adminBlogMatch[1], env)
       }
 
       // ── OTP Hub (Admin Routes) ──
@@ -500,24 +409,6 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
         if (request.method === 'DELETE') return handleDeleteSaving(userId, savingIdMatch[1], env)
       }
 
-      // Trading Journal
-      if (path === '/api/trading/config' && request.method === 'GET') {
-        return handleGetTradingConfig(userId, env)
-      }
-      if (path === '/api/trading/config' && request.method === 'PUT') {
-        return handleUpdateTradingConfig(userId, request, env)
-      }
-      if (path === '/api/trading/checkins' && request.method === 'GET') {
-        return handleListTradingCheckins(userId, env)
-      }
-      if (path === '/api/trading/checkins' && request.method === 'POST') {
-        return handleCreateTradingCheckin(userId, request, env)
-      }
-      const tradingCheckinMatch = path.match(/^\/api\/trading\/checkins\/([\d-]+)$/)
-      if (tradingCheckinMatch && request.method === 'PUT') {
-        return handleUpdateTradingCheckin(userId, tradingCheckinMatch[1], request, env)
-      }
-
       // PIN
       if (path === '/api/pin' && request.method === 'GET') {
         return handleCheckPin(userId, env)
@@ -642,26 +533,6 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
         return handleAcknowledgeReminder(userId, reminderAckMatch[1], env)
       }
 
-      // Todos
-      if (path === '/api/todos' && request.method === 'GET') {
-        return handleListTodos(userId, env)
-      }
-      if (path === '/api/todos' && request.method === 'POST') {
-        return handleCreateTodo(userId, request, env)
-      }
-      if (path === '/api/todos' && request.method === 'DELETE') {
-        return handleClearTodos(userId, request, env)
-      }
-      if (path === '/api/todos/ai-generate' && request.method === 'POST') {
-        return handleAiGenerateTodos(userId, request, env)
-      }
-      const todoMatch = path.match(/^\/api\/todos\/([^\/]+)$/)
-      if (todoMatch) {
-        const todoId = todoMatch[1]
-        if (request.method === 'PUT') return handleUpdateTodo(userId, todoId, request, env)
-        if (request.method === 'DELETE') return handleDeleteTodo(userId, todoId, env)
-      }
-
       // AI
       if (path === '/api/ai/stream' && request.method === 'POST') {
         return handleAiStream(request, env)
@@ -709,7 +580,7 @@ export default {
 
   // ── Cloudflare Cron Trigger ──
   // Cron 1: */30 2-8 * * 1-5 = Stock alerts every 30 min during trading hours (9-15h VN, Mon-Fri)
-  // Cron 2: */15 * * * * = Reminders + Trading reminders every 15 minutes
+  // Cron 2: */15 * * * * = Reminders + savings reminders every 15 minutes
   async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
     // Always check stock alerts during trading hours
     const cronTime = new Date(event.scheduledTime)
@@ -730,13 +601,6 @@ export default {
       checkAllReminders(env)
         .then(result => console.log(`[Cron] Reminders: ${result}`))
         .catch(err => console.error('[Cron] Reminders failed:', err))
-    )
-
-    // Trading daily check-in reminders
-    ctx.waitUntil(
-      checkTradingReminders(env)
-        .then(result => console.log(result))
-        .catch(err => console.error('[Cron] TradingReminder failed:', err))
     )
 
     // Savings reminders

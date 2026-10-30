@@ -171,13 +171,11 @@ export default {
     wallets: 'Tài khoản',
     stocks: 'Chứng khoán',
     notes: 'Ghi chú',
-    blog: 'Blog',
     settings: 'Cài đặt',
     success: 'Thành công',
     error: 'Lỗi',
     warning: 'Cảnh báo',
     workspace: 'Công việc',
-    system: 'Hệ thống',
     addTransaction: 'Thêm giao dịch',
     walletSection: 'VÍ',
     totalBalance: 'Tổng ví',
@@ -187,114 +185,7 @@ export default {
     budget: 'Ngân sách',
     savings: 'Tiết kiệm',
     subscriptions: 'Đăng ký dịch vụ',
-    planning: 'Kế hoạch tài chính',
-    trading: 'Trading Journal'
-  },
-
-  // ── Trading Journal ──
-  trading: {
-    // Page
-    title: 'Trading Journal',
-    subtitle: 'Theo dõi lãi/lỗ theo ngày · Phân tích hiệu suất',
-    checkinToday: 'Check-in hôm nay',
-    editCheckinToday: 'Sửa check-in hôm nay',
-
-    // Period tabs
-    day: 'Ngày',
-    month: 'Tháng',
-    year: 'Năm',
-    last30Days: '30 ngày',
-    last12Months: '12 tháng',
-    last10Years: '10 năm',
-
-    // Stats cards
-    totalPnl: 'Tổng lãi/lỗ',
-    winRate: 'Tỉ lệ thắng',
-    allTimePnl: 'Tổng mọi thời',
-    totalSessions: 'Tổng phiên',
-    wl: '{w}W / {l}L',
-    wrAllTime: 'WR {wr}% all-time',
-
-    // Chart
-    chartTitle: 'Biểu đồ lãi/lỗ',
-    profit: 'Lãi',
-    loss: 'Lỗ',
-    noData: 'Chưa có dữ liệu. Hãy check-in ngày đầu tiên!',
-
-    // History list
-    historyTitle: 'Lịch sử check-in',
-    noHistory: 'Chưa có check-in nào',
-    wallets: '{n} ví',
-    deposit: '+{amount} nạp',
-
-    // FinanceOverview widget
-    widgetTitle: 'Trading Journal',
-    notCheckedIn: 'Chưa check-in hôm nay',
-    viewEdit: 'Xem / Sửa',
-    checkinCta: '+ Check-in',
-
-    // Modal — general
-    modalTitle: 'Trading Check-in',
-    stepSetup: 'Chọn ví theo dõi',
-    stepInput: 'Nhập kết quả hôm nay',
-    stepSummary: 'Xác nhận check-in',
-
-    // Modal — step 1 setup
-    setupDesc: 'Chọn các ví bạn muốn theo dõi lãi/lỗ mỗi ngày. Bạn có thể thay đổi sau.',
-    noWallets: 'Chưa có ví nào. Hãy tạo ví trước.',
-    walletRequired: 'Chọn ít nhất 1 ví để theo dõi.',
-
-    // Modal — step 2 input
-    noWalletsSelected: 'Chưa có ví nào được chọn.',
-    balanceBefore: 'Số dư: {amount}',
-    pnlLabel: 'Lãi / Lỗ',
-    pnlHint: '(âm = lỗ)',
-    depositLabel: 'Nạp thêm vốn',
-    depositHint: '(tuỳ chọn)',
-    balanceAfter: 'Số dư sau:',
-    noteLabel: 'Ghi chú phiên (tuỳ chọn)',
-    notePlaceholder: 'Nhận xét ngắn về phiên giao dịch hôm nay...',
-    inputRequired: 'Nhập lãi/lỗ hoặc nạp tiền cho ít nhất 1 ví.',
-
-    // Modal — step 3 summary
-    summaryTotal: 'Tổng lãi / lỗ hôm nay',
-    summaryDeposit: '+ {amount} nạp thêm',
-    summaryNote: 'Ghi chú',
-    balanceChange: '{before} → {after}',
-
-    // Modal — footer buttons
-    cancel: 'Huỷ',
-    next: 'Tiếp theo',
-    backToWallets: '← Ví',
-    viewSummary: 'Xem tổng kết',
-    backToEdit: '← Sửa',
-    confirm: 'Xác nhận check-in',
-    update: 'Cập nhật',
-    saving: 'Đang lưu...',
-
-    // Toast
-    successCheckin: 'Check-in thành công! 🎯',
-    successUpdate: 'Cập nhật thành công! ✅',
-    errorCheckin: 'Không thể lưu check-in. Vui lòng thử lại.',
-    errorUpdate: 'Không thể cập nhật check-in. Vui lòng thử lại.',
-
-    // Daily reminder
-    reminderTitle: 'Nhắc nhở hàng ngày',
-    reminderDesc: 'Nhận thông báo nhắc bạn check-in lãi/lỗ mỗi ngày đúng giờ',
-    reminderSetBtn: 'Đặt giờ nhắc',
-    reminderActive: 'Đang nhắc lúc {time} ⏰',
-    reminderOff: 'Chưa đặt giờ nhắc',
-    reminderPresets: 'Chọn nhanh',
-    reminderCustom: 'Tuỳ chỉnh',
-    reminderSaved: 'Đã đặt giờ nhắc lúc {time} 🔔',
-    reminderDisabled: 'Đã tắt nhắc nhở',
-    reminderSaveError: 'Không thể lưu, thử lại nhé.',
-    reminderTurnOff: 'Tắt nhắc nhở',
-
-    // USD exchange rate
-    loadingRate: 'Đang tải tỷ giá...',
-    usingUsd: '(đang dùng USD)',
-    noExchangeRate: 'Chưa có tỷ giá'
+    planning: 'Kế hoạch tài chính'
   },
 
   // ── Planning Hub ──
@@ -422,10 +313,8 @@ export default {
     welcomeBack: 'Chào bạn, {name}! 👋',
     welcomeDesc: 'Chúc bạn một ngày quản lý tài chính hiệu quả và tiết kiệm được nhiều tiền nhé.',
     toggleBalance: 'Ẩn/hiện số dư',
-    aiAdvisorTitle: 'Trợ lý tài chính AI',
     accountCount: '{n} tài khoản',
     monthlyNetFlow: 'Dòng tiền tháng này',
-    aiExamplePlaceholder: 'VD: Tôi muốn mua laptop 20tr tháng này, có nên chi không?',
     aiAnalyzing: 'Đang phân tích...',
     askAi: 'Hỏi AI',
     savingToNotes: 'Đang lưu...',
@@ -436,10 +325,6 @@ export default {
     aiPlanTitle: '📊 Kế hoạch tài chính - {date}',
     aiPlanFooter: '*Tạo tự động bởi AI Finance Advisor*',
     aiPlanDate: '*Ngày: {date}*',
-    aiTooltip: 'Meow! {name} có thể giúp gì không? 👋',
-    aiReadyToHelp: 'Sẵn sàng hỗ trợ tài chính',
-    aiGreeting:
-      'Chào bạn! 👋 Mình là {name}. Mình có thể giúp bạn phân tích chi tiêu, đưa ra lời khuyên hoặc giải đáp thắc mắc về tài chính tháng này. Bạn muốn hỏi gì nào?',
     totalAssets: 'Tổng tài sản',
     walletBalance: 'Số dư ví',
     stocksLabel: 'Cổ phiếu',
@@ -568,7 +453,6 @@ export default {
     tryDifferent: 'Thử từ khóa khác',
     createFirst: 'Tạo ghi chú đầu tiên của bạn',
     createNote: 'Tạo ghi chú',
-    createBlogBtn: 'Tạo Blog',
     shareBtn: 'Chia sẻ',
     share: {
       title: 'Chia sẻ ghi chú',
@@ -584,11 +468,6 @@ export default {
       copy: 'Sao chép',
       updateSuccess: 'Đã cập nhật quyền chia sẻ',
       updateError: 'Lỗi khi chia sẻ ghi chú'
-    },
-    blog: {
-      generating: 'AI đang viết Blog, vui lòng chờ...',
-      success: 'Đã tạo Blog thành công!',
-      error: 'Lỗi khi tạo blog'
     },
     ai: {
       assistant: 'Trợ lý AI',
@@ -985,64 +864,16 @@ export default {
       '*Yêu cầu sử dụng máy tính cài qua <strong>AltStore</strong>, <strong>Sideloadly</strong>, hoặc dùng thiết bị đã có <strong>TrollStore</strong>.'
   },
 
-  // ── Blog ──
-  blog: {
-    // Admin page
-    manageTitle: 'Quản Lý Blog',
-    manageDesc: 'Trang quản trị nội dung blog FinNote',
-    newPost: 'Bài viết mới',
-    empty: 'Chưa có bài viết nào.',
-    // Table
-    tableTitle: 'Tiêu đề',
-    tableStatus: 'Trạng thái',
-    tableDate: 'Ngày tạo',
-    tableActions: 'Thao tác',
-    statusPublished: 'Đã đăng',
-    statusDraft: 'Nháp',
-    // Modal
-    modalTitle: 'Soạn bài viết mới',
-    tabAiGenerate: 'AI Viết Bài',
-    tabPasteMarkdown: 'Paste Markdown',
-    aiHint: 'Gõ ý tưởng hoặc dán ảnh (Ctrl+V) — AI sẽ tự viết toàn bộ bài blog.',
-    pasteHint: 'Dán nội dung Markdown sẵn có — AI sẽ tự trích xuất tiêu đề, mô tả, tags.',
-    aiTopicPlaceholder: 'VD: Tiết kiệm như nào là hợp lý cho Gen Z?',
-    pasteMarkdownPlaceholder: '# Tiêu đề bài viết\n\nDán nội dung markdown của bạn vào đây...',
-    generateBtn: 'Phân tích & Tạo bài',
-    generating: 'AI đang xử lý...',
-    analyzing: 'Đang phân tích nội dung...',
-    aiWriting: 'AI đang viết bài...',
-    generatingCover: 'Đang tạo ảnh bìa...',
-    generateSuccess: 'Đã tạo xong bài viết!',
-    generateFailed: 'Lỗi khi tạo bài viết',
-    // Preview
-    previewLabel: 'Xem trước bài viết',
-    editInput: 'Quay lại chỉnh sửa',
-    // Publish
-    publishBtn: 'Xuất Bản Blog',
-    missingContent: 'Vui lòng tạo bài viết trước khi xuất bản',
-    published: 'Đã xuất bản bài viết!',
-    publishFailed: 'Lỗi khi xuất bản',
-    // Delete
-    deleteConfirm: 'Bạn có chắc chắn muốn xóa bài viết này?',
-    deleted: 'Đã xóa bài viết',
-    // Public pages
-    listTitle: 'Blog Tài Chính',
-    listDesc: 'Kiến thức quản lý tài chính cá nhân và các mẹo sử dụng FinNote hiệu quả.',
-    readMore: 'Đọc tiếp',
-    emptyPublic: 'Chưa có bài viết nào',
-    emptyPublicHint: 'Các bài viết mới sẽ sớm được cập nhật.',
-    backToList: 'Quay lại danh sách',
-    editor: 'Biên tập viên FinNote',
-    minRead: 'phút đọc',
-    // App Intro CTA
-    appIntroTitle: 'FinNote — Quản lý tài chính thông minh',
-    appIntroDesc:
+  // ── App Intro CTA ──
+  appIntro: {
+    title: 'FinNote — Quản lý tài chính thông minh',
+    desc:
       'Theo dõi thu chi, đồng bộ giao dịch ngân hàng tự động, AI phân tích tài chính cá nhân — tất cả trong một ứng dụng miễn phí.',
-    appIntroFeature1: 'Tự động ghi nhận giao dịch qua SMS',
-    appIntroFeature2: 'AI phân tích & tư vấn chi tiêu',
-    appIntroFeature3: 'Dashboard trực quan, dễ sử dụng',
-    appIntroCta: 'Dùng thử miễn phí',
-    appIntroNote: 'Không cần tải app — chạy trực tiếp trên trình duyệt'
+    feature1: 'Tự động ghi nhận giao dịch qua SMS',
+    feature2: 'AI phân tích & tư vấn chi tiêu',
+    feature3: 'Dashboard trực quan, dễ sử dụng',
+    cta: 'Dùng thử miễn phí',
+    note: 'Không cần tải app — chạy trực tiếp trên trình duyệt'
   },
 
   // ── Recurring ──
@@ -1267,56 +1098,6 @@ export default {
     accountName: 'TRUONG NHU TUAN'
   },
 
-  // ── AI To-Do ──
-  aiTodo: {
-    title: 'AI To-Do',
-    subtitle: 'Chat với AI để lên kế hoạch ngày hiệu quả',
-    placeholder: 'VD: 9h sáng họp standup, 2h chiều code feature login, 5h gym...',
-    generate: 'Tạo To-Do',
-    processing: 'AI đang phân tích...',
-    noTasksFound: 'AI không tìm thấy công việc nào trong nội dung',
-    pushReminder: 'Lời nhắc',
-    pushedToReminder: 'Đã thêm vào Lời nhắc',
-    alreadyReminder: 'Đã có lời nhắc',
-    markDone: 'Hoàn thành',
-    markPending: 'Chưa xong',
-    pending: 'Chờ làm',
-    inProgress: 'Đang làm',
-    done: 'Xong',
-    all: 'Tất cả',
-    today: 'Hôm nay',
-    upcoming: 'Sắp tới',
-    overdue: 'Quá hạn',
-    empty: 'Chưa có công việc nào',
-    emptyDesc: 'Chat với AI để tạo danh sách công việc thông minh',
-    progress: 'Tiến độ',
-    tasksDone: '{done}/{total} xong',
-    priorityLow: 'Thấp',
-    priorityMedium: 'Trung bình',
-    priorityHigh: 'Cao',
-    priorityUrgent: 'Khẩn cấp',
-    deleteConfirm: 'Xóa công việc',
-    deleteMessage: 'Công việc này sẽ bị xóa.',
-    deleted: 'Đã xóa công việc',
-    created: 'Đã tạo {n} công việc',
-    clearAll: 'Xóa tất cả',
-    catWork: 'Công việc',
-    catPersonal: 'Cá nhân',
-    catHealth: 'Sức khỏe',
-    catFinance: 'Tài chính',
-    catStudy: 'Học tập',
-    catOther: 'Khác',
-    suggestTitle: 'AI đề xuất công việc',
-    suggestDesc: 'Kiểm tra và chỉnh sửa trước khi thêm',
-    suggestConfirm: 'Tạo tất cả',
-    suggestSkip: 'Bỏ qua',
-    timelineToday: 'Hôm nay',
-    timelineTomorrow: 'Ngày mai',
-    timelineDaysAgo: '{n} ngày trước',
-    timelineDaysLeft: '{n} ngày nữa',
-    timelineOverdue: 'Quá hạn'
-  },
-
   // ── Landing Page ──
   landing: {
     nav: {
@@ -1369,7 +1150,7 @@ export default {
       },
       knowledge: {
         title: 'Không chỉ là tiền, còn là Kiến thức',
-        desc: 'Tích hợp sẵn Markdown Note xịn xò. Note lại bài học đầu tư, lập kế hoạch trả nợ, đồng bộ thẳng với Obsidian, hay thậm chí biến nó thành trang Blog công khai 1-click.'
+        desc: 'Tích hợp sẵn Markdown Note xịn xò. Note lại bài học đầu tư, lập kế hoạch trả nợ, đồng bộ thẳng với Obsidian, hay chia sẻ công khai chỉ với 1 đường link.'
       }
     },
     cta: {

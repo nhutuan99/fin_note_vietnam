@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // 1. Vue core
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 // 2. Vue ecosystem
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
@@ -8,7 +8,6 @@ import { useI18n } from 'vue-i18n'
 import { useFinancePolling } from '@/composables/useFinancePolling'
 import { usePortfolioSummary } from '@/composables/usePortfolioSummary'
 import { useUiStore } from '@/stores/ui'
-import { useTradingStore } from '@/stores/trading'
 import { useSavingsStore } from '@/stores/savings'
 // 4. Utils
 import { formatVNDShort } from '@/constants/finance'
@@ -26,27 +25,16 @@ import {
   Landmark,
   ArrowUpRight,
   ArrowDownRight,
-  BookOpen,
-  AlertCircle,
-  Bell,
   Target
 } from 'lucide-vue-next'
 import WeatherWidget from '@/components/WeatherWidget.vue'
-import TradingCheckinModal from './TradingCheckinModal.vue'
-import TradingReminderModal from './TradingReminderModal.vue'
 
 const { t, tm } = useI18n()
 const router = useRouter()
 const finance = useFinancePolling()
 const ui = useUiStore()
 const portfolio = usePortfolioSummary()
-const trading = useTradingStore()
 const savings = useSavingsStore()
-
-// Trading check-in modal (manual trigger from widget)
-const showCheckinModal = ref(false)
-// Trading reminder time modal
-const showReminderModal = ref(false)
 
 
 // ── Month navigation ──
@@ -277,113 +265,5 @@ const primaryBalance = computed(() =>
         {{ Math.round((finance.monthExpense / finance.monthIncome) * 100) }}{{ t('dashboard.incomePercent') }}
       </div>
     </div>
-
-    <!-- ── Trading Journal Widget ── -->
-    <div class="relative overflow-hidden rounded-2xl border border-border-default bg-bg-surface p-5 sm:col-span-3">
-      <!-- Subtle glow when checked in -->
-      <div
-        v-if="trading.hasDoneCheckinToday && trading.todayCheckin"
-        class="pointer-events-none absolute inset-0 opacity-[0.04]"
-        :class="trading.todayCheckin.totalPnl >= 0 ? 'bg-success' : 'bg-error'"
-      />
-
-      <!-- Header row -->
-      <div class="flex items-center gap-2 mb-3">
-        <div class="bg-accent/10 flex h-8 w-8 items-center justify-center rounded-lg shrink-0">
-          <BookOpen :size="16" class="text-accent" />
-        </div>
-        <span class="text-text-tertiary text-xs font-medium flex-1">{{ t('trading.widgetTitle') }}</span>
-
-        <!-- Reminder time badge (when active) -->
-        <button
-          v-if="trading.reminderTime"
-          @click="showReminderModal = true"
-          class="flex items-center gap-1 text-[10px] font-semibold text-accent bg-accent/10 px-2 py-1 rounded-full hover:bg-accent/20 transition-colors"
-          :title="t('trading.reminderActive', { time: trading.reminderTime })"
-        >
-          <Bell :size="10" />
-          {{ trading.reminderTime }}
-        </button>
-
-        <!-- Set reminder button (when not active) -->
-        <button
-          v-else
-          @click="showReminderModal = true"
-          class="flex items-center gap-1 text-[10px] font-medium text-text-disabled hover:text-accent transition-colors px-1.5 py-1 rounded-lg hover:bg-accent/5"
-          :title="t('trading.reminderOff')"
-        >
-          <Bell :size="11" />
-          {{ t('trading.reminderSetBtn') }}
-        </button>
-
-        <button
-          @click="showCheckinModal = true"
-          class="text-xs font-semibold px-3 py-1.5 rounded-lg transition-all"
-          :class="trading.hasDoneCheckinToday
-            ? 'text-text-tertiary hover:bg-bg-hover border border-border-default'
-            : 'bg-accent text-white hover:bg-accent/90 shadow-sm shadow-accent/20'"
-        >
-          {{ trading.hasDoneCheckinToday ? t('trading.viewEdit') : t('trading.checkinCta') }}
-        </button>
-      </div>
-
-      <!-- Not checked in -->
-      <div v-if="!trading.hasDoneCheckinToday" class="flex items-center gap-2">
-        <AlertCircle :size="13" class="text-warning shrink-0" />
-        <span class="text-xs text-text-tertiary">{{ t('trading.notCheckedIn') }}</span>
-      </div>
-
-      <!-- Today's result -->
-      <template v-else-if="trading.todayCheckin">
-        <div class="flex items-end gap-3">
-          <!-- Big P&L number -->
-          <div
-            class="text-2xl font-bold tracking-tight tabular-nums flex items-center gap-1.5 leading-none"
-            :class="trading.todayCheckin.totalPnl >= 0 ? 'text-success' : 'text-error'"
-          >
-            <TrendingUp v-if="trading.todayCheckin.totalPnl >= 0" :size="20" />
-            <TrendingDown v-else :size="20" />
-            {{ trading.todayCheckin.totalPnl >= 0 ? '+' : '' }}{{ formatVNDShort(trading.todayCheckin.totalPnl) }}
-          </div>
-          <!-- Win rate pill -->
-          <span class="mb-0.5 text-[11px] text-text-disabled">WR {{ trading.winRate }}%</span>
-        </div>
-
-        <!-- Per-wallet mini rows -->
-        <div class="mt-2.5 space-y-1.5">
-          <div
-            v-for="e in trading.todayCheckin.entries"
-            :key="e.walletId"
-            class="flex items-center gap-2"
-          >
-            <div class="h-1.5 flex-1 rounded-full bg-bg-elevated overflow-hidden">
-              <div
-                class="h-full rounded-full transition-all"
-                :class="e.pnlAmount >= 0 ? 'bg-success/60' : 'bg-error/60'"
-                :style="{
-                  width: trading.todayCheckin!.totalPnl !== 0
-                    ? `${Math.min(100, Math.abs(e.pnlAmount / trading.todayCheckin!.totalPnl) * 100)}%`
-                    : '0%'
-                }"
-              />
-            </div>
-            <span class="text-[10px] text-text-disabled w-24 text-right truncate">{{ e.walletName }}</span>
-            <span
-              class="text-[10px] font-semibold tabular-nums w-16 text-right"
-              :class="e.pnlAmount >= 0 ? 'text-success' : 'text-error'"
-            >
-              {{ e.pnlAmount >= 0 ? '+' : '' }}{{ formatVNDShort(e.pnlAmount) }}
-            </span>
-          </div>
-        </div>
-      </template>
-    </div>
-
-
   </div>
-
-  <!-- Trading Check-in Modal (manual trigger) -->
-  <TradingCheckinModal v-model="showCheckinModal" />
-  <!-- Trading Reminder Modal -->
-  <TradingReminderModal v-model="showReminderModal" />
 </template>

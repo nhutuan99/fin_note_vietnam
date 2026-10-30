@@ -10,10 +10,9 @@ import AiPanel from '@/components/editor/AiPanel.vue'
 import ShareNoteModal from '@/components/ui/ShareNoteModal.vue'
 import ReminderSuggestionModal from '@/components/ui/ReminderSuggestionModal.vue'
 import type { ReminderSuggestion } from '@/types'
-import { ArrowLeft, Save, Pin, Trash2, Tag, X, Plus, Check, Sparkles, Bell, Loader, FileText, Share2 } from 'lucide-vue-next'
+import { ArrowLeft, Save, Pin, Trash2, Tag, X, Plus, Check, Sparkles, Bell, Loader, Share2 } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import { useAi } from '@/composables/useGemini'
-import { useBlogStore } from '@/stores/blog'
 import { autoFormatJsonContent } from '@/shared/utils/jsonFormatter'
 
 const route = useRoute()
@@ -21,7 +20,6 @@ const router = useRouter()
 const notesStore = useNotesStore()
 const ui = useUiStore()
 const ai = useAi()
-const blogsStore = useBlogStore()
 const { t } = useI18n()
 
 const title = ref('')
@@ -178,63 +176,6 @@ function handleAiReplace(text: string) {
   showAiPanel.value = false
 }
 
-const creatingBlog = ref(false)
-async function handleCreateBlog() {
-  if (!content.value.trim() || creatingBlog.value) return
-  creatingBlog.value = true
-  try {
-    const rawText = content.value.replace(/<[^>]*>?/gm, '\n').replace(/\n{2,}/g, '\n').trim()
-    
-    // Extract all images
-    const imgRegex = /<img[^>]+src="([^">]+)"/g
-    let match
-    const imagesBase64: string[] = []
-    while ((match = imgRegex.exec(content.value)) !== null) {
-      imagesBase64.push(match[1])
-    }
-
-    if (!rawText && imagesBase64.length === 0) {
-      throw new Error(t('notes.blog.error'))
-    }
-
-    ui.showToast('info', t('notes.blog.generating'))
-    
-    // Using blogsStore.generateContent which uses Gemini (supports multimodal)
-    const result = await blogsStore.generateContent(rawText, imagesBase64)
-    if (!result) throw new Error(t('notes.blog.error'))
-
-    let blogContent = result.content || rawText
-    
-    // Replace [IMAGE_X] markers in the output with markdown image tags
-    imagesBase64.forEach((img, idx) => {
-      const marker = `[IMAGE_${idx}]`
-      const replacement = `\n\n![Image ${idx}](${img})\n\n`
-      if (blogContent.includes(marker)) {
-        blogContent = blogContent.replace(marker, replacement)
-      } else {
-        // If AI didn't use it, append at the end
-        blogContent += replacement
-      }
-    })
-
-    // Create blog
-    await blogsStore.createBlog({
-      title: result.title || title.value || 'Untitled Blog',
-      content: blogContent,
-      excerpt: result.excerpt || '',
-      tags: result.tags || [],
-      imageUrl: '',
-      published: true // user can edit later
-    })
-    ui.showToast('success', t('notes.blog.success'))
-    router.push('/admin/blog') // go to admin blog view
-  } catch (err: any) {
-    ui.showToast('error', err.message || t('notes.blog.error'))
-  } finally {
-    creatingBlog.value = false
-  }
-}
-
 // Sharing logic
 const showShareModal = ref(false)
 async function handleSaveShare(newIsPublic: boolean, newSharedWith: string[]) {
@@ -326,18 +267,6 @@ function handleApplyTags(aiTags: string[]) {
           <AppSpinner v-if="extractingEvents" :size="15"  />
           <Bell v-else :size="15" />
           <span class="hidden sm:inline">{{ t('notes.scanEvents') }}</span>
-        </button>
-
-        <button
-          id="create-blog-btn"
-          :title="t('notes.createBlogBtn')"
-          class="flex h-[2.125rem] items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium transition-all duration-150 text-text-secondary hover:bg-bg-hover hover:text-text-primary"
-          @click="handleCreateBlog"
-          :disabled="creatingBlog"
-        >
-          <AppSpinner v-if="creatingBlog" :size="15"  />
-          <FileText v-else :size="15" />
-          <span class="hidden sm:inline">{{ t('notes.createBlogBtn') }}</span>
         </button>
 
         <button

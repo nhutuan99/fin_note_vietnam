@@ -198,9 +198,9 @@ const stepIcons = [Globe, Wallet, Target, Sparkles]
           <div class="space-y-3 text-left mb-6">
             <div
               v-for="(item, idx) in [
-                { icon: Bot, text: t('blog.appIntroFeature2'), color: 'text-accent' },
-                { icon: Zap, text: t('blog.appIntroFeature1'), color: 'text-warning' },
-                { icon: FileText, text: t('blog.appIntroFeature3'), color: 'text-success' }
+                { icon: Bot, text: t('appIntro.feature2'), color: 'text-accent' },
+                { icon: Zap, text: t('appIntro.feature1'), color: 'text-warning' },
+                { icon: FileText, text: t('appIntro.feature3'), color: 'text-success' }
               ]"
               :key="idx"
               class="flex items-center gap-3 rounded-xl bg-bg-elevated p-3"
