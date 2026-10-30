@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Globe, DollarSign, FolderSync } from 'lucide-vue-next'
+import { Globe, DollarSign, FolderSync, CirclePlus } from 'lucide-vue-next'
+import { useQuickAddStore } from '@/stores/quickAdd'
 import { setLocale, currentLocale } from '@/i18n'
 import { useCurrency, type CurrencyCode } from '@/composables/useCurrency'
 import { useUiStore } from '@/stores/ui'
@@ -12,6 +13,7 @@ import type { User } from '@/types'
 const { t } = useI18n()
 const ui = useUiStore()
 const auth = useAuthStore()
+const quickAdd = useQuickAddStore()
 
 // Language
 const selectedLocale = ref(currentLocale())
@@ -156,6 +158,37 @@ const confirmLargeTransfer = computed({
                 type="checkbox"
                 v-model="confirmLargeTransfer"
                 class="peer sr-only"
+              />
+              <div class="peer h-6 w-11 rounded-full bg-border-default after:absolute after:top-[2px] after:left-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-white after:bg-white after:transition-all after:content-[''] peer-checked:bg-accent peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none"></div>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick add popup -->
+    <div>
+      <div class="text-text-secondary mb-3 flex items-center gap-2">
+        <CirclePlus :size="18" />
+        <h3 class="text-sm font-semibold">{{ t('quickAdd.title') }}</h3>
+      </div>
+      <div class="card-premium p-5">
+        <div class="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
+          <div>
+            <h4 class="mb-0.5 text-sm font-semibold">{{ t('quickAdd.settingTitle') }}</h4>
+            <p class="text-text-tertiary text-sm">{{ t('quickAdd.settingDesc') }}</p>
+          </div>
+          <div class="flex shrink-0 items-center gap-3">
+            <button class="btn-secondary !py-1.5 text-sm" @click="quickAdd.open('manual')">
+              {{ t('quickAdd.tryNow') }}
+            </button>
+            <label class="relative inline-flex cursor-pointer items-center">
+              <input
+                type="checkbox"
+                :checked="quickAdd.prefs.enabled"
+                class="peer sr-only"
+                :aria-label="t('quickAdd.settingTitle')"
+                @change="quickAdd.updatePrefs({ enabled: ($event.target as HTMLInputElement).checked })"
               />
               <div class="peer h-6 w-11 rounded-full bg-border-default after:absolute after:top-[2px] after:left-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-white after:bg-white after:transition-all after:content-[''] peer-checked:bg-accent peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none"></div>
             </label>

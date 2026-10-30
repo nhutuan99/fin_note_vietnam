@@ -10,6 +10,8 @@ interface LocalSchema {
   notes: Note[]
   stocks: StockPosition[]
   funds: FundPosition[]
+  /** Quick-add popup preferences (same shape as the worker's QuickAddPrefs) */
+  quickAdd?: Record<string, unknown>
 }
 
 function getDb(): LocalSchema {
@@ -180,6 +182,23 @@ export const localDbMock = async (method: string, url: string, body?: any) => {
       saveDb(db)
     }
     return sendResponse({ success: true })
+  }
+
+  // ── QUICK-ADD PREFS ──
+  if (path === '/api/quick-add/prefs') {
+    const defaults = {
+      enabled: false,
+      type: 'expense',
+      walletId: null,
+      categories: { income: 'salary', expense: 'food' },
+      updatedAt: ''
+    }
+    if (method === 'GET') return sendResponse({ ...defaults, ...db.quickAdd })
+    if (method === 'PUT') {
+      db.quickAdd = { ...defaults, ...db.quickAdd, ...body, updatedAt: new Date().toISOString() }
+      saveDb(db)
+      return sendResponse(db.quickAdd)
+    }
   }
 
   // ── FINANCE STATS ──

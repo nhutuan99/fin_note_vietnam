@@ -524,6 +524,31 @@ export default {
     }
   },
 
+  // ── Quick add popup ──
+  quickAdd: {
+    title: 'Quick add',
+    subtitle: 'Log money in or out in seconds',
+    autoCloseHint: 'Closes in 5 seconds if you don’t type anything',
+    moneyIn: 'Money in',
+    moneyOut: 'Money out',
+    amount: 'Amount',
+    fromWallet: 'Paid from',
+    toWallet: 'Received into',
+    noWallet: 'No wallets yet — create one',
+    notePlaceholder: 'Note (optional)',
+    saveIncome: 'Log money in',
+    saveExpense: 'Log money out',
+    savedIncome: '+{amount} into {wallet}',
+    savedExpense: '−{amount} from {wallet}',
+    autoOpen: 'Open when I return',
+    autoOnToast: 'Quick add will open when you come back to the app',
+    autoOffToast: 'Quick add won’t open automatically',
+    fullForm: 'Full form',
+    settingTitle: 'Open when returning to the app',
+    settingDesc: 'Show the quick-add popup whenever you come back to this tab or app. On phones, long-press the app icon for “Money out” / “Money in” shortcuts.',
+    tryNow: 'Try it'
+  },
+
   // ── Note editor ──
   editor: {
     toolbar: 'Formatting toolbar',

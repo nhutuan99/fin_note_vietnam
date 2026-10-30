@@ -124,6 +124,19 @@ export interface PushSubscriptionRecord {
   createdAt: string
 }
 
+/** Quick-add popup settings, synced across the user's devices (`users/{userId}/quick_add`). */
+export interface QuickAddPrefs {
+  /** Open the popup automatically when the user comes back to the app */
+  enabled: boolean
+  /** Last chosen tab: money in (income) or out (expense) */
+  type: 'income' | 'expense'
+  /** Last chosen wallet (money source) */
+  walletId: string | null
+  /** Last chosen category per tab */
+  categories: { income: string; expense: string }
+  updatedAt: string
+}
+
 export interface BudgetData {
   amount: number
   dismissed: boolean

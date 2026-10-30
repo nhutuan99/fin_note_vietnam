@@ -16,5 +16,21 @@
       "type": "image/png",
       "purpose": "any maskable"
     }
+  ],
+  "shortcuts": [
+    {
+      "name": "Nhập nhanh: Tiền ra",
+      "short_name": "Tiền ra",
+      "description": "Ghi nhanh một khoản chi",
+      "url": "/?quick=expense",
+      "icons": [{ "src": "/images/logo-512.png", "sizes": "512x512", "type": "image/png" }]
+    },
+    {
+      "name": "Nhập nhanh: Tiền vào",
+      "short_name": "Tiền vào",
+      "description": "Ghi nhanh một khoản thu",
+      "url": "/?quick=income",
+      "icons": [{ "src": "/images/logo-512.png", "sizes": "512x512", "type": "image/png" }]
+    }
   ]
 }

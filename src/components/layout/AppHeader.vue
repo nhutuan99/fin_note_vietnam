@@ -10,7 +10,8 @@ import { useI18n } from 'vue-i18n'
 import { formatMoney } from '@/composables/useCurrency'
 import { getWalletBrand } from '@/constants/walletBrands'
 import { useSavingsStore } from '@/stores/savings'
-import { Menu, ChevronLeft, Bell, Settings, LogOut, ArrowUpRight, ArrowDownRight, CheckCheck, Trash2, BellOff, Zap, Sun, Moon, Eye, EyeOff } from 'lucide-vue-next'
+import { Menu, ChevronLeft, Bell, Settings, LogOut, ArrowUpRight, ArrowDownRight, CheckCheck, Trash2, BellOff, Zap, Sun, Moon, Eye, EyeOff, CirclePlus } from 'lucide-vue-next'
+import { useQuickAddStore } from '@/stores/quickAdd'
 
 const { t } = useI18n()
 const auth = useAuthStore()
@@ -18,6 +19,7 @@ const ui = useUiStore()
 const notiStore = useNotificationStore()
 const finance = useFinanceStore()
 const savings = useSavingsStore()
+const quickAdd = useQuickAddStore()
 const router = useRouter()
 const route = useRoute()
 
@@ -128,6 +130,17 @@ async function handleAutoSaveApprove(n: any) {
 
     <!-- Right -->
     <div class="flex items-center gap-1">
+      <!-- Quick add -->
+      <button
+        id="quick-add-btn"
+        class="text-text-secondary hover:bg-bg-hover active:bg-bg-hover hover:text-accent active:text-accent relative flex h-[2.125rem] w-[2.125rem] items-center justify-center rounded-lg transition-all duration-150"
+        :title="t('quickAdd.title')"
+        :aria-label="t('quickAdd.title')"
+        @click="quickAdd.open('manual')"
+      >
+        <CirclePlus :size="19" />
+      </button>
+
       <!-- Toggle Balance -->
       <button
         class="text-text-secondary hover:bg-bg-hover active:bg-bg-hover hover:text-accent active:text-accent relative flex h-[2.125rem] w-[2.125rem] items-center justify-center rounded-lg transition-all duration-150"
@@ -343,16 +356,16 @@ async function handleAutoSaveApprove(n: any) {
         </transition>
       </div>
 
-      <!-- Settings -->
+      <!-- Settings (phones reach it from the sidebar; hidden here so the header fits 375px) -->
       <router-link
         to="/settings"
-        class="text-text-secondary hover:bg-bg-hover active:bg-bg-hover hover:text-text-primary active:text-text-primary flex h-[2.125rem] w-[2.125rem] items-center justify-center rounded-lg transition-all duration-150"
+        class="text-text-secondary hover:bg-bg-hover active:bg-bg-hover hover:text-text-primary active:text-text-primary hidden h-[2.125rem] w-[2.125rem] items-center justify-center rounded-lg transition-all duration-150 sm:flex"
         id="settings-btn"
       >
         <Settings :size="18" />
       </router-link>
 
-      <div class="bg-border-default mx-2 h-6 w-px"></div>
+      <div class="bg-border-default mx-1 h-6 w-px sm:mx-2"></div>
 
       <!-- User / Logout -->
       <template v-if="auth.isAuthenticated">

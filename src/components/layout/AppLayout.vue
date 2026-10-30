@@ -7,6 +7,8 @@ import ContactFeedbackModal from '@/components/ui/ContactFeedbackModal.vue'
 import BuyMeCoffeeModal from '@/components/ui/BuyMeCoffeeModal.vue'
 import PwaInstallGuide from '@/components/ui/PwaInstallGuide.vue'
 import PullToRefresh from '@/components/ui/PullToRefresh.vue'
+import QuickAddModal from '@/components/finance/QuickAddModal.vue'
+import { useQuickAddTriggers } from '@/composables/useQuickAddTriggers'
 import { ArrowUp } from 'lucide-vue-next'
 import { useUiStore } from '@/stores/ui'
 import { useNotificationStore } from '@/stores/notifications'
@@ -28,6 +30,9 @@ const { t } = useI18n()
 
 // 🔴 Browser tab red dot when there are unread notifications
 useFaviconBadge(computed(() => notificationStore.unreadCount))
+
+// Quick-add popup: on return to the app (if enabled) and from home-screen shortcuts
+useQuickAddTriggers()
 
 const showScrollTop = ref(false)
 const mainRef = ref<HTMLElement | null>(null)
@@ -204,6 +209,7 @@ async function handleRefresh(done: () => void) {
       @close="ui.showBuyMeCoffee = false" 
     />
     <PwaInstallGuide />
+    <QuickAddModal />
   </div>
 </template>
 

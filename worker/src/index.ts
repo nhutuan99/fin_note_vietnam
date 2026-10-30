@@ -53,6 +53,8 @@ import {
   handleGetFinanceStats,
   handleGetBudget,
   handleUpdateBudget,
+  handleGetQuickAddPrefs,
+  handleUpdateQuickAddPrefs,
   handleListPendingTransfers,
   handleResolvePendingTransfer,
 } from './controllers/finance.controller'
@@ -381,6 +383,14 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
       }
       if (path === '/api/finance/budget' && request.method === 'PUT') {
         return handleUpdateBudget(userId, request, env)
+      }
+
+      // Finance: Quick-add popup preferences (synced across devices)
+      if (path === '/api/quick-add/prefs' && request.method === 'GET') {
+        return handleGetQuickAddPrefs(userId, env)
+      }
+      if (path === '/api/quick-add/prefs' && request.method === 'PUT') {
+        return handleUpdateQuickAddPrefs(userId, request, env)
       }
 
       // Finance: Savings

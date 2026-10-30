@@ -1,4 +1,4 @@
-import { Env, UserData, TransactionData, WalletData, BudgetData, PendingTransfer } from '../types'
+import { Env, UserData, TransactionData, WalletData, BudgetData, QuickAddPrefs, PendingTransfer } from '../types'
 import { errorResponse, jsonResponse } from '../utils/response'
 import { generateId } from '../utils/crypto'
 import { getJSON, putJSON } from '../services/kv.service'
@@ -336,6 +336,50 @@ export async function handleClearTransactions(
   }
 
   return jsonResponse({ success: true, data: { count: removedIds.size, deleted: removedIds.size } })
+}
+
+// ====== Quick-add Preferences ======
+
+const QUICK_ADD_KEY = (userId: string) => `users/${userId}/quick_add`
+const DEFAULT_QUICK_ADD: QuickAddPrefs = {
+  enabled: false,
+  type: 'expense',
+  walletId: null,
+  categories: { income: 'salary', expense: 'food' },
+  updatedAt: ''
+}
+const CATEGORY_RE = /^[a-z_]{1,32}$/
+
+export async function handleGetQuickAddPrefs(userId: string, env: Env): Promise<Response> {
+  const stored = await getJSON<Partial<QuickAddPrefs>>(env.SMART_NOTE_KV, QUICK_ADD_KEY(userId))
+  return jsonResponse({ success: true, data: { ...DEFAULT_QUICK_ADD, ...stored } })
+}
+
+/** Partial update: only fields present and valid in the body are changed. */
+export async function handleUpdateQuickAddPrefs(userId: string, request: Request, env: Env): Promise<Response> {
+  const body = (await request.json()) as Record<string, unknown>
+  const current = {
+    ...DEFAULT_QUICK_ADD,
+    ...(await getJSON<Partial<QuickAddPrefs>>(env.SMART_NOTE_KV, QUICK_ADD_KEY(userId)))
+  }
+
+  if (typeof body.enabled === 'boolean') current.enabled = body.enabled
+  if (body.type === 'income' || body.type === 'expense') current.type = body.type
+  if (body.walletId === null || (typeof body.walletId === 'string' && body.walletId.length <= 64)) {
+    current.walletId = body.walletId as string | null
+  }
+  const categories = body.categories as Record<string, unknown> | undefined
+  if (categories && typeof categories === 'object') {
+    current.categories = { ...current.categories }
+    for (const kind of ['income', 'expense'] as const) {
+      const value = categories[kind]
+      if (typeof value === 'string' && CATEGORY_RE.test(value)) current.categories[kind] = value
+    }
+  }
+  current.updatedAt = new Date().toISOString()
+
+  await putJSON(env.SMART_NOTE_KV, QUICK_ADD_KEY(userId), current)
+  return jsonResponse({ success: true, data: current })
 }
 
 // ====== Budget Handlers ======
