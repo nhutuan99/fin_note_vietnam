@@ -227,6 +227,20 @@ export const localDbMock = async (method: string, url: string, body?: any) => {
       return sendResponse(n)
     }
   }
+  if (path === '/api/notes/tags/delete' && method === 'POST') {
+    const removeAll = body?.all === true
+    const doomed = new Set<string>(Array.isArray(body?.tags) ? body.tags : [])
+    const shouldRemove = (tag: string) => removeAll || doomed.has(tag)
+    let updated = 0
+    db.notes.forEach(n => {
+      if (n.tags.some(shouldRemove)) {
+        n.tags = n.tags.filter(tag => !shouldRemove(tag))
+        updated++
+      }
+    })
+    saveDb(db)
+    return sendResponse({ updated })
+  }
   if (path.startsWith('/api/notes/') && method === 'GET') {
     const id = path.split('/').pop()
     const n = db.notes.find(x => x.id === id)

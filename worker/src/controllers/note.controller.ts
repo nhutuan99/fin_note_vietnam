@@ -183,6 +183,34 @@ export async function handleDeleteNote(userId: string, noteId: string, env: Env)
   return jsonResponse({ success: true })
 }
 
+/**
+ * Removes tags from every note of the user (`{ tags: [...] }`, or `{ all: true }` for every tag).
+ * Notes themselves are kept. updatedAt is left alone: this is a metadata cleanup, and bumping it
+ * would reorder the list and make open editors hit a save conflict.
+ */
+export async function handleDeleteNoteTags(userId: string, request: Request, env: Env): Promise<Response> {
+  const body = (await request.json()) as Record<string, unknown>
+  const removeAll = body.all === true
+  const targets = new Set(sanitizeTags(body.tags) ?? [])
+  if (!removeAll && targets.size === 0) return errorResponse('No tags given')
+
+  const index = (await getJSON<{ notes: NoteIndexItem[] }>(env.SMART_NOTE_KV, indexKey(userId))) || { notes: [] }
+  const shouldRemove = (tag: string) => removeAll || targets.has(tag)
+  const affected = index.notes.filter((n) => n.tags.some(shouldRemove))
+
+  for (const item of affected) {
+    const note = await getJSON<NoteData>(env.SMART_NOTE_KV, noteKey(userId, item.id))
+    if (note) {
+      note.tags = note.tags.filter((tag) => !shouldRemove(tag))
+      await putJSON(env.SMART_NOTE_KV, noteKey(userId, item.id), note)
+    }
+    item.tags = item.tags.filter((tag) => !shouldRemove(tag))
+  }
+  if (affected.length) await putJSON(env.SMART_NOTE_KV, indexKey(userId), index)
+
+  return jsonResponse({ success: true, data: { updated: affected.length } })
+}
+
 export async function handleUpdateNoteShare(
   userId: string,
   noteId: string,

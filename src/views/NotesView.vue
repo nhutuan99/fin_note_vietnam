@@ -5,7 +5,7 @@ import { useNotesStore } from '@/stores/notes'
 import { useUiStore } from '@/stores/ui'
 import { useI18n } from 'vue-i18n'
 import { useEventListener } from '@/composables/useEventListener'
-import { Search, Plus, LayoutGrid, List, Pin, Clock, FileText, X, Hash, ArrowDownUp } from 'lucide-vue-next'
+import { Search, Plus, LayoutGrid, List, Pin, Clock, FileText, X, Hash, ArrowDownUp, Pencil, Trash2, Check } from 'lucide-vue-next'
 import type { NoteSort } from '@/types'
 import NoteCard from '@/components/notes/NoteCard.vue'
 import MenuSelect from '@/components/ui/MenuSelect.vue'
@@ -77,6 +77,40 @@ function toggleTag(tag: string) {
   notesStore.activeTag = notesStore.activeTag === tag ? null : tag
 }
 
+// ── Tag management: remove a tag (or all tags) from every note; notes are kept ──
+const managingTags = ref(false)
+const deletingTags = ref(false)
+
+async function deleteTag(tag: string, count: number) {
+  const confirmed = await ui.requestConfirm({
+    title: t('notes.tags.deleteOneTitle', { tag }),
+    message: t('notes.tags.deleteOneMessage', { tag, n: count }),
+    danger: true,
+    confirmText: t('notes.tags.deleteConfirm')
+  })
+  if (!confirmed) return
+  deletingTags.value = true
+  const ok = await notesStore.deleteTags([tag])
+  deletingTags.value = false
+  ui.showToast(ok ? 'success' : 'error', ok ? t('notes.tags.deletedOne', { tag }) : t('common.somethingWentWrong'))
+  if (!notesStore.allTags.length) managingTags.value = false
+}
+
+async function deleteAllTags() {
+  const confirmed = await ui.requestConfirm({
+    title: t('notes.tags.deleteAllTitle'),
+    message: t('notes.tags.deleteAllMessage', { n: notesStore.allTags.length }),
+    danger: true,
+    confirmText: t('notes.tags.deleteConfirm')
+  })
+  if (!confirmed) return
+  deletingTags.value = true
+  const ok = await notesStore.deleteTags('all')
+  deletingTags.value = false
+  ui.showToast(ok ? 'success' : 'error', ok ? t('notes.tags.deletedAll') : t('common.somethingWentWrong'))
+  if (ok) managingTags.value = false
+}
+
 function clearFilters() {
   notesStore.searchQuery = ''
   notesStore.activeTag = null
@@ -97,6 +131,8 @@ useEventListener(document, 'keydown', (e: KeyboardEvent) => {
   } else if (e.key === '/' && !isTypingTarget(e.target)) {
     e.preventDefault()
     searchInput.value?.focus()
+  } else if (e.key === 'Escape' && managingTags.value && !ui.confirmState.isOpen) {
+    managingTags.value = false
   }
 })
 
@@ -203,20 +239,59 @@ function handleSearchKeydown(e: KeyboardEvent) {
       </div>
     </div>
 
-    <!-- Tag filter -->
-    <div v-if="notesStore.allTags.length" class="tag-bar mb-5">
-      <button
-        v-for="{ tag, count } in notesStore.allTags"
-        :key="tag"
-        class="tag-chip"
-        :class="{ 'is-active': notesStore.activeTag === tag }"
-        :aria-pressed="notesStore.activeTag === tag"
-        @click="toggleTag(tag)"
-      >
-        <Hash :size="12" />
-        {{ tag }}
-        <span class="tag-chip__count">{{ count }}</span>
-      </button>
+    <!-- Tag filter / tag management -->
+    <div v-if="notesStore.allTags.length" class="tag-row mb-5" :class="{ 'is-managing': managingTags }">
+      <div class="tag-bar">
+        <template v-if="managingTags">
+          <span v-for="{ tag, count } in notesStore.allTags" :key="tag" class="tag-chip tag-chip--manage">
+            <Hash :size="12" />
+            {{ tag }}
+            <span class="tag-chip__count">{{ count }}</span>
+            <button
+              class="tag-chip__remove"
+              :title="t('notes.tags.deleteOne', { tag })"
+              :aria-label="t('notes.tags.deleteOne', { tag })"
+              :disabled="deletingTags"
+              @click="deleteTag(tag, count)"
+            >
+              <X :size="12" />
+            </button>
+          </span>
+        </template>
+        <template v-else>
+          <button
+            v-for="{ tag, count } in notesStore.allTags"
+            :key="tag"
+            class="tag-chip"
+            :class="{ 'is-active': notesStore.activeTag === tag }"
+            :aria-pressed="notesStore.activeTag === tag"
+            :title="notesStore.activeTag === tag ? t('notes.tags.clearFilter') : t('notes.tags.filterBy', { tag })"
+            @click="toggleTag(tag)"
+          >
+            <Hash :size="12" />
+            {{ tag }}
+            <span class="tag-chip__count">{{ count }}</span>
+            <X v-if="notesStore.activeTag === tag" :size="12" class="tag-chip__clear" />
+          </button>
+        </template>
+      </div>
+
+      <div class="tag-actions">
+        <template v-if="managingTags">
+          <button class="tag-action tag-action--danger" :disabled="deletingTags" @click="deleteAllTags">
+            <Trash2 :size="13" />
+            {{ t('notes.tags.deleteAll') }}
+          </button>
+          <button class="tag-action tag-action--primary" @click="managingTags = false">
+            <Check :size="13" />
+            {{ t('notes.tags.done') }}
+          </button>
+        </template>
+        <button v-else class="tag-action" :title="t('notes.tags.manage')" @click="managingTags = true">
+          <Pencil :size="13" />
+          <span class="tag-action__label">{{ t('notes.tags.manage') }}</span>
+        </button>
+      </div>
     </div>
 
     <!-- Loading (first load only — refreshes keep the current list on screen) -->
@@ -434,14 +509,119 @@ function handleSearchKeydown(e: KeyboardEvent) {
 }
 
 /* ── Tags ── */
+.tag-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
 .tag-bar {
   display: flex;
+  flex: 1;
+  min-width: 0;
   gap: 0.375rem;
   overflow-x: auto;
   scrollbar-width: none;
-  padding-bottom: 2px;
+  padding: 2px 0;
   /* Fade the trailing edge so a horizontally scrollable row reads as "more →" */
   mask-image: linear-gradient(to right, #000 calc(100% - 2.5rem), transparent);
+}
+
+/* Managing: show every tag at once (wrapped) so each one can be removed */
+.tag-row.is-managing .tag-bar {
+  flex-wrap: wrap;
+  overflow: visible;
+  mask-image: none;
+}
+
+.tag-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 0.375rem;
+  padding: 2px 0;
+}
+
+.tag-action {
+  display: flex;
+  align-items: center;
+  gap: 0.3125rem;
+  height: 1.75rem;
+  padding: 0 0.625rem;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-default);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  white-space: nowrap;
+  transition: all var(--transition-fast);
+}
+
+.tag-action:hover:not(:disabled) {
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+
+.tag-action:focus-visible,
+.tag-chip:focus-visible,
+.tag-chip__remove:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-subtle);
+}
+
+.tag-action--danger {
+  color: var(--error);
+}
+
+.tag-action--danger:hover:not(:disabled) {
+  border-color: var(--error);
+  color: var(--error);
+  background: color-mix(in srgb, var(--error) 10%, transparent);
+}
+
+.tag-action--primary {
+  border-color: var(--accent);
+  background: var(--accent-subtle);
+  color: var(--accent);
+}
+
+.tag-action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@container notes (max-width: 30rem) {
+  .tag-action__label {
+    display: none;
+  }
+}
+
+.tag-chip__clear {
+  margin-left: 0.125rem;
+  opacity: 0.8;
+}
+
+.tag-chip--manage {
+  padding-right: 0.25rem;
+  border-style: dashed;
+}
+
+.tag-chip__remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-left: 0.125rem;
+  border-radius: 50%;
+  border: 1px solid transparent;
+  color: var(--text-tertiary);
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.tag-chip__remove:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--error) 15%, transparent);
+  color: var(--error);
 }
 
 .tag-bar::-webkit-scrollbar {

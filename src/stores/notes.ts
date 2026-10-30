@@ -237,6 +237,25 @@ export const useNotesStore = defineStore('notes', () => {
     if (!saved) note.pinned = !note.pinned
   }
 
+  /** Removes the given tags (or every tag) from all notes; the notes themselves are kept. */
+  async function deleteTags(tags: string[] | 'all'): Promise<boolean> {
+    const removeAll = tags === 'all'
+    try {
+      await httpClient.post<{ updated: number }>('/api/notes/tags/delete', removeAll ? { all: true } : { tags })
+      const doomed = new Set(removeAll ? [] : tags)
+      const shouldRemove = (tag: string) => removeAll || doomed.has(tag)
+      notes.value.forEach((n) => {
+        if (n.tags.some(shouldRemove)) n.tags = n.tags.filter((tag) => !shouldRemove(tag))
+      })
+      if (currentNote.value) currentNote.value.tags = currentNote.value.tags.filter((tag) => !shouldRemove(tag))
+      if (activeTag.value && shouldRemove(activeTag.value)) activeTag.value = null
+      return true
+    } catch (err) {
+      console.error('Failed to delete tags:', err)
+      return false
+    }
+  }
+
   return {
     notes,
     currentNote,
@@ -259,6 +278,7 @@ export const useNotesStore = defineStore('notes', () => {
     updateNoteShare,
     deleteNote,
     togglePin,
+    deleteTags,
     obsidian
   }
 })

@@ -37,6 +37,7 @@ import {
   handleUpdateNote,
   handleDeleteNote,
   handleUpdateNoteShare,
+  handleDeleteNoteTags,
   handleGetSharedNote,
 } from './controllers/note.controller'
 
@@ -308,6 +309,9 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
       }
       if (path === '/api/notes' && request.method === 'POST') {
         return handleCreateNote(userId, request, env)
+      }
+      if (path === '/api/notes/tags/delete' && request.method === 'POST') {
+        return handleDeleteNoteTags(userId, request, env)
       }
       const noteMatch = path.match(/^\/api\/notes\/([^/]+)$/)
       if (noteMatch) {

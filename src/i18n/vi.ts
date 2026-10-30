@@ -491,6 +491,21 @@ export default {
     conflictLoaded: 'Đã tải bản mới nhất',
     conflictLoadedWithCopy: 'Đã tải bản mới nhất · bản của bạn được lưu thành ghi chú riêng',
     conflictCopySuffix: '(bản xung đột)',
+    tags: {
+      manage: 'Quản lý tag',
+      done: 'Xong',
+      filterBy: 'Lọc theo #{tag}',
+      clearFilter: 'Bỏ lọc tag',
+      deleteOne: 'Xóa tag #{tag}',
+      deleteAll: 'Xóa tất cả tag',
+      deleteConfirm: 'Xóa tag',
+      deleteOneTitle: 'Xóa tag #{tag}?',
+      deleteOneMessage: 'Tag #{tag} sẽ được gỡ khỏi {n} ghi chú.\nCác ghi chú vẫn được giữ nguyên.',
+      deleteAllTitle: 'Xóa tất cả tag?',
+      deleteAllMessage: 'Toàn bộ {n} tag sẽ được gỡ khỏi mọi ghi chú.\nCác ghi chú vẫn được giữ nguyên.',
+      deletedOne: 'Đã xóa tag #{tag}',
+      deletedAll: 'Đã xóa tất cả tag'
+    },
     shareBtn: 'Chia sẻ',
     share: {
       title: 'Chia sẻ ghi chú',

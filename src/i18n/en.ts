@@ -478,6 +478,21 @@ export default {
     conflictLoaded: 'Loaded the latest version',
     conflictLoadedWithCopy: 'Loaded the latest version · your edits were saved as a separate note',
     conflictCopySuffix: '(conflicted copy)',
+    tags: {
+      manage: 'Manage tags',
+      done: 'Done',
+      filterBy: 'Filter by #{tag}',
+      clearFilter: 'Clear tag filter',
+      deleteOne: 'Delete tag #{tag}',
+      deleteAll: 'Delete all tags',
+      deleteConfirm: 'Delete tag',
+      deleteOneTitle: 'Delete tag #{tag}?',
+      deleteOneMessage: 'Tag #{tag} will be removed from {n} notes.\nThe notes themselves are kept.',
+      deleteAllTitle: 'Delete all tags?',
+      deleteAllMessage: 'All {n} tags will be removed from every note.\nThe notes themselves are kept.',
+      deletedOne: 'Deleted tag #{tag}',
+      deletedAll: 'Deleted all tags'
+    },
     ai: {
       assistant: 'AI Assistant',
       summarize: 'Summarize',
