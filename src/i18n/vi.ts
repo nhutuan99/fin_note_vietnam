@@ -545,6 +545,7 @@ export default {
     moneyIn: 'Tiền vào',
     moneyOut: 'Tiền ra',
     amount: 'Số tiền',
+    category: 'Danh mục',
     fromWallet: 'Trừ từ nguồn tiền',
     toWallet: 'Cộng vào nguồn tiền',
     noWallet: 'Chưa có nguồn tiền — tạo ví mới',
@@ -558,7 +559,7 @@ export default {
     autoOffToast: 'Đã tắt tự mở popup nhập nhanh',
     fullForm: 'Form đầy đủ',
     settingTitle: 'Tự mở khi quay lại ứng dụng',
-    settingDesc: 'Hiện popup nhập nhanh mỗi khi bạn mở lại tab hoặc ứng dụng. Trên điện thoại, giữ biểu tượng ứng dụng để chọn lối tắt “Tiền ra” / “Tiền vào”.',
+    settingDesc: 'Hiện popup nhập nhanh mỗi khi bạn quay lại tab hoặc ứng dụng, ở bất kỳ trang nào. Trên điện thoại, giữ biểu tượng ứng dụng để chọn lối tắt “Tiền ra” / “Tiền vào”.',
     tryNow: 'Mở thử'
   },
 

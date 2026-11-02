@@ -5,20 +5,9 @@ import { useUiStore } from '@/stores/ui'
 import { useEventListener } from '@/composables/useEventListener'
 import type { TransactionType } from '@/types'
 
-/** Ignore quick tab flicks (alt-tab and back) so the popup doesn't pop up constantly */
-const MIN_AWAY_MS = 3000
-
-/** Pages where an automatic popup would get in the way (writing, or already adding a transaction) */
-const NO_AUTO_OPEN_ROUTES = new Set(['note-detail', 'add-transaction', 'onboarding', 'otp-hub'])
-
-function isTyping() {
-  const el = document.activeElement as HTMLElement | null
-  return !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)
-}
-
 /**
  * Opens the quick-add popup:
- * - when the user comes back to the app/tab (if enabled in settings), and
+ * - every time the user comes back to the app/tab, on any page (when enabled in settings), and
  * - from home-screen shortcuts / links with `?quick=1|income|expense`.
  * Mount once in the authenticated layout.
  */
@@ -28,28 +17,13 @@ export function useQuickAddTriggers() {
   const route = useRoute()
   const router = useRouter()
 
-  let hiddenAt = 0
-
+  // Only a confirm/PIN prompt that is already waiting for an answer takes precedence
   function canAutoOpen() {
-    return (
-      store.prefs.enabled &&
-      !store.isOpen &&
-      !ui.confirmState.isOpen &&
-      !ui.pinState.isOpen &&
-      !NO_AUTO_OPEN_ROUTES.has(String(route.name)) &&
-      !isTyping()
-    )
+    return store.prefs.enabled && !store.isOpen && !ui.confirmState.isOpen && !ui.pinState.isOpen
   }
 
   useEventListener(document, 'visibilitychange', () => {
-    if (document.visibilityState === 'hidden') {
-      hiddenAt = Date.now()
-      return
-    }
-    if (hiddenAt && Date.now() - hiddenAt >= MIN_AWAY_MS && canAutoOpen()) {
-      store.open('visibility')
-    }
-    hiddenAt = 0
+    if (document.visibilityState === 'visible' && canAutoOpen()) store.open('visibility')
   })
 
   /** `?quick=` from the PWA shortcuts; the param is removed so a reload doesn't reopen it */

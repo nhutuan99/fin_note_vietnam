@@ -532,6 +532,7 @@ export default {
     moneyIn: 'Money in',
     moneyOut: 'Money out',
     amount: 'Amount',
+    category: 'Category',
     fromWallet: 'Paid from',
     toWallet: 'Received into',
     noWallet: 'No wallets yet — create one',
@@ -545,7 +546,7 @@ export default {
     autoOffToast: 'Quick add won’t open automatically',
     fullForm: 'Full form',
     settingTitle: 'Open when returning to the app',
-    settingDesc: 'Show the quick-add popup whenever you come back to this tab or app. On phones, long-press the app icon for “Money out” / “Money in” shortcuts.',
+    settingDesc: 'Show the quick-add popup whenever you come back to this tab or app, on any page. On phones, long-press the app icon for “Money out” / “Money in” shortcuts.',
     tryNow: 'Try it'
   },
 

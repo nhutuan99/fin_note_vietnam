@@ -2,7 +2,7 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { ArrowDownLeft, ArrowUpRight, X, Check, Wallet as WalletIcon, Plus, ChevronRight } from 'lucide-vue-next'
+import { ArrowDownLeft, ArrowUpRight, X, Check, Wallet as WalletIcon, Plus, ChevronRight, Tag } from 'lucide-vue-next'
 import type { TransactionType, Wallet } from '@/types'
 import { useQuickAddStore } from '@/stores/quickAdd'
 import { useFinanceStore } from '@/stores/finance'
@@ -45,13 +45,6 @@ const amountWidth = computed(() => {
   const digits = amount.value > 0 ? new Intl.NumberFormat('vi-VN').format(amount.value).length : 1
   return `${digits + 0.5}ch`
 })
-
-/** Bring the selected wallet/category chips into view (they live in horizontal scrollers) */
-function revealSelected() {
-  dialogRef.value
-    ?.querySelectorAll<HTMLElement>('.qa-chips--scroll .is-active')
-    .forEach((el) => el.scrollIntoView({ block: 'nearest', inline: 'center' }))
-}
 
 // ── Auto close ──
 const countingDown = ref(false)
@@ -96,8 +89,7 @@ async function initialise() {
     autoCloseTimer = setTimeout(close, AUTO_CLOSE_MS)
   }
   await nextTick()
-  revealSelected()
-  dialogRef.value?.querySelector<HTMLInputElement>('.qa-amount-input')?.focus()
+  dialogRef.value?.querySelector<HTMLInputElement>('.qa-amount-input')?.focus({ preventScroll: true })
 }
 
 watch(
@@ -131,7 +123,6 @@ function setType(next: TransactionType) {
   type.value = next
   category.value = store.prefs.categories[next]
   store.updatePrefs({ type: next })
-  nextTick(revealSelected)
 }
 
 function setWallet(w: Wallet) {
@@ -154,7 +145,7 @@ async function submit() {
   if (!canSubmit.value) {
     shake.value = true
     setTimeout(() => (shake.value = false), 400)
-    dialogRef.value?.querySelector<HTMLInputElement>('.qa-amount-input')?.focus()
+    dialogRef.value?.querySelector<HTMLInputElement>('.qa-amount-input')?.focus({ preventScroll: true })
     return
   }
   submitting.value = true
@@ -302,7 +293,8 @@ function walletBrand(w: Wallet) {
             <WalletIcon :size="13" />
             {{ type === 'income' ? t('quickAdd.toWallet') : t('quickAdd.fromWallet') }}
           </div>
-          <div v-if="finance.wallets.length" class="qa-chips qa-chips--scroll">
+          <!-- Every option visible at once: no hidden horizontal scrolling (unreachable with a mouse) -->
+          <div v-if="finance.wallets.length" class="qa-wallets">
             <button
               v-for="w in finance.wallets"
               :key="w.id"
@@ -323,7 +315,7 @@ function walletBrand(w: Wallet) {
               </span>
               <span v-else class="qa-wallet__emoji">{{ w.icon }}</span>
               <span class="qa-wallet__text">
-                <span class="qa-wallet__name">{{ w.name }}</span>
+                <span class="qa-wallet__name" :title="w.name">{{ w.name }}</span>
                 <span class="qa-wallet__balance">{{ formatVND(w.balance) }}</span>
               </span>
             </button>
@@ -334,7 +326,11 @@ function walletBrand(w: Wallet) {
           </button>
 
           <!-- Category -->
-          <div class="qa-chips qa-chips--scroll qa-chips--categories">
+          <div class="qa-section-label">
+            <Tag :size="13" />
+            {{ t('quickAdd.category') }}
+          </div>
+          <div class="qa-chips qa-chips--categories">
             <button
               v-for="c in categories"
               :key="c.key"
@@ -356,7 +352,8 @@ function walletBrand(w: Wallet) {
             :placeholder="t('quickAdd.notePlaceholder')"
           />
 
-          <!-- Submit -->
+          <!-- Submit + footer stay pinned to the bottom when the sheet has to scroll -->
+          <div class="qa-actions">
           <button class="qa-submit" :disabled="submitting" @click="submit">
             <AppSpinner v-if="submitting" :size="18" />
             <Check v-else :size="18" />
@@ -379,6 +376,7 @@ function walletBrand(w: Wallet) {
               <ChevronRight :size="14" />
             </button>
           </div>
+          </div>
         </div>
       </div>
     </Transition>
@@ -393,8 +391,8 @@ function walletBrand(w: Wallet) {
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(6px);
+  /* No backdrop-filter: blurring the whole page while it fades in is what made opening janky */
+  background: rgba(0, 0, 0, 0.6);
 }
 
 @media (min-width: 640px) {
@@ -412,7 +410,7 @@ function walletBrand(w: Wallet) {
   max-height: calc(100dvh - 2rem);
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 0.75rem 1.25rem calc(1.25rem + env(safe-area-inset-bottom));
+  padding: 0.75rem 1.25rem 0;
   border-radius: 1.5rem 1.5rem 0 0;
   border: 1px solid var(--border-default);
   border-bottom: none;
@@ -427,8 +425,8 @@ function walletBrand(w: Wallet) {
 
 @media (min-width: 640px) {
   .qa-sheet {
-    max-width: 28rem;
-    padding: 1.25rem 1.5rem 1.25rem;
+    max-width: 36rem;
+    padding: 1.25rem 1.5rem 0;
     border-radius: 1.5rem;
     border-bottom: 1px solid var(--border-default);
     box-shadow: var(--shadow-lg);
@@ -616,24 +614,22 @@ function walletBrand(w: Wallet) {
   flex-wrap: wrap;
 }
 
-.qa-chips--scroll {
-  overflow-x: auto;
-  scrollbar-width: none;
-  margin-left: -1.25rem;
-  margin-right: -1.25rem;
-  padding: 0 1.25rem 2px;
+/* Categories wrap onto as many lines as needed: every option is one tap/click away */
+.qa-chips--categories {
+  flex-wrap: wrap;
 }
 
-@media (min-width: 640px) {
-  .qa-chips--scroll {
-    margin-left: -1.5rem;
-    margin-right: -1.5rem;
-    padding: 0 1.5rem 2px;
-  }
+.qa-chips--categories .qa-chip {
+  height: 1.875rem;
+  padding: 0 0.625rem;
+  font-size: 0.75rem;
 }
 
-.qa-chips--scroll::-webkit-scrollbar {
-  display: none;
+.qa-wallets {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 9.5rem), 1fr));
+  gap: 0.5rem;
+  margin-bottom: 1rem;
 }
 
 .qa-chip {
@@ -684,9 +680,8 @@ function walletBrand(w: Wallet) {
   display: flex;
   align-items: center;
   gap: 0.625rem;
-  flex-shrink: 0;
-  min-width: 9rem;
-  padding: 0.5rem 0.75rem 0.5rem 0.5rem;
+  min-width: 0;
+  padding: 0.4375rem 0.625rem 0.4375rem 0.4375rem;
   border-radius: 0.875rem;
   border: 1px solid var(--border-default);
   background: var(--bg-elevated);
@@ -737,17 +732,22 @@ function walletBrand(w: Wallet) {
   min-width: 0;
 }
 
+.qa-wallet__name,
+.qa-wallet__balance {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .qa-wallet__name {
   font-size: 0.8125rem;
   font-weight: 600;
   color: var(--text-primary);
-  white-space: nowrap;
 }
 
 .qa-wallet__balance {
   font-size: 0.6875rem;
   color: var(--text-tertiary);
-  white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
 
@@ -769,7 +769,7 @@ function walletBrand(w: Wallet) {
 .qa-note {
   width: 100%;
   height: 2.75rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0.25rem;
   padding: 0 0.875rem;
   border-radius: 0.75rem;
   border: 1px solid var(--border-default);
@@ -817,13 +817,30 @@ function walletBrand(w: Wallet) {
   opacity: 0.6;
 }
 
+/* Save button + footer pinned to the bottom edge; content scrolls underneath when space is short */
+.qa-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  margin: 0 -1.25rem;
+  padding: 0.75rem 1.25rem calc(1rem + env(safe-area-inset-bottom));
+  background: linear-gradient(to bottom, transparent, var(--bg-surface) 0.75rem);
+}
+
+@media (min-width: 640px) {
+  .qa-actions {
+    margin: 0 -1.5rem;
+    padding: 0.75rem 1.5rem 1.25rem;
+  }
+}
+
 /* ── Footer ── */
 .qa-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  margin-top: 1rem;
+  margin-top: 0.875rem;
   font-size: 0.75rem;
   color: var(--text-tertiary);
 }
@@ -888,15 +905,27 @@ function walletBrand(w: Wallet) {
   color: var(--text-primary);
 }
 
-/* ── Transitions ── */
-.qa-enter-active,
-.qa-leave-active {
-  transition: opacity 0.25s ease;
+/*
+ * ── Transitions ──
+ * Only opacity/transform are animated (compositor-only, no layout or paint per frame).
+ * Opening is quick and eased out; closing is quicker still.
+ */
+.qa-enter-active {
+  transition: opacity 0.16s ease-out;
 }
 
-.qa-enter-active .qa-sheet,
+.qa-leave-active {
+  transition: opacity 0.14s ease-in;
+}
+
+.qa-enter-active .qa-sheet {
+  transition: transform 0.26s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.16s ease-out;
+  will-change: transform, opacity;
+}
+
 .qa-leave-active .qa-sheet {
-  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.25s ease;
+  transition: transform 0.18s ease-in, opacity 0.14s ease-in;
+  will-change: transform, opacity;
 }
 
 .qa-enter-from,
@@ -904,15 +933,17 @@ function walletBrand(w: Wallet) {
   opacity: 0;
 }
 
+/* Phones: the sheet slides up from the bottom edge */
 .qa-enter-from .qa-sheet,
 .qa-leave-to .qa-sheet {
-  transform: translateY(100%);
+  transform: translate3d(0, 100%, 0);
 }
 
+/* Larger screens: the card fades in with a short lift */
 @media (min-width: 640px) {
   .qa-enter-from .qa-sheet,
   .qa-leave-to .qa-sheet {
-    transform: translateY(12px) scale(0.97);
+    transform: translate3d(0, 8px, 0) scale(0.98);
     opacity: 0;
   }
 }
