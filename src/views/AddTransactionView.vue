@@ -19,7 +19,7 @@ onMounted(() => finance.fetchWallets())
 const type = ref<TransactionType>('expense')
 const amount = ref<number>(0)
 const category = ref('food')
-const walletId = ref(finance.wallets[0]?.id || '')
+const walletId = ref(finance.cashWallets[0]?.id || '')
 const note = ref('')
 
 // Get local date instead of UTC
@@ -171,7 +171,7 @@ async function submit() {
       <label class="text-text-secondary mb-2 block text-sm font-medium">{{ t('addTx.wallet') }}</label>
       <div class="grid grid-cols-3 gap-2">
         <button
-          v-for="w in finance.wallets"
+          v-for="w in finance.cashWallets"
           :key="w.id"
           class="flex flex-col items-center gap-1 rounded-xl border p-3 transition-all duration-150"
           :class="

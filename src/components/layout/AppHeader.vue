@@ -76,7 +76,7 @@ async function handleAutoSaveApprove(n: any) {
     // If savings store is empty (e.g. user refreshed and hasn't visited Savings), fetch it first
     if (savings.goals.length === 0) await savings.fetch()
     const target = savings.goals.find(g => g.id === n.meta.savingId)
-    const walletId = target?.autoSaveWalletId || finance.wallets[0]?.id
+    const walletId = target?.autoSaveWalletId || finance.cashWallets[0]?.id
     
     if (walletId) {
       await savings.deposit(n.meta.savingId, n.meta.amount, walletId)

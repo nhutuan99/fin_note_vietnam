@@ -1,14 +1,48 @@
-import { Env, UserData, TransactionData, WalletData, BudgetData, QuickAddPrefs, PendingTransfer } from '../types'
+import { Env, UserData, TransactionData, WalletData, BudgetData, QuickAddPrefs, PendingTransfer, GoldHolding, GoldPrices } from '../types'
 import { errorResponse, jsonResponse } from '../utils/response'
 import { generateId } from '../utils/crypto'
 import { getJSON, putJSON } from '../services/kv.service'
+import { getGoldPrices, goldValue } from '../services/gold-price.service'
 
 // ====== Finance Handlers ======
+
+/** Validate a gold holding from a request body; null when invalid */
+function parseGoldHolding(raw: any): GoldHolding | null {
+  if (!raw || typeof raw.type !== 'string' || !raw.type.trim()) return null
+  const qty = Number(raw.qtyChi)
+  if (!isFinite(qty) || qty < 0 || qty > 1_000_000) return null
+  return { type: raw.type.trim().substring(0, 20), qtyChi: Math.round(qty * 100) / 100 }
+}
+
+/**
+ * Gold wallets carry a quantity, not money: their balance is quantity × today's buy-back price.
+ * When no price is available the last computed balance is kept.
+ */
+function valueGoldWallet(w: WalletData, prices: GoldPrices | null) {
+  if (w.kind !== 'gold' || !w.gold) return w
+  const item = prices?.items.find((i) => i.code === w.gold!.type)
+  const value = goldValue(prices, w.gold.type, w.gold.qtyChi)
+  return {
+    ...w,
+    balance: value ?? w.balance,
+    goldPrice: item
+      ? { name: item.name, buy: item.buy, sell: item.sell, updatedAt: prices!.updatedAt, source: prices!.source, stale: !!prices!.stale }
+      : null
+  }
+}
 
 export async function handleListWallets(userId: string, env: Env): Promise<Response> {
   const wallets =
     (await getJSON<WalletData[]>(env.SMART_NOTE_KV, `users/${userId}/finance/wallets`)) || []
-  return jsonResponse({ success: true, data: wallets })
+  const prices = wallets.some((w) => w.kind === 'gold') ? await getGoldPrices(env) : null
+  return jsonResponse({ success: true, data: wallets.map((w) => valueGoldWallet(w, prices)) })
+}
+
+export async function handleGetGoldPrices(request: Request, env: Env): Promise<Response> {
+  const force = new URL(request.url).searchParams.get('force') === '1'
+  const prices = await getGoldPrices(env, force)
+  if (!prices) return errorResponse('Không lấy được giá vàng, thử lại sau', 502)
+  return jsonResponse({ success: true, data: prices })
 }
 
 export async function handleCreateWallet(
@@ -20,20 +54,25 @@ export async function handleCreateWallet(
   const wallets =
     (await getJSON<WalletData[]>(env.SMART_NOTE_KV, `users/${userId}/finance/wallets`)) || []
 
+  const gold = body.kind === 'gold' ? parseGoldHolding(body.gold) : null
+  if (body.kind === 'gold' && !gold) return errorResponse('Thông tin vàng không hợp lệ')
+  const prices = gold ? await getGoldPrices(env) : null
+
   const wallet: WalletData = {
     id: generateId(),
     name: body.name,
-    balance: body.balance || 0,
+    balance: gold ? goldValue(prices, gold.type, gold.qtyChi) ?? 0 : body.balance || 0,
     currency: body.currency || 'VND',
     icon: body.icon || '💰',
     color: body.color || '#10b981',
     order: wallets.length,
-    customLogoUrl: typeof body.customLogoUrl === 'string' ? body.customLogoUrl.substring(0, 5000) : undefined
+    customLogoUrl: typeof body.customLogoUrl === 'string' ? body.customLogoUrl.substring(0, 5000) : undefined,
+    ...(gold ? { kind: 'gold' as const, gold } : {})
   }
 
   wallets.push(wallet)
   await putJSON(env.SMART_NOTE_KV, `users/${userId}/finance/wallets`, wallets)
-  return jsonResponse({ success: true, data: wallet }, 201)
+  return jsonResponse({ success: true, data: valueGoldWallet(wallet, prices) }, 201)
 }
 
 export async function handleUpdateWallet(
@@ -54,10 +93,23 @@ export async function handleUpdateWallet(
   if (body.icon !== undefined) wallets[idx].icon = body.icon
   if (body.color !== undefined) wallets[idx].color = body.color
   if (typeof body.order === 'number') wallets[idx].order = body.order
-  if (typeof body.balance === 'number') wallets[idx].balance = body.balance
   if (body.customLogoUrl !== undefined) wallets[idx].customLogoUrl = typeof body.customLogoUrl === 'string' ? body.customLogoUrl.substring(0, 5000) : undefined
+
+  let prices: GoldPrices | null = null
+  if (wallets[idx].kind === 'gold') {
+    // Gold wallets change by quantity; the money value always comes from the price board
+    if (body.gold !== undefined) {
+      const gold = parseGoldHolding(body.gold)
+      if (!gold) return errorResponse('Thông tin vàng không hợp lệ')
+      wallets[idx].gold = gold
+    }
+    prices = await getGoldPrices(env)
+    wallets[idx].balance = goldValue(prices, wallets[idx].gold!.type, wallets[idx].gold!.qtyChi) ?? wallets[idx].balance
+  } else if (typeof body.balance === 'number') {
+    wallets[idx].balance = body.balance
+  }
   await putJSON(env.SMART_NOTE_KV, `users/${userId}/finance/wallets`, wallets)
-  return jsonResponse({ success: true, data: wallets[idx] })
+  return jsonResponse({ success: true, data: valueGoldWallet(wallets[idx], prices) })
 }
 
 export async function handleDeleteWallet(
@@ -293,6 +345,10 @@ export async function handleCreateTransaction(
     )) || []
   const wallets =
     (await getJSON<WalletData[]>(env.SMART_NOTE_KV, `users/${userId}/finance/wallets`)) || []
+
+  if (wallets.find((w) => w.id === body.walletId)?.kind === 'gold') {
+    return errorResponse('Ví vàng không ghi giao dịch tiền — hãy sửa số lượng vàng')
+  }
 
   const tx: TransactionData = {
     id: generateId(),

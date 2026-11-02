@@ -68,8 +68,8 @@ function today() {
 }
 
 function pickWallet(preferred: string | null): string {
-  if (preferred && finance.wallets.some((w) => w.id === preferred)) return preferred
-  return finance.wallets[0]?.id ?? ''
+  if (preferred && finance.cashWallets.some((w) => w.id === preferred)) return preferred
+  return finance.cashWallets[0]?.id ?? ''
 }
 
 async function initialise() {
@@ -287,9 +287,9 @@ function walletBrand(w: Wallet) {
             {{ type === 'income' ? t('quickAdd.toWallet') : t('quickAdd.fromWallet') }}
           </div>
           <!-- Every option visible at once: no hidden horizontal scrolling (unreachable with a mouse) -->
-          <div v-if="finance.wallets.length" class="qa-wallets">
+          <div v-if="finance.cashWallets.length" class="qa-wallets">
             <button
-              v-for="w in finance.wallets"
+              v-for="w in finance.cashWallets"
               :key="w.id"
               class="qa-wallet"
               :class="{ 'is-active': walletId === w.id }"

@@ -43,6 +43,7 @@ import {
 
 import {
   handleListWallets,
+  handleGetGoldPrices,
   handleCreateWallet,
   handleUpdateWallet,
   handleDeleteWallet,
@@ -166,6 +167,11 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
 
     if (path === '/api/proxy/logo' && request.method === 'GET') {
       return handleProxyLogo(request)
+    }
+
+    // Gold price board (public, no auth)
+    if (path === '/api/gold/prices' && request.method === 'GET') {
+      return handleGetGoldPrices(request, env)
     }
 
     // Fmarket Fund Proxy (public, no auth)

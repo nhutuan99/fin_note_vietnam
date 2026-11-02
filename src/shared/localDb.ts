@@ -1,4 +1,4 @@
-import type { Wallet, Transaction, Reminder, Note, StockPosition, FundPosition, FinanceStats } from '@/types'
+import type { Wallet, Transaction, Reminder, Note, StockPosition, FundPosition, FinanceStats, GoldPrices } from '@/types'
 import { deriveNoteText } from '@/shared/utils/noteText'
 
 const LOCAL_STORAGE_KEY = 'smart_note_guest_data'
@@ -33,6 +33,26 @@ function getDb(): LocalSchema {
 
 function saveDb(data: LocalSchema) {
   localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(data))
+}
+
+/** Guests use the real public price board; gold wallets are valued like the worker does (buy-back price) */
+async function valueGoldWallets(wallets: Wallet[]): Promise<Wallet[]> {
+  if (!wallets.some((w) => w.kind === 'gold')) return wallets
+  let prices: GoldPrices | null = null
+  try {
+    const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || ''}/api/gold/prices`)
+    prices = (await res.json())?.data ?? null
+  } catch { /* keep last values */ }
+  return wallets.map((w) => {
+    if (w.kind !== 'gold' || !w.gold) return w
+    const item = prices?.items.find((i) => i.code === w.gold!.type)
+    if (!item || !prices) return { ...w, goldPrice: null }
+    return {
+      ...w,
+      balance: Math.round(item.buy * w.gold.qtyChi),
+      goldPrice: { ...item, updatedAt: prices.updatedAt, source: prices.source, stale: !!prices.stale }
+    }
+  })
 }
 
 function generateId() {
@@ -142,10 +162,12 @@ export const localDbMock = async (method: string, url: string, body?: any) => {
   // ── WALLETS ──
   if (path === '/api/wallets') {
     if (method === 'GET') {
+      db.wallets = await valueGoldWallets(db.wallets)
+      saveDb(db)
       return sendResponse(db.wallets)
     }
     if (method === 'POST') {
-      const w = { ...body, id: generateId(), createdAt: new Date().toISOString() }
+      const [w] = await valueGoldWallets([{ ...body, id: generateId(), createdAt: new Date().toISOString() }])
       db.wallets.push(w)
       saveDb(db)
       return sendResponse(w)
@@ -155,7 +177,7 @@ export const localDbMock = async (method: string, url: string, body?: any) => {
     const id = path.split('/').pop()
     const idx = db.wallets.findIndex(w => w.id === id)
     if (idx !== -1) {
-      db.wallets[idx] = { ...db.wallets[idx], ...body }
+      ;[db.wallets[idx]] = await valueGoldWallets([{ ...db.wallets[idx], ...body }])
       saveDb(db)
       return sendResponse(db.wallets[idx])
     }

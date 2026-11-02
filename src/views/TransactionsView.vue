@@ -254,7 +254,7 @@ useEventListener(document, 'click', handleClickOutside)
 
             <!-- Wallet options -->
             <button
-              v-for="w in finance.wallets"
+              v-for="w in finance.cashWallets"
               :key="w.id"
               @click="selectWallet(w.id)"
               class="hover:bg-bg-hover flex w-full items-center gap-2.5 px-3 py-2.5 text-sm transition-colors duration-100"

@@ -22,7 +22,7 @@ function persist(items: RecurringTransaction[]) { localStorage.setItem(STORAGE_K
 const items = ref<RecurringTransaction[]>(loadData())
 const showAdd = ref(false)
 const form = ref({ type: 'expense' as 'income'|'expense', amount: 0, category: 'food', walletId: '', note: '', frequency: 'monthly' as RecurringFrequency, nextDate: new Date().toISOString().substring(0, 10) })
-onMounted(() => { if (finance.wallets.length && !form.value.walletId) form.value.walletId = finance.wallets[0].id })
+onMounted(() => { if (finance.cashWallets.length && !form.value.walletId) form.value.walletId = finance.cashWallets[0].id })
 
 const freqOpts: { key: RecurringFrequency; icon: string }[] = [
   { key: 'daily', icon: '📅' }, { key: 'weekly', icon: '📆' }, { key: 'monthly', icon: '🗓️' }, { key: 'yearly', icon: '🎯' }
@@ -34,7 +34,7 @@ function add() {
   if (!valid.value) return
   items.value.push({ id: crypto.randomUUID(), type: form.value.type, amount: form.value.amount, category: form.value.category, walletId: form.value.walletId, note: form.value.note, frequency: form.value.frequency, nextDate: form.value.nextDate, enabled: true, createdAt: new Date().toISOString() })
   persist(items.value); showAdd.value = false
-  form.value = { type: 'expense', amount: 0, category: 'food', walletId: finance.wallets[0]?.id || '', note: '', frequency: 'monthly', nextDate: new Date().toISOString().substring(0, 10) }
+  form.value = { type: 'expense', amount: 0, category: 'food', walletId: finance.cashWallets[0]?.id || '', note: '', frequency: 'monthly', nextDate: new Date().toISOString().substring(0, 10) }
 }
 function toggle(id: string) { const i = items.value.find(r => r.id === id); if (i) i.enabled = !i.enabled; persist(items.value) }
 async function del(id: string) {
@@ -98,7 +98,7 @@ const monthlyEst = computed(() => {
           <div>
             <label class="text-text-secondary mb-2 block text-sm font-medium">{{ t('addTx.wallet') }}</label>
             <div class="grid grid-cols-3 gap-2">
-              <button v-for="w in finance.wallets" :key="w.id" class="flex flex-col items-center gap-1 rounded-xl border p-2.5 transition-all" :class="form.walletId === w.id ? 'border-accent bg-accent-subtle' : 'border-border-default bg-bg-surface hover:border-border-strong'" @click="form.walletId = w.id">
+              <button v-for="w in finance.cashWallets" :key="w.id" class="flex flex-col items-center gap-1 rounded-xl border p-2.5 transition-all" :class="form.walletId === w.id ? 'border-accent bg-accent-subtle' : 'border-border-default bg-bg-surface hover:border-border-strong'" @click="form.walletId = w.id">
                 <div v-if="w.customLogoUrl" class="flex h-6 w-6 shrink-0 overflow-hidden rounded-[3px] bg-white border border-border-default/50 p-0.5"><img :src="w.customLogoUrl" class="h-full w-full object-contain" /></div>
                 <div v-else-if="getWalletBrand(w.name)?.logoUrl" class="flex h-6 w-6 shrink-0 overflow-hidden rounded-[3px] bg-white border border-border-default/50 p-0.5"><img :src="getWalletBrand(w.name)!.logoUrl" class="h-full w-full object-contain" /></div>
                 <span v-else class="text-sm">{{ w.icon }}</span>

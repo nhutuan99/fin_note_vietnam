@@ -26,7 +26,7 @@ const disableFuture = ref(false)
 const isResolving = ref(false)
 
 const otherWallets = computed(() => {
-  return financeStore.wallets.filter(w => w.id !== props.transfer.walletId)
+  return financeStore.cashWallets.filter(w => w.id !== props.transfer.walletId)
 })
 
 function formatMoney(amount: number) {

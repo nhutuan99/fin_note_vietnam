@@ -28,6 +28,7 @@ async function tryLocalMock(method: string, url: string, body?: any): Promise<an
     auth.isGuest &&
     url.startsWith('/api/') &&
     !url.startsWith('/api/proxy/') &&
+    !url.startsWith('/api/gold/') && // public price board, same for guests
     !url.startsWith('/api/otp-hub')
   ) {
     return await localDbMock(method, url, body)

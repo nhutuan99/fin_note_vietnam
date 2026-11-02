@@ -451,11 +451,13 @@ export async function processSmsTransaction(
   const wallets = (await getJSON<WalletData[]>(env.SMART_NOTE_KV, `users/${userId}/finance/wallets`)) || []
   const txs = (await getJSON<TransactionData[]>(env.SMART_NOTE_KV, `users/${userId}/finance/transactions`)) || []
 
+  // Gold wallets hold gold, not money — bank SMS never lands there
+  const cashWallets = wallets.filter(w => w.kind !== 'gold')
   // ── Match wallet by bank name ──
-  let walletId = wallets[0]?.id || ''
+  let walletId = cashWallets[0]?.id || ''
   if (parsed.bankName) {
     // 1. Direct name match (preferred)
-    const found = wallets.find(w => w.name.toLowerCase().includes(parsed.bankName.toLowerCase()))
+    const found = cashWallets.find(w => w.name.toLowerCase().includes(parsed.bankName.toLowerCase()))
     if (found) {
       walletId = found.id
     } else {
@@ -477,7 +479,7 @@ export async function processSmsTransaction(
       }
       for (const [walletKey, aliases] of Object.entries(BANK_ALIAS_MAP) as [string, string[]][]) {
         if (aliases.some((a: string) => parsed.bankName.toLowerCase().includes(a))) {
-          const w = wallets.find(w => w.name.toLowerCase().includes(walletKey.toLowerCase()))
+          const w = cashWallets.find(w => w.name.toLowerCase().includes(walletKey.toLowerCase()))
           if (w) { walletId = w.id; break }
         }
       }

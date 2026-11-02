@@ -7,7 +7,8 @@ import type {
   CategoryStat,
   DailyStat,
   FinanceStats,
-  PendingTransfer
+  PendingTransfer,
+  GoldPrices
 } from '@/types'
 import { getCategoryConfig } from '@/constants/finance'
 import { httpClient } from '@/shared/api/httpClient'
@@ -59,6 +60,25 @@ export const useFinanceStore = defineStore('finance', () => {
   // ── Computed: Totals ──
 
   const totalBalance = computed(() => wallets.value.reduce((sum, w) => sum + w.balance, 0))
+
+  /** Wallets that hold money — gold wallets can't take transactions, transfers or auto-saves */
+  const cashWallets = computed(() => wallets.value.filter((w) => w.kind !== 'gold'))
+
+  // ── Gold price board (public data, shared by every gold wallet) ──
+
+  const goldPrices = ref<GoldPrices | null>(null)
+  const goldPricesError = ref(false)
+
+  async function fetchGoldPrices(force = false) {
+    try {
+      const data = await httpClient.get<GoldPrices>(`/api/gold/prices${force ? '?force=1' : ''}`, { silent: true })
+      if (data) goldPrices.value = data
+      goldPricesError.value = false
+    } catch (err) {
+      goldPricesError.value = true
+      if (!isAbortError(err)) console.error('Failed to fetch gold prices:', err)
+    }
+  }
 
   const monthIncome = computed(() => stats.value.monthIncome)
   const monthExpense = computed(() => stats.value.monthExpense)
@@ -373,6 +393,10 @@ export const useFinanceStore = defineStore('finance', () => {
     totalTransactions,
     pagination,
     totalBalance,
+    cashWallets,
+    goldPrices,
+    goldPricesError,
+    fetchGoldPrices,
     monthIncome,
     monthExpense,
     monthNet,

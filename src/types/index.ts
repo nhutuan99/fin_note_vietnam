@@ -54,6 +54,36 @@ export interface Wallet {
   color: string
   order: number
   customLogoUrl?: string
+  /** 'gold' wallets hold a quantity of gold; the server derives balance from the live price */
+  kind?: 'cash' | 'gold'
+  gold?: GoldHolding
+  /** Price used for the current balance (response only, gold wallets) */
+  goldPrice?: (GoldPriceItem & { updatedAt: string; source: string; stale: boolean }) | null
+}
+
+// ── Finance: Gold ──
+
+export interface GoldHolding {
+  /** Price-board product code ('SJC', 'N24K', '24K', '75' = 18K, ...) */
+  type: string
+  /** Quantity in chỉ (1 cây = 10 chỉ, 1 chỉ = 10 phân) */
+  qtyChi: number
+}
+
+export interface GoldPriceItem {
+  code: string
+  name: string
+  /** VND per chỉ the shop pays you */
+  buy: number
+  /** VND per chỉ the shop sells at (0 when not quoted) */
+  sell: number
+}
+
+export interface GoldPrices {
+  source: string
+  updatedAt: string
+  items: GoldPriceItem[]
+  stale?: boolean
 }
 
 // ── Finance: Transactions ──

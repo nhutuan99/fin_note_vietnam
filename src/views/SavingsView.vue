@@ -56,8 +56,8 @@ function applyAiPlan() {
   form.value.deadline = targetDate.toISOString().substring(0, 10);
   form.value.autoSaveEnabled = true;
   form.value.autoSaveAmount = aiDailyAmount.value;
-  if (!form.value.autoSaveWalletId && financeStore.wallets.length > 0) {
-    form.value.autoSaveWalletId = financeStore.wallets[0].id;
+  if (!form.value.autoSaveWalletId && financeStore.cashWallets.length > 0) {
+    form.value.autoSaveWalletId = financeStore.cashWallets[0].id;
   }
 }
 
@@ -104,7 +104,7 @@ function openAutoSave(id: string) {
   const g = goals.value.find(x => x.id === id)
   if (g) {
     autoSaveAmount.value = g.autoSaveAmount || 0
-    autoSaveWalletId.value = g.autoSaveWalletId || (financeStore.wallets[0]?.id) || ''
+    autoSaveWalletId.value = g.autoSaveWalletId || (financeStore.cashWallets[0]?.id) || ''
     showAutoSave.value = id
   }
 }
@@ -131,7 +131,7 @@ function dailySaveNeeded(g: any) { const d = daysLeft(g.deadline); if (!d || d =
 const totalSaved = computed(() => savingsStore.totalSaved)
 const totalTarget = computed(() => savingsStore.totalTarget)
 
-const walletOptions = computed(() => financeStore.wallets.map(w => ({
+const walletOptions = computed(() => financeStore.cashWallets.map(w => ({
   value: w.id,
   label: `${w.name} (${formatVND(w.balance)})`
 })))

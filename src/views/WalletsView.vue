@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useFinanceStore } from '@/stores/finance'
-import { formatVND } from '@/constants/finance'
+import { formatVND, formatVNDShort } from '@/constants/finance'
 import { getWalletBrand } from '@/constants/walletBrands'
 import { httpClient } from '@/shared/api/httpClient'
-import { Plus, Trash2, Edit3, X, Check, GripVertical, Link, Upload, Image as ImageIcon } from 'lucide-vue-next'
+import { Plus, Trash2, Edit3, X, Check, GripVertical, Link, Upload, Image as ImageIcon, Wallet as WalletIcon, Coins } from 'lucide-vue-next'
+import GoldHoldingEditor from '@/components/finance/GoldHoldingEditor.vue'
+import { formatGoldQty } from '@/shared/utils/gold'
 import PinDialog from '@/components/PinDialog.vue'
 import CurrencyInput from '@/components/ui/CurrencyInput.vue'
 import { useUiStore } from '@/stores/ui'
@@ -57,6 +59,65 @@ const effectiveLogoUrl = computed(() => {
 
 const isAdding = ref(false)
 
+// ── Gold wallets ──
+
+const addKind = ref<'cash' | 'gold'>('cash')
+const newGold = ref({ type: '', qtyChi: 0 })
+
+const canAdd = computed(() =>
+  addKind.value === 'gold' ? newGold.value.type !== '' && newGold.value.qtyChi > 0 : !!newWallet.value.name.trim()
+)
+
+const unitLabels = computed(() => ({ cay: t('wallets.unit_cay'), chi: t('wallets.unit_chi'), phan: t('wallets.unit_phan') }))
+
+function goldQtyLabel(w: Wallet) {
+  return ui.hideBalances ? '••' : formatGoldQty(w.gold?.qtyChi ?? 0, unitLabels.value)
+}
+
+const goldTotal = computed(() =>
+  finance.wallets.filter((w) => w.kind === 'gold').reduce((sum, w) => sum + w.balance, 0)
+)
+
+async function addGoldWallet() {
+  const item = finance.goldPrices?.items.find((i) => i.code === newGold.value.type)
+  await finance.addWallet({
+    name: newWallet.value.name.trim() || item?.name || t('wallets.kindGold'),
+    balance: 0,
+    currency: 'VND',
+    icon: '🪙',
+    color: '#d4a017',
+    order: finance.wallets.length,
+    kind: 'gold',
+    gold: { ...newGold.value }
+  })
+  newGold.value = { type: newGold.value.type, qtyChi: 0 }
+}
+
+const editGoldId = ref<string | null>(null)
+const editGold = ref({ type: '', qtyChi: 0 })
+const isSavingGold = ref(false)
+
+function startGoldEdit(w: Wallet) {
+  editId.value = null
+  editGoldId.value = editGoldId.value === w.id ? null : w.id
+  editGold.value = { type: w.gold?.type ?? '', qtyChi: w.gold?.qtyChi ?? 0 }
+}
+
+async function saveGold(id: string) {
+  if (isSavingGold.value) return
+  isSavingGold.value = true
+  try {
+    await finance.updateWallet(id, { gold: { ...editGold.value } })
+    editGoldId.value = null
+  } finally {
+    isSavingGold.value = false
+  }
+}
+
+function priceTime(iso?: string) {
+  return iso ? new Date(iso).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : ''
+}
+
 /** Handle file upload → base64 */
 async function handleFileUpload(e: Event) {
   const file = (e.target as HTMLInputElement).files?.[0]
@@ -97,9 +158,15 @@ function clearCustomLogo() {
 }
 
 async function addWallet() {
-  if (!newWallet.value.name.trim() || isAdding.value) return
+  if (!canAdd.value || isAdding.value) return
   isAdding.value = true
   try {
+    if (addKind.value === 'gold') {
+      await addGoldWallet()
+      newWallet.value.name = ''
+      showAdd.value = false
+      return
+    }
     const brand = getWalletBrand(newWallet.value.name)
     await finance.addWallet({
       name: newWallet.value.name.trim(),
@@ -146,6 +213,7 @@ const editBalances = ref<Record<string, number>>({})
 
 function startEdit(id: string, currentBalance: number) { 
   editId.value = id
+  editGoldId.value = null
   editBalances.value[id] = currentBalance
 }
 
@@ -241,8 +309,50 @@ function onDragEnd() {
     <!-- Add Wallet Form -->
     <transition name="expand">
       <div v-if="showAdd" class="bg-bg-surface border-border-default mb-6 rounded-xl border p-5">
-        <h3 class="mb-4 text-sm font-semibold">{{ t('wallets.addNew') }}</h3>
-        <div class="flex flex-col gap-4">
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <h3 class="text-sm font-semibold">{{ t('wallets.addNew') }}</h3>
+          <div class="kind-switch" role="tablist">
+            <button
+              type="button"
+              role="tab"
+              :aria-selected="addKind === 'cash'"
+              class="kind-switch__btn"
+              :class="{ 'is-active': addKind === 'cash' }"
+              @click="addKind = 'cash'"
+            >
+              <WalletIcon :size="14" /> {{ t('wallets.kindCash') }}
+            </button>
+            <button
+              type="button"
+              role="tab"
+              :aria-selected="addKind === 'gold'"
+              class="kind-switch__btn"
+              :class="{ 'is-active is-gold': addKind === 'gold' }"
+              @click="addKind = 'gold'"
+            >
+              <Coins :size="14" /> {{ t('wallets.kindGold') }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Gold wallet -->
+        <div v-if="addKind === 'gold'" class="flex flex-col gap-4">
+          <input
+            v-model="newWallet.name"
+            :placeholder="t('wallets.goldWalletName')"
+            maxlength="60"
+            class="border-border-default bg-bg-elevated text-text-primary placeholder:text-text-disabled focus:border-accent focus:ring-accent-subtle w-full rounded-lg border px-4 py-2.5 text-sm transition-all duration-150 focus:ring-2 focus:outline-none"
+          />
+          <GoldHoldingEditor v-model:type="newGold.type" v-model:qty-chi="newGold.qtyChi" />
+          <div class="flex gap-2">
+            <button @click="showAdd = false" class="border-border-default text-text-secondary hover:bg-bg-hover flex-1 rounded-lg border py-2 text-sm transition-all duration-150">{{ t('common.cancel') }}</button>
+            <button @click="addWallet" :disabled="!canAdd || isAdding" class="btn-primary flex-1 justify-center py-2 disabled:opacity-40">
+              {{ newGold.qtyChi > 0 ? t('common.add') : t('wallets.goldNeedQty') }}
+            </button>
+          </div>
+        </div>
+
+        <div v-else class="flex flex-col gap-4">
           <input
             v-model="newWallet.name"
             :placeholder="t('wallets.walletName')"
@@ -390,11 +500,10 @@ function onDragEnd() {
 
       <!-- Actual List (Draggable) -->
       <template v-else>
+        <div v-for="w in finance.wallets" :key="w.id">
         <div
-          v-for="w in finance.wallets"
-          :key="w.id"
           draggable="true"
-          class="wallet-item bg-bg-surface border-border-default flex items-center gap-4 rounded-xl border p-5 transition-all duration-150"
+          class="wallet-item bg-bg-surface border-border-default flex items-center gap-3 rounded-xl border p-3.5 transition-all duration-150 sm:gap-4 sm:p-5"
           :class="{
             'dragging': draggedId === w.id,
             'drag-over': dragOverId === w.id,
@@ -407,14 +516,17 @@ function onDragEnd() {
           @dragend="onDragEnd"
         >
           <!-- Drag Handle -->
-          <div class="drag-handle text-text-disabled hover:text-text-tertiary shrink-0 cursor-grab active:cursor-grabbing">
+          <div class="drag-handle text-text-disabled hover:text-text-tertiary hidden shrink-0 cursor-grab sm:block active:cursor-grabbing">
             <GripVertical :size="18" />
           </div>
 
-          <!-- Wallet Logo: customLogoUrl > brandLogoUrl > brandAbbr > emoji -->
+          <!-- Wallet Logo: gold > customLogoUrl > brandLogoUrl > brandAbbr > emoji -->
           <div class="flex h-12 w-12 shrink-0 items-center justify-center">
+            <div v-if="w.kind === 'gold'" class="gold-badge">
+              <Coins :size="22" />
+            </div>
             <!-- Custom logo (user-uploaded or URL) -->
-            <div v-if="w.customLogoUrl" class="flex h-12 w-12 overflow-hidden rounded-xl bg-white dark:bg-bg-elevated border border-border-default shadow-sm p-1.5">
+            <div v-else-if="w.customLogoUrl" class="flex h-12 w-12 overflow-hidden rounded-xl bg-white dark:bg-bg-elevated border border-border-default shadow-sm p-1.5">
               <img :src="w.customLogoUrl" :alt="w.name" class="h-full w-full object-contain object-center" loading="lazy" />
             </div>
             <!-- Auto brand logo (image) -->
@@ -435,9 +547,18 @@ function onDragEnd() {
             </div>
           </div>
 
-          <div class="min-w-0 flex-1">
+          <div class="min-w-[4.5rem] flex-1">
             <div class="truncate text-sm font-semibold">{{ w.name }}</div>
-            <div class="text-text-tertiary text-[0.6875rem]">{{ w.currency }}</div>
+            <div v-if="w.kind === 'gold'" class="text-text-tertiary truncate text-[0.6875rem]">
+              <span class="text-text-secondary font-medium">{{ goldQtyLabel(w) }}</span>
+              <template v-if="w.goldPrice">
+                · {{ t('wallets.goldPerChi', { price: formatVNDShort(w.goldPrice.buy) }) }}
+                <span class="hidden sm:inline">· {{ t('wallets.goldPriceAt', { source: w.goldPrice.source, time: priceTime(w.goldPrice.updatedAt) }) }}</span>
+                <span v-if="w.goldPrice.stale" class="text-warning"> · {{ t('wallets.goldStale') }}</span>
+              </template>
+              <span v-else class="text-warning"> · {{ t('wallets.goldNoPrice') }}</span>
+            </div>
+            <div v-else class="text-text-tertiary text-[0.6875rem]">{{ w.currency }}</div>
           </div>
 
           <!-- Edit mode -->
@@ -458,11 +579,20 @@ function onDragEnd() {
           </div>
 
           <!-- Normal mode -->
-          <div v-else class="flex items-center gap-2">
-            <span class="text-base font-bold" :class="w.balance >= 0 ? 'text-text-primary' : 'text-error'">
+          <div v-else class="flex shrink-0 items-center gap-0.5 sm:gap-2">
+            <span class="text-sm font-bold whitespace-nowrap sm:text-base" :class="w.balance >= 0 ? 'text-text-primary' : 'text-error'">
               {{ formatVND(w.balance) }}
             </span>
-            <button @click="startEdit(w.id, w.balance)" class="text-text-tertiary hover:text-text-primary hover:bg-bg-hover rounded p-2 transition-all duration-150 touch-target" :title="t('wallets.editBalance')">
+            <button
+              v-if="w.kind === 'gold'"
+              @click="startGoldEdit(w)"
+              class="text-text-tertiary hover:text-text-primary hover:bg-bg-hover rounded p-2 transition-all duration-150 touch-target"
+              :class="{ 'text-accent': editGoldId === w.id }"
+              :title="t('wallets.editGold')"
+            >
+              <Edit3 :size="16" />
+            </button>
+            <button v-else @click="startEdit(w.id, w.balance)" class="text-text-tertiary hover:text-text-primary hover:bg-bg-hover rounded p-2 transition-all duration-150 touch-target" :title="t('wallets.editBalance')">
               <Edit3 :size="16" />
             </button>
             <button @click="requestDelete(w.id)" class="text-text-tertiary hover:text-error hover:bg-bg-hover rounded p-2 transition-all duration-150 touch-target" :title="t('wallets.deleteWallet')">
@@ -470,12 +600,29 @@ function onDragEnd() {
             </button>
           </div>
         </div>
+
+        <!-- Gold quantity editor -->
+        <transition name="expand">
+          <div v-if="editGoldId === w.id" class="bg-bg-surface border-border-default mt-2 rounded-xl border p-4 sm:p-5">
+            <GoldHoldingEditor v-model:type="editGold.type" v-model:qty-chi="editGold.qtyChi" />
+            <div class="mt-4 flex gap-2">
+              <button @click="editGoldId = null" class="border-border-default text-text-secondary hover:bg-bg-hover flex-1 rounded-lg border py-2 text-sm transition-all duration-150">{{ t('common.cancel') }}</button>
+              <button @click="saveGold(w.id)" :disabled="isSavingGold || !editGold.type" class="btn-primary flex-1 justify-center py-2 disabled:opacity-40">{{ t('common.save') }}</button>
+            </div>
+          </div>
+        </transition>
+        </div>
       </template>
     </div>
 
     <!-- Total -->
-    <div class="bg-bg-elevated border-border-default mt-6 flex items-center justify-between rounded-xl border p-5">
-      <span class="text-text-secondary text-sm font-medium">{{ t('wallets.totalAll') }}</span>
+    <div class="bg-bg-elevated border-border-default mt-6 flex items-center justify-between gap-3 rounded-xl border p-5">
+      <div class="min-w-0">
+        <span class="text-text-secondary text-sm font-medium">{{ t('wallets.totalAll') }}</span>
+        <div v-if="goldTotal > 0" class="text-text-tertiary mt-0.5 text-[0.6875rem]">
+          {{ t('wallets.goldTotalNote', { amount: formatVNDShort(goldTotal) }) }}
+        </div>
+      </div>
       <span class="text-xl font-bold" :class="finance.totalBalance >= 0 ? 'text-accent' : 'text-error'">
         {{ formatVND(finance.totalBalance) }}
       </span>
@@ -493,6 +640,57 @@ function onDragEnd() {
 </template>
 
 <style>
+.kind-switch {
+  display: inline-flex;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border-radius: 0.625rem;
+  border: 1px solid var(--border-default);
+  background: var(--bg-elevated);
+}
+
+.kind-switch__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.875rem;
+  border-radius: 0.4375rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  transition: background-color 0.12s, color 0.12s;
+}
+
+.kind-switch__btn:hover {
+  color: var(--text-primary);
+}
+
+.kind-switch__btn.is-active {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+.kind-switch__btn.is-gold {
+  color: #b8860b;
+}
+
+[data-theme='dark'] .kind-switch__btn.is-gold {
+  color: #e8c25a;
+}
+
+.gold-badge {
+  display: flex;
+  height: 3rem;
+  width: 3rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.75rem;
+  background: linear-gradient(135deg, #f7d774 0%, #d4a017 55%, #b8860b 100%);
+  color: #5c4100;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
 .wallet-item {
   user-select: none;
 }

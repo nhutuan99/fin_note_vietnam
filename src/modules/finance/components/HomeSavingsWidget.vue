@@ -29,7 +29,7 @@ async function quickSave() {
   if (!suggestedGoal.value) return
   const g = suggestedGoal.value
   const amount = g.autoSaveAmount || 0
-  const walletId = g.autoSaveWalletId || financeStore.wallets[0]?.id
+  const walletId = g.autoSaveWalletId || financeStore.cashWallets[0]?.id
   
   if (!walletId || amount <= 0) return // Need a wallet and positive amount
 

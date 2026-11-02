@@ -30,3 +30,7 @@ export const VNEXPRESS_RSS = {
 // Youtube API
 export const YOUTUBE_OEMBED_API = 'https://www.youtube.com/oembed'
 export const YOUTUBE_SEARCH_URL = 'https://www.youtube.com/results'
+
+// Vietnamese gold prices (VND per chỉ on PNJ; per lượng on vang.today)
+export const PNJ_GOLD_PRICE_API = 'https://edge-api.pnj.io/ecom-frontend/v1/get-gold-price?zone=00'
+export const VANG_TODAY_API = 'https://www.vang.today/api/prices'
