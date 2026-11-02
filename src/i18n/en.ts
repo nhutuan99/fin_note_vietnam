@@ -561,7 +561,6 @@ export default {
   quickAdd: {
     title: 'Quick add',
     subtitle: 'Log money in or out in seconds',
-    autoCloseHint: 'Closes in 5 seconds if you don’t type anything',
     moneyIn: 'Money in',
     moneyOut: 'Money out',
     amount: 'Amount',
@@ -577,7 +576,6 @@ export default {
     autoOpen: 'Open when I return',
     autoOnToast: 'Quick add will open when you come back to the app',
     autoOffToast: 'Quick add won’t open automatically',
-    fullForm: 'Full form',
     settingTitle: 'Open when returning to the app',
     settingDesc: 'Show the quick-add popup whenever you come back to this tab or app, on any page. On phones, long-press the app icon for “Money out” / “Money in” shortcuts.',
     tryNow: 'Try it'

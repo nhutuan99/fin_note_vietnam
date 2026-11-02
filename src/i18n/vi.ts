@@ -574,7 +574,6 @@ export default {
   quickAdd: {
     title: 'Nhập nhanh',
     subtitle: 'Ghi lại khoản thu/chi trong vài giây',
-    autoCloseHint: 'Tự đóng sau 5 giây nếu bạn không nhập gì',
     moneyIn: 'Tiền vào',
     moneyOut: 'Tiền ra',
     amount: 'Số tiền',
@@ -590,7 +589,6 @@ export default {
     autoOpen: 'Tự mở khi quay lại app',
     autoOnToast: 'Popup sẽ tự mở khi bạn quay lại app',
     autoOffToast: 'Đã tắt tự mở popup nhập nhanh',
-    fullForm: 'Form đầy đủ',
     settingTitle: 'Tự mở khi quay lại ứng dụng',
     settingDesc: 'Hiện popup nhập nhanh mỗi khi bạn quay lại tab hoặc ứng dụng, ở bất kỳ trang nào. Trên điện thoại, giữ biểu tượng ứng dụng để chọn lối tắt “Tiền ra” / “Tiền vào”.',
     tryNow: 'Mở thử'

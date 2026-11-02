@@ -2,7 +2,7 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { ArrowDownLeft, ArrowUpRight, X, Check, Wallet as WalletIcon, Plus, ChevronRight, Tag } from 'lucide-vue-next'
+import { ArrowDownLeft, ArrowUpRight, X, Check, Wallet as WalletIcon, Plus, Tag } from 'lucide-vue-next'
 import type { TransactionType, Wallet } from '@/types'
 import { useQuickAddStore } from '@/stores/quickAdd'
 import { useFinanceStore } from '@/stores/finance'
@@ -174,10 +174,6 @@ async function submit() {
   close()
 }
 
-function openFullForm() {
-  close()
-  router.push('/transactions/add')
-}
 
 function addWallet() {
   close()
@@ -230,10 +226,7 @@ function walletBrand(w: Wallet) {
           <div class="qa-header">
             <div>
               <h2 class="qa-title">{{ t('quickAdd.title') }}</h2>
-              <p class="qa-subtitle">
-                <template v-if="countingDown">{{ t('quickAdd.autoCloseHint') }}</template>
-                <template v-else>{{ t('quickAdd.subtitle') }}</template>
-              </p>
+              <p class="qa-subtitle">{{ t('quickAdd.subtitle') }}</p>
             </div>
             <button class="qa-icon-btn" :aria-label="t('common.close')" @click="close">
               <X :size="18" />
@@ -360,7 +353,7 @@ function walletBrand(w: Wallet) {
             {{ type === 'income' ? t('quickAdd.saveIncome') : t('quickAdd.saveExpense') }}
           </button>
 
-          <!-- Footer: auto-open switch + full form -->
+          <!-- Footer: auto-open switch -->
           <div class="qa-footer">
             <label class="qa-switch">
               <input
@@ -371,10 +364,6 @@ function walletBrand(w: Wallet) {
               <span class="qa-switch__track" aria-hidden="true" />
               <span>{{ t('quickAdd.autoOpen') }}</span>
             </label>
-            <button class="qa-link" @click="openFullForm">
-              {{ t('quickAdd.fullForm') }}
-              <ChevronRight :size="14" />
-            </button>
           </div>
           </div>
         </div>
@@ -893,17 +882,6 @@ function walletBrand(w: Wallet) {
   box-shadow: 0 0 0 3px var(--accent-subtle);
 }
 
-.qa-link {
-  display: flex;
-  align-items: center;
-  gap: 0.125rem;
-  color: var(--text-secondary);
-  white-space: nowrap;
-}
-
-.qa-link:hover {
-  color: var(--text-primary);
-}
 
 /*
  * ── Transitions ──
