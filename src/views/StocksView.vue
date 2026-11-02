@@ -1121,8 +1121,6 @@ function getChartData(symbol: string) {
   align-items: center;
   justify-content: center;
   background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
   padding: 1rem;
   /* Allow overlay itself to scroll if modal is taller than viewport */
   overflow-y: auto;

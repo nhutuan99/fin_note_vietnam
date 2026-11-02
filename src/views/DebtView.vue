@@ -274,7 +274,7 @@ async function handleDelete(debt: Debt) {
     >
       <div
         v-if="showForm"
-        class="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+        class="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-black/60 p-4"
         @click.self="resetForm"
       >
         <div class="bg-bg-surface border-border-default w-full max-w-md rounded-2xl border shadow-2xl overflow-hidden">

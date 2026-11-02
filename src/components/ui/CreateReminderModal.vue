@@ -371,7 +371,7 @@ async function handleSave() {
 .modal-overlay {
   position: fixed; inset: 0; z-index: var(--z-modal);
   display: flex; align-items: center; justify-content: center;
-  background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+  background: rgba(0,0,0,0.6);
   padding: 1rem; animation: fadeIn 0.15s ease;
 }
 .modal-container {

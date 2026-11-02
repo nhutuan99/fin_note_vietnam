@@ -62,7 +62,7 @@ onMounted(() => {
       v-if="show"
       class="fixed bottom-0 left-0 right-0 z-[999] px-4 pb-[calc(1rem+env(safe-area-inset-bottom))]"
     >
-      <div class="mx-auto max-w-md rounded-2xl border border-white/10 bg-[#1a1a2e]/90 p-4 shadow-2xl backdrop-blur-xl">
+      <div class="mx-auto max-w-md rounded-2xl border border-white/10 bg-[#1a1a2e] p-4 shadow-2xl">
         <!-- Close button -->
         <button
           @click="dismiss"

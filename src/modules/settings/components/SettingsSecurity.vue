@@ -164,7 +164,7 @@ function cancelForgotPin() {
         </div>
 
         <!-- PIN Form -->
-        <transition name="slide">
+        <transition name="expand">
           <div
             v-if="showPinForm"
             class="border-border-default mt-4 border-t pt-4"
@@ -280,7 +280,7 @@ function cancelForgotPin() {
               class="fixed inset-0 z-50 flex items-center justify-center p-4"
             >
               <div
-                class="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                class="absolute inset-0 bg-black/60"
                 @click="cancelForgotPin"
               ></div>
               <div

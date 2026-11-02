@@ -59,7 +59,7 @@ async function submitFeedback() {
     <div v-if="show" class="fixed inset-0 z-[100] flex items-center justify-center px-4">
       <!-- Backdrop -->
       <div 
-        class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+        class="absolute inset-0 bg-black/60 transition-opacity"
         @click="emit('close')"
       ></div>
 

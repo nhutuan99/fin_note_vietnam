@@ -143,7 +143,7 @@ async function submit() {
       </button>
 
       <!-- Picker -->
-      <transition name="slide">
+      <transition name="expand">
         <div
           v-if="showCategoryPicker"
           class="mt-2 grid grid-cols-3 gap-2"
@@ -262,22 +262,3 @@ async function submit() {
   </div>
 </template>
 
-<style>
-.slide-enter-active,
-.slide-leave-active {
-  transition:
-    max-height 200ms ease,
-    opacity 200ms ease;
-  overflow: hidden;
-}
-.slide-enter-from,
-.slide-leave-to {
-  max-height: 0;
-  opacity: 0;
-}
-.slide-enter-to,
-.slide-leave-from {
-  max-height: 31.25rem;
-  opacity: 1;
-}
-</style>

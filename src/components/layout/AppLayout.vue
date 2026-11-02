@@ -165,7 +165,7 @@ async function handleRefresh(done: () => void) {
     <main
       ref="mainRef"
       @scroll="handleScroll"
-      class="pwa-main-safe bg-bg-primary fixed top-[3.5rem] right-0 bottom-0 w-full overflow-y-auto transition-all duration-300 scroll-smooth"
+      class="pwa-main-safe bg-bg-primary fixed top-[3.5rem] right-0 bottom-0 w-full overflow-y-auto scroll-smooth"
       style="-webkit-overflow-scrolling: touch; overscroll-behavior-y: contain;"
       :class="ui.sidebarOpen ? 'md:w-[calc(100%-16.25rem)]' : 'md:w-[calc(100%-3.75rem)]'"
     >
@@ -173,7 +173,7 @@ async function handleRefresh(done: () => void) {
         <div class="mx-auto w-full max-w-[90rem] px-4 py-5 sm:px-6 sm:py-6 lg:px-10 lg:py-8 min-h-[calc(100vh-3.5rem)]">
           <router-view v-slot="{ Component }">
             <transition
-              name="fade"
+              name="page"
               mode="out-in"
             >
               <component :is="Component" />
@@ -214,6 +214,18 @@ async function handleRefresh(done: () => void) {
 </template>
 
 <style>
+/*
+ * Route change: the old page leaves instantly and the new one fades in quickly.
+ * (A 200ms fade-out + 200ms fade-in made every navigation wait ~0.4s.)
+ * The width of <main> is not animated either: animating it re-laid out the whole page each frame.
+ */
+.page-enter-active {
+  transition: opacity 140ms ease-out;
+}
+.page-enter-from {
+  opacity: 0;
+}
+
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity 200ms ease;

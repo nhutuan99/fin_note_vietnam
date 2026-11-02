@@ -70,7 +70,7 @@ const monthlyEst = computed(() => {
       <div class="text-text-disabled text-[0.6875rem]">{{ t('recurring.activeCount', { n: items.filter(r => r.enabled).length }) }}</div>
     </div>
 
-    <transition name="slide">
+    <transition name="expand">
       <div v-if="showAdd" class="bg-bg-surface border-border-default mb-6 rounded-xl border p-5">
         <h3 class="mb-4 text-sm font-semibold">{{ t('recurring.addNew') }}</h3>
         <div class="flex flex-col gap-4">
@@ -144,8 +144,3 @@ const monthlyEst = computed(() => {
   </div>
 </template>
 
-<style>
-.slide-enter-active,.slide-leave-active{transition:max-height 200ms ease,opacity 200ms ease;overflow:hidden}
-.slide-enter-from,.slide-leave-to{max-height:0;opacity:0}
-.slide-enter-to,.slide-leave-from{max-height:62.5rem;opacity:1}
-</style>

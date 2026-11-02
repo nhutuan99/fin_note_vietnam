@@ -760,7 +760,7 @@ watch(isAdmin, (val) => {
     <AppIntroCta />
 
     <!-- ── Password Overlay ── -->
-    <div v-if="showPasswordModal" class="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+    <div v-if="showPasswordModal" class="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 p-4">
       <div class="card-premium rounded-2xl w-full max-w-[24rem] p-6 text-center space-y-6 animate-[fadeSlideIn_0.3s_ease]">
         <div class="mx-auto w-16 h-16 flex items-center justify-center rounded-3xl bg-accent/10 text-accent border border-accent/20 shadow-[0_0_24px_rgba(124,111,247,0.15)] animate-pulse">
           <KeyRound :size="30" />

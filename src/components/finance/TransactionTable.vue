@@ -310,7 +310,7 @@ function dayTotal(txs: Transaction[]) {
   <Teleport to="body">
     <Transition name="fade">
       <div v-if="selectedTx" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="selectedTx = null"></div>
+        <div class="absolute inset-0 bg-black/60" @click="selectedTx = null"></div>
         
         <div class="tx-detail-card">
           <!-- Decorative glow -->

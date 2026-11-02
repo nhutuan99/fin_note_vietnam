@@ -137,8 +137,6 @@ const showTooltip = ref(false)
     0 0 0 1px rgba(124, 111, 247, 0.1);
   transform-origin: bottom right;
   overflow: hidden;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
 }
 @media (max-width: 767px) {
   .cta-tooltip { display: none; }

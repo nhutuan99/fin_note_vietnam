@@ -235,8 +235,6 @@ async function handleBatchCreate() {
   align-items: flex-end;
   justify-content: center;
   background: rgba(0, 0, 0, 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
   animation: fadeIn 0.15s ease;
 }
 
@@ -245,9 +243,7 @@ async function handleBatchCreate() {
   max-width: 28rem;
   max-height: 60vh;
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-  background: rgba(18, 18, 18, 0.85);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
+  background: rgb(18, 18, 18);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-bottom: none;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05);

@@ -173,7 +173,7 @@ const depositWalletOptions = computed(() => [
     </div>
 
     <!-- Add Form -->
-    <transition name="slide">
+    <transition name="expand">
       <div v-if="showAdd" class="bg-bg-surface border-border-default mb-6 rounded-xl border p-5">
         <h3 class="mb-4 text-sm font-semibold">{{ t('savings.addNew') }}</h3>
         <div class="flex flex-col gap-4">
@@ -308,7 +308,7 @@ const depositWalletOptions = computed(() => [
     </div>
 
     <!-- Smart Auto-Save Modal -->
-    <div v-if="showAutoSave" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+    <div v-if="showAutoSave" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
       <div class="bg-bg-surface border-border-default w-full max-w-md rounded-2xl border p-5 shadow-2xl">
         <div class="flex items-center justify-between mb-4">
           <h3 class="text-lg font-bold flex items-center gap-2"><Zap class="text-accent" :size="20" /> {{ t('savings.autoSaveTitle') }}</h3>
@@ -340,8 +340,3 @@ const depositWalletOptions = computed(() => [
   </div>
 </template>
 
-<style>
-.slide-enter-active,.slide-leave-active{transition:max-height 200ms ease,opacity 200ms ease;overflow:hidden}
-.slide-enter-from,.slide-leave-to{max-height:0;opacity:0}
-.slide-enter-to,.slide-leave-from{max-height:62.5rem;opacity:1}
-</style>

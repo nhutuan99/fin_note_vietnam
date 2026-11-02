@@ -193,12 +193,12 @@ function onDragEnd() {
   <!-- Mobile overlay -->
   <div
     v-if="ui.sidebarOpen"
-    class="fixed inset-0 z-30 bg-black/50 backdrop-blur-[2px] md:hidden"
+    class="fixed inset-0 z-30 bg-black/50 md:hidden"
     @click="ui.toggleSidebar"
   />
 
   <aside
-    class="pwa-sidebar-safe sidebar glass-sidebar fixed top-[3.5rem] bottom-0 z-40 flex flex-col overflow-hidden transition-all duration-300 md:translate-x-0"
+    class="pwa-sidebar-safe sidebar glass-sidebar fixed top-[3.5rem] bottom-0 z-40 flex flex-col overflow-hidden transition-[width,transform] duration-200 ease-out md:translate-x-0"
     :class="[
       ui.sidebarOpen
         ? 'w-[15.5rem] translate-x-0'

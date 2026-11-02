@@ -150,7 +150,6 @@ async function handleCleanup() {
   align-items: center;
   justify-content: center;
   background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(8px);
   padding: 1rem;
   animation: fadeIn 0.2s ease;
 }

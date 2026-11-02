@@ -239,7 +239,7 @@ function onDragEnd() {
     </div>
 
     <!-- Add Wallet Form -->
-    <transition name="slide">
+    <transition name="expand">
       <div v-if="showAdd" class="bg-bg-surface border-border-default mb-6 rounded-xl border p-5">
         <h3 class="mb-4 text-sm font-semibold">{{ t('wallets.addNew') }}</h3>
         <div class="flex flex-col gap-4">
@@ -511,21 +511,5 @@ function onDragEnd() {
 
 .drag-handle {
   transition: color 120ms;
-}
-
-.slide-enter-active,
-.slide-leave-active {
-  transition: max-height 200ms ease, opacity 200ms ease;
-  overflow: hidden;
-}
-.slide-enter-from,
-.slide-leave-to {
-  max-height: 0;
-  opacity: 0;
-}
-.slide-enter-to,
-.slide-leave-from {
-  max-height: 60rem;
-  opacity: 1;
 }
 </style>

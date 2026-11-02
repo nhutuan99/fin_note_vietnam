@@ -220,7 +220,7 @@ input[type="number"] {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, filter 0.15s ease, transform 0.1s ease, opacity 0.15s ease;
 }
 .btn-primary:hover {
   background: var(--color-text-secondary);
@@ -248,7 +248,7 @@ input[type="number"] {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, filter 0.15s ease, transform 0.1s ease, opacity 0.15s ease;
 }
 .btn-secondary:hover {
   background: var(--color-bg-hover);
@@ -271,7 +271,7 @@ input[type="number"] {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, filter 0.15s ease, transform 0.1s ease, opacity 0.15s ease;
 }
 .btn-danger:hover,
 .btn-danger:active {
@@ -336,3 +336,17 @@ input[type="number"] {
 @keyframes spin { to { transform: rotate(360deg); } }
 .animate-spin { animation: spin 1s linear infinite; }
 
+
+/* ============================================
+   Reduced motion: honour the OS setting app-wide
+   ============================================ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

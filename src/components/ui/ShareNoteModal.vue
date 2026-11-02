@@ -58,7 +58,7 @@ async function copyLink() {
 </script>
 
 <template>
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4" @click.self="emit('close')">
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4" @click.self="emit('close')">
     <div class="bg-bg-surface border-border-default w-full max-w-md rounded-2xl border p-6 shadow-2xl">
       <div class="mb-5 flex items-center justify-between">
         <h3 class="text-lg font-bold text-text-primary">{{ t('notes.share.title') }}</h3>

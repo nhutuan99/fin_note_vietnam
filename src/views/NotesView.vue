@@ -357,7 +357,6 @@ function handleSearchKeydown(e: KeyboardEvent) {
  */
 .notes-page {
   container: notes / inline-size;
-  animation: notesFadeIn 0.25s ease both;
 }
 
 .notes-toolbar {
@@ -375,11 +374,6 @@ function handleSearchKeydown(e: KeyboardEvent) {
     flex-direction: row;
     align-items: center;
   }
-}
-
-@keyframes notesFadeIn {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: none; }
 }
 
 /* ── Search ── */

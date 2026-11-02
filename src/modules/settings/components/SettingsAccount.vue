@@ -88,7 +88,7 @@ async function confirmDeleteAccount() {
     <Teleport to="body">
       <Transition name="fade">
         <div v-if="isDeleteModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="isDeleteModalOpen = false"></div>
+          <div class="absolute inset-0 bg-black/60" @click="isDeleteModalOpen = false"></div>
 
           <div class="bg-bg-surface border-border-default relative w-full max-w-[24rem] rounded-2xl border p-6 shadow-xl">
             <div class="mb-4 flex justify-center">

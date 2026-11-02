@@ -18,11 +18,11 @@ const colorMap = {
     id="toast-container"
     class="fixed right-4 bottom-4 z-[200] flex flex-col gap-2 md:right-6 md:bottom-6"
   >
-    <TransitionGroup name="slide">
+    <TransitionGroup name="toast">
       <div
         v-for="toast in ui.toasts"
         :key="toast.id"
-        class="bg-bg-elevated border-border-default flex max-w-[26.25rem] min-w-[18.75rem] items-center gap-3 rounded-lg border px-4 py-3 shadow-lg backdrop-blur-sm"
+        class="bg-bg-elevated border-border-default flex max-w-[26.25rem] min-w-[18.75rem] items-center gap-3 rounded-lg border px-4 py-3 shadow-lg"
       >
         <component
           :is="iconMap[toast.type]"
@@ -42,17 +42,17 @@ const colorMap = {
 </template>
 
 <style>
-.slide-enter-active,
-.slide-leave-active {
+.toast-enter-active,
+.toast-leave-active {
   transition:
     transform 300ms ease,
     opacity 300ms ease;
 }
-.slide-enter-from {
+.toast-enter-from {
   opacity: 0;
   transform: translateY(0.75rem);
 }
-.slide-leave-to {
+.toast-leave-to {
   opacity: 0;
   transform: translateY(-0.75rem);
 }

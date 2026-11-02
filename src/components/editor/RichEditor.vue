@@ -491,8 +491,7 @@ useEventListener(window, 'keydown', (e: KeyboardEvent) => {
   padding: 4px;
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--bg-surface) 88%, transparent);
-  backdrop-filter: blur(10px);
+  background: var(--bg-surface);
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -840,7 +839,6 @@ useEventListener(window, 'keydown', (e: KeyboardEvent) => {
   justify-content: center;
   padding: 2rem;
   background: rgba(0, 0, 0, 0.88);
-  backdrop-filter: blur(4px);
   cursor: zoom-out;
 }
 .zoomed-img {

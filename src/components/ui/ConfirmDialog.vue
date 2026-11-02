@@ -20,7 +20,7 @@ function handleCancel() {
   <transition name="fade">
     <div
       v-if="ui.confirmState.isOpen"
-      class="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+      class="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4"
       @click.self="handleCancel"
     >
       <div 

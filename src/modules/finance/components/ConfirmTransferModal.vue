@@ -81,7 +81,7 @@ async function handleConfirmExpense() {
 <template>
   <Teleport to="body">
     <div class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="emit('close')" />
+      <div class="absolute inset-0 bg-black/60" @click="emit('close')" />
 
       <div
         class="relative z-10 w-full sm:max-w-md bg-bg-surface rounded-t-2xl sm:rounded-2xl border border-border-default shadow-2xl overflow-hidden"

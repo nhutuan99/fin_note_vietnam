@@ -608,8 +608,6 @@ async function handleExtractEvents() {
 <style scoped>
 .note-page {
   max-width: 100%;
-  animation: notePageIn 0.2s ease both;
-  transition: max-width 0.3s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* Focus mode: a comfortable reading column (desktop only) */
@@ -617,11 +615,6 @@ async function handleExtractEvents() {
   .note-page.is-focus {
     max-width: 50rem;
   }
-}
-
-@keyframes notePageIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
 }
 
 .note-topbar {
