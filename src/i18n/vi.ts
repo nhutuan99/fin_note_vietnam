@@ -360,7 +360,8 @@ export default {
       title: 'Theo danh mục',
       txCount: '{n} giao dịch',
       showAll: 'Xem tất cả {n} danh mục',
-      showLess: 'Thu gọn'
+      showLess: 'Thu gọn',
+      other: 'Danh mục khác'
     }
   },
 

@@ -2,91 +2,113 @@
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { Doughnut } from 'vue-chartjs'
-import { Chart as ChartJS, ArcElement, Tooltip } from 'chart.js'
-import { PieChart, ArrowUpRight, ArrowDownRight, ChevronDown } from 'lucide-vue-next'
+import { ArrowUpRight, ArrowDownRight, ChevronDown, LayoutList } from 'lucide-vue-next'
 import { useFinanceStore } from '@/stores/finance'
 import { useUiStore } from '@/stores/ui'
 import { getCategoryConfig } from '@/constants/finance'
+import { categoryColor, otherColor } from '@/constants/categoryPalette'
 import { formatMoneyShort } from '@/composables/useCurrency'
 
-ChartJS.register(ArcElement, Tooltip)
-
 /**
- * Where the money went: a donut of category shares plus a ranking list with each category's
- * amount, share, number of transactions and change vs last month. Rows open the transaction list
- * filtered to that category.
+ * Where the money went, as an allocation bar (one 100% bar split by category) + a ranked list.
+ *
+ * Part-to-whole reads better as a single stacked bar than a donut: segment lengths compare
+ * directly, it takes little height and it lines up with the list below. Up to five categories
+ * keep their own color; the rest fold into a gray "Other" (no generated 6th+ hues).
+ * Hovering a segment or row highlights the pair; rows open the filtered transaction list.
  */
 type Kind = 'expense' | 'income'
+
+interface Row {
+  key: string
+  icon: string
+  color: string
+  total: number
+  count: number
+  share: number
+  /** % change vs the same period last month; null = nothing last month */
+  change: number | null
+}
+
+const MAX_NAMED = 5
+const OTHER_KEY = '__other'
 
 const { t } = useI18n()
 const router = useRouter()
 const finance = useFinanceStore()
 const ui = useUiStore()
 
-const VISIBLE_ROWS = 5
-
 const kind = ref<Kind>('expense')
-const expanded = ref(false)
-const activeIndex = ref<number | null>(null)
+const activeKey = ref<string | null>(null)
+const showOtherMembers = ref(false)
 
-const rows = computed(() => {
+const theme = computed(() => (ui.theme === 'light' ? 'light' : 'dark'))
+
+const allRows = computed<Row[]>(() => {
   const list = (kind.value === 'expense' ? finance.stats.expenseByCategory : finance.stats.incomeByCategory) ?? []
   const prev = finance.stats.prevCategoryTotals?.[kind.value] ?? {}
   return list.map((c) => {
-    const config = getCategoryConfig(c.category)
     const before = prev[c.category] ?? 0
     return {
       key: c.category,
-      icon: config.icon,
-      color: config.color,
+      icon: getCategoryConfig(c.category).icon,
+      color: categoryColor(c.category, theme.value),
       total: c.total,
       count: c.count,
-      percentage: c.percentage,
-      // null = no spending in that category last month
+      share: c.percentage,
       change: before > 0 ? Math.round(((c.total - before) / before) * 100) : null
     }
   })
 })
 
-const total = computed(() => rows.value.reduce((s, r) => s + r.total, 0))
-const txCount = computed(() => rows.value.reduce((s, r) => s + r.count, 0))
-const visibleRows = computed(() => (expanded.value ? rows.value : rows.value.slice(0, VISIBLE_ROWS)))
+const total = computed(() => allRows.value.reduce((s, r) => s + r.total, 0))
+const txCount = computed(() => allRows.value.reduce((s, r) => s + r.count, 0))
 
-const chartData = computed(() => ({
-  labels: rows.value.map((r) => r.key),
-  datasets: [
-    {
-      data: rows.value.map((r) => r.total),
-      backgroundColor: rows.value.map((r) => r.color),
-      borderColor: 'transparent',
-      borderWidth: 0,
-      hoverOffset: 6,
-      spacing: rows.value.length > 1 ? 2 : 0,
-      borderRadius: 4
-    }
-  ]
-}))
-
-const chartOptions = computed(() => ({
-  responsive: true,
-  maintainAspectRatio: false,
-  cutout: '72%',
-  animation: { duration: 300 },
-  transitions: { resize: { animation: { duration: 0 } } },
-  layout: { padding: 6 },
-  plugins: {
-    legend: { display: false },
-    tooltip: { enabled: false }
-  },
-  onHover: (_: unknown, elements: { index: number }[]) => {
-    activeIndex.value = elements.length ? elements[0].index : null
+/** Named rows keep their color; rows without a color slot or past the 5th fold into "Other" */
+const split = computed(() => {
+  const named: Row[] = []
+  const folded: Row[] = []
+  for (const row of allRows.value) {
+    if (named.length < MAX_NAMED && row.color !== otherColor(theme.value)) named.push(row)
+    else folded.push(row)
   }
-}))
+  return { named, folded }
+})
 
-const center = computed(() => {
-  const row = activeIndex.value !== null ? rows.value[activeIndex.value] : null
-  if (row) return { label: t(`categories.${row.key}`), value: row.total, sub: `${row.percentage.toFixed(0)}%` }
+const otherRow = computed<Row | null>(() => {
+  const folded = split.value.folded
+  if (!folded.length) return null
+  const sum = folded.reduce((s, r) => s + r.total, 0)
+  return {
+    key: OTHER_KEY,
+    icon: '',
+    color: otherColor(theme.value),
+    total: sum,
+    count: folded.reduce((s, r) => s + r.count, 0),
+    share: total.value > 0 ? (sum / total.value) * 100 : 0,
+    change: null
+  }
+})
+
+/** Segments of the allocation bar, in list order */
+const segments = computed(() => [...split.value.named, ...(otherRow.value ? [otherRow.value] : [])])
+
+/** Month total vs the same stretch of last month */
+const totalChange = computed(() => {
+  const prev = Object.values(finance.stats.prevCategoryTotals?.[kind.value] ?? {}).reduce((s, v) => s + v, 0)
+  return prev > 0 ? Math.round(((total.value - prev) / prev) * 100) : null
+})
+
+/** "×14" instead of "1317%" when the change is huge */
+function changeLabel(change: number) {
+  const ratio = 1 + change / 100
+  if (ratio >= 3) return `×${ratio >= 10 ? Math.round(ratio) : ratio.toFixed(1)}`
+  return `${Math.abs(change)}%`
+}
+
+const headline = computed(() => {
+  const row = segments.value.find((r) => r.key === activeKey.value)
+  if (row) return { label: rowName(row), value: row.total, sub: `${row.share.toFixed(1)}% · ${t('dashboard.categories.txCount', { n: row.count })}` }
   return {
     label: kind.value === 'expense' ? t('dashboard.trend.totalOut') : t('dashboard.trend.totalIn'),
     value: total.value,
@@ -94,29 +116,38 @@ const center = computed(() => {
   }
 })
 
-function setKind(next: Kind) {
-  kind.value = next
-  activeIndex.value = null
-  expanded.value = false
+function rowName(row: Row) {
+  return row.key === OTHER_KEY ? t('dashboard.categories.other') : t(`categories.${row.key}`)
 }
 
-function openCategory(key: string) {
-  finance.filter = { type: kind.value, category: key }
+function setKind(next: Kind) {
+  kind.value = next
+  activeKey.value = null
+  showOtherMembers.value = false
+}
+
+function open(row: Row) {
+  if (row.key === OTHER_KEY) {
+    showOtherMembers.value = !showOtherMembers.value
+    return
+  }
+  finance.filter = { type: kind.value, category: row.key }
   router.push('/transactions')
 }
 
-/** For spending, going up is the "bad" direction; for income it's the good one */
-function changeTone(change: number) {
-  const up = change > 0
-  return (kind.value === 'expense') === up ? 'is-bad' : 'is-good'
+/** Spending going up is the "bad" direction; for income it's the good one */
+function tone(change: number) {
+  return (kind.value === 'expense') === change > 0 ? 'is-bad' : 'is-good'
 }
+
+const money = (v: number) => (ui.hideBalances ? '••••' : formatMoneyShort(v))
 </script>
 
 <template>
   <div class="cat-card">
     <div class="cat-card__header">
       <div class="flex items-center gap-2">
-        <PieChart :size="16" class="text-text-tertiary" />
+        <LayoutList :size="16" class="text-text-tertiary" />
         <h3>{{ t('dashboard.categories.title') }}</h3>
       </div>
       <div class="cat-seg" role="tablist">
@@ -129,56 +160,87 @@ function changeTone(change: number) {
       </div>
     </div>
 
-    <template v-if="rows.length">
-      <!-- Donut with the total (or hovered category) in the middle -->
-      <div class="cat-card__donut" @mouseleave="activeIndex = null">
-        <Doughnut :data="chartData" :options="chartOptions" />
-        <div class="cat-card__center">
-          <span class="cat-card__center-label">{{ center.label }}</span>
-          <span class="cat-card__center-value">{{ ui.hideBalances ? '••••' : formatMoneyShort(center.value) }}</span>
-          <span class="cat-card__center-sub">{{ center.sub }}</span>
+    <template v-if="allRows.length">
+      <!-- Headline: total, or the hovered category -->
+      <div class="cat-head">
+        <span class="cat-head__label">{{ headline.label }}</span>
+        <div class="cat-head__row">
+          <span class="cat-head__value">{{ money(headline.value) }}</span>
+          <span
+            v-if="!activeKey && totalChange !== null && totalChange !== 0"
+            class="cat-change"
+            :class="tone(totalChange)"
+            :title="t('dashboard.vsSameDayLastMonth')"
+          >
+            <component :is="totalChange > 0 ? ArrowUpRight : ArrowDownRight" :size="12" />
+            {{ changeLabel(totalChange) }}
+          </span>
         </div>
+        <span class="cat-head__sub">{{ headline.sub }}</span>
       </div>
 
-      <!-- Ranking -->
-      <ol class="cat-list">
-        <li
-          v-for="(row, i) in visibleRows"
-          :key="row.key"
-          class="cat-row"
-          :class="{ 'is-active': activeIndex === i }"
-          tabindex="0"
-          role="button"
-          @mouseenter="activeIndex = i"
-          @mouseleave="activeIndex = null"
-          @click="openCategory(row.key)"
-          @keydown.enter="openCategory(row.key)"
-        >
-          <span class="cat-row__icon font-emoji" :style="{ background: `${row.color}22` }">{{ row.icon }}</span>
-          <div class="cat-row__body">
-            <div class="cat-row__top">
-              <span class="cat-row__name">{{ t(`categories.${row.key}`) }}</span>
-              <span class="cat-row__amount">{{ ui.hideBalances ? '••••' : formatMoneyShort(row.total) }}</span>
-            </div>
-            <div class="cat-row__bar">
-              <div :style="{ transform: `scaleX(${row.percentage / 100})`, background: row.color }" />
-            </div>
-            <div class="cat-row__meta">
-              <span>{{ row.percentage.toFixed(0) }}% · {{ t('dashboard.categories.txCount', { n: row.count }) }}</span>
-              <span v-if="row.change !== null && row.change !== 0" class="cat-row__change" :class="changeTone(row.change)">
-                <component :is="row.change > 0 ? ArrowUpRight : ArrowDownRight" :size="11" />
-                {{ Math.abs(row.change) }}%
-              </span>
-              <span v-else-if="row.change === null" class="cat-row__change">{{ t('dashboard.new') }}</span>
-            </div>
-          </div>
-        </li>
-      </ol>
+      <!-- Allocation bar -->
+      <div class="cat-bar" role="img" :aria-label="t('dashboard.categories.title')" @mouseleave="activeKey = null">
+        <div
+          v-for="seg in segments"
+          :key="seg.key"
+          class="cat-bar__seg"
+          :class="{ 'is-dim': activeKey && activeKey !== seg.key }"
+          :style="{ flexGrow: seg.total, background: seg.color }"
+          @mouseenter="activeKey = seg.key"
+        />
+      </div>
 
-      <button v-if="rows.length > VISIBLE_ROWS" class="cat-more" @click="expanded = !expanded">
-        {{ expanded ? t('dashboard.categories.showLess') : t('dashboard.categories.showAll', { n: rows.length }) }}
-        <ChevronDown :size="14" :class="{ 'rotate-180': expanded }" />
-      </button>
+      <!-- Ranked list (direct labels for every colored segment) -->
+      <ul class="cat-list" @mouseleave="activeKey = null">
+        <template v-for="row in segments" :key="row.key">
+          <li
+            class="cat-row"
+            :class="{ 'is-active': activeKey === row.key, 'is-dim': activeKey && activeKey !== row.key }"
+            tabindex="0"
+            role="button"
+            :aria-expanded="row.key === OTHER_KEY ? showOtherMembers : undefined"
+            @mouseenter="activeKey = row.key"
+            @focus="activeKey = row.key"
+            @click="open(row)"
+            @keydown.enter="open(row)"
+          >
+            <span class="cat-row__dot" :style="{ background: row.color }" />
+            <span class="cat-row__name">
+              <span v-if="row.icon" class="font-emoji">{{ row.icon }}</span>
+              {{ rowName(row) }}
+              <ChevronDown v-if="row.key === OTHER_KEY" :size="13" class="cat-row__chevron" :class="{ 'rotate-180': showOtherMembers }" />
+            </span>
+            <span v-if="row.change !== null && row.change !== 0" class="cat-change" :class="tone(row.change)">
+              <component :is="row.change > 0 ? ArrowUpRight : ArrowDownRight" :size="11" />
+              {{ changeLabel(row.change) }}
+            </span>
+            <span class="cat-row__share">{{ row.share.toFixed(0) }}%</span>
+            <span class="cat-row__amount">{{ money(row.total) }}</span>
+          </li>
+
+          <!-- Members of "Other", on demand -->
+          <template v-if="row.key === OTHER_KEY && showOtherMembers">
+            <li
+              v-for="member in split.folded"
+              :key="member.key"
+              class="cat-row cat-row--member"
+              tabindex="0"
+              role="button"
+              @click="open(member)"
+              @keydown.enter="open(member)"
+            >
+              <span class="cat-row__dot is-hollow" />
+              <span class="cat-row__name">
+                <span class="font-emoji">{{ member.icon }}</span>
+                {{ rowName(member) }}
+              </span>
+              <span class="cat-row__share">{{ member.share.toFixed(0) }}%</span>
+              <span class="cat-row__amount">{{ money(member.total) }}</span>
+            </li>
+          </template>
+        </template>
+      </ul>
     </template>
 
     <div v-else class="cat-card__empty">{{ t('dashboard.noDataThisMonth') }}</div>
@@ -201,7 +263,6 @@ function changeTone(change: number) {
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  margin-bottom: 0.75rem;
 }
 
 .cat-card__header h3 {
@@ -239,58 +300,85 @@ function changeTone(change: number) {
   color: var(--success);
 }
 
-.cat-card__donut {
-  position: relative;
-  height: 11rem;
-  margin-bottom: 0.75rem;
-}
-
-.cat-card__center {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-  text-align: center;
-}
-
-.cat-card__center-label {
-  max-width: 7rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 0.6875rem;
-  color: var(--text-tertiary);
-}
-
-.cat-card__center-value {
-  font-size: 1.125rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-.cat-card__center-sub {
-  font-size: 0.6875rem;
-  color: var(--text-tertiary);
-}
-
-.cat-list {
+/* ── Headline ── */
+.cat-head {
   display: flex;
   flex-direction: column;
   gap: 0.125rem;
+  margin: 1rem 0 0.875rem;
+  min-height: 4.25rem;
+}
+
+.cat-head__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+}
+
+.cat-head__row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.cat-head__value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.cat-head__sub {
+  font-size: 0.6875rem;
+  color: var(--text-tertiary);
+}
+
+/* ── Allocation bar: 2px surface gaps between segments, rounded outer ends ── */
+.cat-bar {
+  display: flex;
+  gap: 2px;
+  height: 0.75rem;
+  margin-bottom: 1rem;
+  overflow: hidden;
+  border-radius: 999px;
+}
+
+.cat-bar__seg {
+  flex-basis: 0;
+  min-width: 4px;
+  border-radius: 2px;
+  transition: opacity 0.15s ease;
+  cursor: pointer;
+}
+
+.cat-bar__seg.is-dim {
+  opacity: 0.25;
+}
+
+/* ── List ── */
+.cat-list {
+  display: flex;
+  flex-direction: column;
 }
 
 .cat-row {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.5rem;
+  gap: 0.625rem;
+  min-height: 2.5rem;
+  padding: 0 0.5rem;
   margin: 0 -0.5rem;
-  border-radius: 0.625rem;
+  border-radius: 0.5rem;
+  font-size: 0.8125rem;
   cursor: pointer;
-  transition: background-color 0.15s ease;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
+}
+
+.cat-row + .cat-row {
+  border-top: 1px solid var(--border-subtle);
 }
 
 .cat-row:hover,
@@ -300,98 +388,85 @@ function changeTone(change: number) {
   outline: none;
 }
 
-.cat-row__icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
+.cat-row.is-dim {
+  opacity: 0.55;
+}
+
+.cat-row__dot {
+  width: 0.5rem;
+  height: 0.5rem;
   flex-shrink: 0;
-  border-radius: 0.625rem;
-  font-size: 1rem;
+  border-radius: 2px;
 }
 
-.cat-row__body {
-  flex: 1;
-  min-width: 0;
-}
-
-.cat-row__top {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.5rem;
+.cat-row__dot.is-hollow {
+  border: 1px solid var(--border-strong);
 }
 
 .cat-row__name {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
+  white-space: nowrap;
   text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 0.8125rem;
-  font-weight: 500;
+  color: var(--text-primary);
 }
 
-.cat-row__amount {
-  font-size: 0.8125rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.cat-row__bar {
-  height: 0.25rem;
-  margin: 0.375rem 0 0.25rem;
-  overflow: hidden;
-  border-radius: 999px;
-  background: var(--bg-elevated);
-}
-
-.cat-row__bar > div {
-  height: 100%;
-  border-radius: 999px;
-  transform-origin: left;
-  transition: transform 0.4s ease;
-}
-
-.cat-row__meta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  font-size: 0.6875rem;
+.cat-row__chevron {
   color: var(--text-tertiary);
+  transition: transform 0.15s ease;
 }
 
-.cat-row__change {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.0625rem;
-  font-weight: 600;
-}
-
-.cat-row__change.is-bad {
-  color: var(--error);
-}
-
-.cat-row__change.is-good {
-  color: var(--success);
-}
-
-.cat-more {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.25rem;
-  margin-top: 0.5rem;
-  padding: 0.375rem;
-  border-radius: 0.5rem;
+.cat-row--member {
+  padding-left: 1.25rem;
   font-size: 0.75rem;
+}
+
+.cat-row--member .cat-row__name {
   color: var(--text-secondary);
 }
 
-.cat-more:hover {
-  background: var(--bg-hover);
+.cat-row__share {
+  width: 2.5rem;
+  flex-shrink: 0;
+  text-align: right;
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+.cat-row__amount {
+  min-width: 3.75rem;
+  flex-shrink: 0;
+  text-align: right;
+  font-weight: 600;
   color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.cat-change {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  flex-shrink: 0;
+  padding: 0 0.3125rem;
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1.25rem;
+}
+
+.cat-change.is-bad {
+  background: color-mix(in srgb, var(--error) 12%, transparent);
+  color: var(--error);
+}
+
+.cat-change.is-good {
+  background: color-mix(in srgb, var(--success) 12%, transparent);
+  color: var(--success);
 }
 
 .cat-card__empty {

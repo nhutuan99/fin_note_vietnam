@@ -347,7 +347,8 @@ export default {
       title: 'By category',
       txCount: '{n} transactions',
       showAll: 'Show all {n} categories',
-      showLess: 'Show less'
+      showLess: 'Show less',
+      other: 'Other categories'
     }
   },
 
