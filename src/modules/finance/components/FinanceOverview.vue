@@ -14,8 +14,6 @@ import { formatVNDShort } from '@/constants/finance'
 // 5. Components & icons
 import {
   Wallet,
-  TrendingUp,
-  TrendingDown,
   Plus,
   Eye,
   EyeOff,
@@ -28,6 +26,7 @@ import {
   Target
 } from 'lucide-vue-next'
 import WeatherWidget from '@/components/WeatherWidget.vue'
+import MonthSummaryCard from './MonthSummaryCard.vue'
 
 const { t, tm } = useI18n()
 const router = useRouter()
@@ -107,11 +106,11 @@ const primaryBalance = computed(() =>
   </div>
 
   <!-- ── Overview cards grid ── -->
-  <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+  <div class="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
 
     <!-- ★ Total Balance / Net Worth ── -->
     <div
-      class="relative overflow-hidden rounded-2xl border p-5 flex flex-col gap-0 sm:col-span-1"
+      class="relative overflow-hidden rounded-2xl border p-5 flex flex-col gap-0"
       style="border-color: color-mix(in srgb, var(--accent) 30%, transparent); background: color-mix(in srgb, var(--accent) 4%, var(--bg-surface)); box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 8%, transparent);"
     >
       <!-- glow decor -->
@@ -148,7 +147,7 @@ const primaryBalance = computed(() =>
       </div>
 
       <!-- Breakdown rows (only when investments exist) -->
-      <template v-if="(!finance.loading)">
+      <template v-if="!finance.loading && (savings.totalSaved > 0 || portfolio.hasInvestments.value)">
         <div class="relative z-10 mt-3 space-y-1.5 border-t pt-3" style="border-color: color-mix(in srgb, var(--border-subtle) 80%, transparent);">
 
           <!-- Total Savings row -->
@@ -214,56 +213,7 @@ const primaryBalance = computed(() =>
       </template>
     </div>
 
-    <!-- Monthly Income ── -->
-    <div class="relative overflow-hidden rounded-2xl border border-border-default bg-bg-surface p-5 flex flex-col gap-0">
-      <div class="mb-3 flex items-center gap-2">
-        <div class="bg-success/10 flex h-9 w-9 items-center justify-center rounded-lg shrink-0">
-          <TrendingUp :size="18" class="text-success" />
-        </div>
-        <span class="text-text-tertiary text-sm">{{ t('dashboard.monthIncome') }}</span>
-      </div>
-      <div v-if="finance.loading" class="skeleton h-8 w-32 mt-1" />
-      <div
-        v-else
-        class="text-2xl font-bold tracking-tight"
-        :class="finance.monthIncome > 0 ? 'text-success' : 'text-text-primary'"
-      >
-        {{ finance.monthIncome > 0 ? '+' : '' }}{{ formatVNDShort(finance.monthIncome) }}
-      </div>
-      <!-- Net savings hint -->
-      <div
-        v-if="!finance.loading && finance.monthNet !== 0"
-        class="mt-2 flex items-center gap-1 text-[11px]"
-        :class="finance.monthNet >= 0 ? 'text-success' : 'text-error'"
-      >
-        <component :is="finance.monthNet >= 0 ? ArrowUpRight : ArrowDownRight" :size="12" />
-        <span>{{ t('dashboard.monthlySavings') }} {{ formatVNDShort(Math.abs(finance.monthNet)) }}</span>
-      </div>
-    </div>
-
-    <!-- Monthly Expense ── -->
-    <div class="relative overflow-hidden rounded-2xl border border-border-default bg-bg-surface p-5 flex flex-col gap-0">
-      <div class="mb-3 flex items-center gap-2">
-        <div class="bg-error/10 flex h-9 w-9 items-center justify-center rounded-lg shrink-0">
-          <TrendingDown :size="18" class="text-error" />
-        </div>
-        <span class="text-text-tertiary text-sm">{{ t('dashboard.monthExpense') }}</span>
-      </div>
-      <div v-if="finance.loading" class="skeleton h-8 w-32 mt-1" />
-      <div
-        v-else
-        class="text-2xl font-bold tracking-tight"
-        :class="finance.monthExpense > 0 ? 'text-error' : 'text-text-primary'"
-      >
-        {{ finance.monthExpense > 0 ? '-' : '' }}{{ formatVNDShort(finance.monthExpense) }}
-      </div>
-      <!-- Expense rate -->
-      <div
-        v-if="!finance.loading && finance.monthIncome > 0 && finance.monthExpense > 0"
-        class="mt-2 text-[11px] text-text-disabled"
-      >
-        {{ Math.round((finance.monthExpense / finance.monthIncome) * 100) }}{{ t('dashboard.incomePercent') }}
-      </div>
-    </div>
+    <!-- ★ This month: spent vs last month, income, left over, daily average, budget ── -->
+    <MonthSummaryCard class="lg:col-span-2" />
   </div>
 </template>

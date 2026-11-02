@@ -39,28 +39,61 @@ function generateId() {
   return 'local_' + Math.random().toString(36).substr(2, 9)
 }
 
-function calculateFinanceStats(db: LocalSchema, month: string): FinanceStats {
+/** Same shape and rules as the worker's /api/finance/stats (internal transfers excluded) */
+function calculateFinanceStats(db: LocalSchema, month: string, compareDay = 0): FinanceStats {
   const txs = db.transactions
+  const counted = (tx: Transaction) => tx.category !== 'transfer'
   let monthIncome = 0
   let monthExpense = 0
   const recentTransactions = [...txs].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 15)
 
-  const expenseByCategoryMap = new Map<string, number>()
   const expenseByWalletMap = new Map<string, number>()
   const incomeByWalletMap = new Map<string, number>()
 
   txs.forEach(tx => {
-    if (tx.date.startsWith(month)) {
+    if (tx.date.startsWith(month) && counted(tx)) {
       if (tx.type === 'income') {
         monthIncome += tx.amount
         incomeByWalletMap.set(tx.walletId, (incomeByWalletMap.get(tx.walletId) || 0) + tx.amount)
       } else {
         monthExpense += tx.amount
-        expenseByCategoryMap.set(tx.category, (expenseByCategoryMap.get(tx.category) || 0) + tx.amount)
         expenseByWalletMap.set(tx.walletId, (expenseByWalletMap.get(tx.walletId) || 0) + tx.amount)
       }
     }
   })
+
+  const categoryBreakdown = (prefix: string, type: 'income' | 'expense', maxDay = 0) => {
+    const totals = new Map<string, { total: number; count: number }>()
+    let sum = 0
+    txs.forEach(tx => {
+      if (!tx.date.startsWith(prefix) || tx.type !== type || !counted(tx)) return
+      if (maxDay > 0 && parseInt(tx.date.substring(8, 10), 10) > maxDay) return
+      const entry = totals.get(tx.category) || { total: 0, count: 0 }
+      entry.total += tx.amount
+      entry.count++
+      totals.set(tx.category, entry)
+      sum += tx.amount
+    })
+    return Array.from(totals.entries())
+      .map(([category, { total, count }]) => ({ category, total, count, percentage: sum > 0 ? (total / sum) * 100 : 0, icon: '', color: '' }))
+      .sort((a, b) => b.total - a.total)
+  }
+
+  const [year, mon] = month.split('-').map(Number)
+  const prevMonth = mon === 1 ? `${year - 1}-12` : `${year}-${String(mon - 1).padStart(2, '0')}`
+  const dailySeries = (prefix: string) => {
+    const [y, m] = prefix.split('-').map(Number)
+    const days = new Date(y, m, 0).getDate()
+    const series = Array.from({ length: days }, (_, i) => ({ date: `${prefix}-${String(i + 1).padStart(2, '0')}`, income: 0, expense: 0 }))
+    txs.forEach(tx => {
+      if (!counted(tx) || !tx.date.startsWith(prefix)) return
+      const day = series[parseInt(tx.date.substring(8, 10), 10) - 1]
+      if (day) day[tx.type === 'income' ? 'income' : 'expense'] += tx.amount
+    })
+    return series
+  }
+  const prevDaily = dailySeries(prevMonth)
+  const toTotals = (list: { category: string; total: number }[]) => Object.fromEntries(list.map(c => [c.category, c.total]))
 
   // Mock weekly stats (last 7 days)
   const weeklyStats = Array.from({ length: 7 }).map((_, i) => {
@@ -83,10 +116,19 @@ function calculateFinanceStats(db: LocalSchema, month: string): FinanceStats {
     monthExpense,
     monthNet: monthIncome - monthExpense,
     weeklyStats,
-    expenseByCategory: Array.from(expenseByCategoryMap.entries()).map(([category, amount]) => ({ category, amount, total: amount, count: 1, percentage: amount / monthExpense * 100 || 0, icon: '', color: '' })),
+    expenseByCategory: categoryBreakdown(month, 'expense'),
+    incomeByCategory: categoryBreakdown(month, 'income'),
     expenseByWallet: Array.from(expenseByWalletMap.entries()).map(([walletId, amount]) => ({ walletId, amount, total: amount, percentage: amount / monthExpense * 100 || 0 })),
     incomeByWallet: Array.from(incomeByWalletMap.entries()).map(([walletId, amount]) => ({ walletId, amount, total: amount, percentage: amount / monthIncome * 100 || 0 })),
-    recentTransactions
+    recentTransactions,
+    daily: dailySeries(month),
+    prevDaily,
+    prevMonthIncome: prevDaily.reduce((s, d) => s + d.income, 0),
+    prevMonthExpense: prevDaily.reduce((s, d) => s + d.expense, 0),
+    prevCategoryTotals: {
+      expense: toTotals(categoryBreakdown(prevMonth, 'expense', compareDay)),
+      income: toTotals(categoryBreakdown(prevMonth, 'income', compareDay))
+    }
   }
 }
 
@@ -136,6 +178,8 @@ export const localDbMock = async (method: string, url: string, body?: any) => {
       let filtered = [...db.transactions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       if (type && type !== 'all') filtered = filtered.filter(t => t.type === type)
       if (walletId) filtered = filtered.filter(t => t.walletId === walletId)
+      const category = parsedUrl.searchParams.get('category')
+      if (category) filtered = filtered.filter(t => t.category === category)
 
       return {
         success: true,
@@ -204,7 +248,8 @@ export const localDbMock = async (method: string, url: string, body?: any) => {
   // ── FINANCE STATS ──
   if (path === '/api/finance/stats' && method === 'GET') {
     const month = parsedUrl.searchParams.get('month') || new Date().toISOString().substring(0, 7)
-    return sendResponse(calculateFinanceStats(db, month))
+    const compareDay = parseInt(parsedUrl.searchParams.get('compareDay') || '0', 10)
+    return sendResponse(calculateFinanceStats(db, month, compareDay))
   }
 
   // ── REMINDERS ──

@@ -317,7 +317,38 @@ export default {
     stocksLabel: 'Stocks',
     fundsLabel: 'Funds',
     monthlySavings: 'Savings',
-    incomePercent: '% of income'
+    incomePercent: '% of income',
+    spentThisMonth: 'Spent this month',
+    spentInMonth: 'Spent in the month',
+    new: 'New',
+    vsSameDayLastMonth: 'vs same point last month',
+    vsLastMonth: 'vs last month',
+    leftover: 'Left over',
+    dailyAverage: 'Daily average',
+    budgetUsed: '{pct}% of {limit} budget used',
+    budgetOver: 'Over by {amount}',
+    budgetPerDay: '~{amount}/day left',
+    budgetLeft: '{amount} left',
+    addFirstWallet: 'Add your first money source (bank, e-wallet, cash…)',
+    trend: {
+      title: 'This month’s trend',
+      kind: 'Type',
+      mode: 'View',
+      daily: 'Daily',
+      cumulative: 'Cumulative',
+      totalOut: 'Total out',
+      totalIn: 'Total in',
+      peak: 'Peak {day}: {amount}',
+      lastMonthSameDay: 'Last month same day: {amount}',
+      thisMonth: 'This month',
+      lastMonth: 'Last month'
+    },
+    categories: {
+      title: 'By category',
+      txCount: '{n} transactions',
+      showAll: 'Show all {n} categories',
+      showLess: 'Show less'
+    }
   },
 
   // ── Transactions ──
@@ -353,6 +384,7 @@ export default {
     wallet: 'Wallet',
     source: 'Source',
     clearData: 'Clear data',
+    clearCategory: 'Clear category filter',
     clearTitle: 'Clear transaction history',
     clearDesc: 'Delete income & expense transactions by week, month or year',
     clearScope: { week: 'Week', month: 'Month', year: 'Year' },

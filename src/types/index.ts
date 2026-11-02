@@ -104,15 +104,31 @@ export interface WalletStat {
   percentage: number
 }
 
+/** One calendar day of a month (transfers excluded) */
+export interface DayTotals {
+  date: string
+  income: number
+  expense: number
+}
+
 export interface FinanceStats {
   monthIncome: number
   monthExpense: number
   monthNet: number
   weeklyStats: DailyStat[]
   expenseByCategory: CategoryStat[]
+  incomeByCategory?: CategoryStat[]
   expenseByWallet: WalletStat[]
   incomeByWallet: WalletStat[]
   recentTransactions: Transaction[]
+  /** Every day of the selected month */
+  daily?: DayTotals[]
+  /** Every day of the month before, for month-over-month comparison */
+  prevDaily?: DayTotals[]
+  prevMonthIncome?: number
+  prevMonthExpense?: number
+  /** Previous month's total per category */
+  prevCategoryTotals?: { expense: Record<string, number>; income: Record<string, number> }
 }
 
 // ── Finance: Categories ──

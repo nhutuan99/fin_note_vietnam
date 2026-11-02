@@ -84,6 +84,7 @@ export async function handleListTransactions(userId: string, request: Request, e
   const limitStr = url.searchParams.get('limit')
   const typeFilter = url.searchParams.get('type')
   const walletIdFilter = url.searchParams.get('walletId')
+  const categoryFilter = url.searchParams.get('category')
 
   // Filter
   let filtered = txs
@@ -92,6 +93,9 @@ export async function handleListTransactions(userId: string, request: Request, e
   }
   if (walletIdFilter) {
     filtered = filtered.filter(t => t.walletId === walletIdFilter)
+  }
+  if (categoryFilter) {
+    filtered = filtered.filter(t => t.category === categoryFilter)
   }
 
   // Sort by date desc, then createdAt desc
@@ -154,22 +158,63 @@ export async function handleGetFinanceStats(userId: string, request: Request, en
     })
   }
 
-  // Expense by category
-  const expenseMap: Record<string, number> = {}
-  let totalExpense = 0
-  monthTransactions.filter(t => t.type === 'expense' && t.category !== 'transfer').forEach(t => {
-    expenseMap[t.category] = (expenseMap[t.category] || 0) + t.amount
-    totalExpense += t.amount
-  })
-  
-  const expenseByCategory = Object.entries(expenseMap).map(([category, amount]) => {
-    return {
-      category,
-      total: amount,
-      count: monthTransactions.filter(t => t.type === 'expense' && t.category === category).length,
-      percentage: totalExpense > 0 ? (amount / totalExpense) * 100 : 0
-    }
-  }).sort((a, b) => b.total - a.total)
+  // Internal transfers move money between wallets: they are neither income nor spending
+  const counted = (t: TransactionData) => t.category !== 'transfer'
+
+  // Spending / income by category (share of the month, number of transactions)
+  const categoryBreakdown = (list: TransactionData[], type: 'income' | 'expense') => {
+    const totals: Record<string, { total: number; count: number }> = {}
+    let sum = 0
+    list.filter(t => t.type === type && counted(t)).forEach(t => {
+      const entry = (totals[t.category] ||= { total: 0, count: 0 })
+      entry.total += t.amount
+      entry.count++
+      sum += t.amount
+    })
+    return Object.entries(totals)
+      .map(([category, { total, count }]) => ({ category, total, count, percentage: sum > 0 ? (total / sum) * 100 : 0 }))
+      .sort((a, b) => b.total - a.total)
+  }
+
+  const expenseByCategory = categoryBreakdown(monthTransactions, 'expense')
+  const incomeByCategory = categoryBreakdown(monthTransactions, 'income')
+
+  // ── Month-over-month comparison data ──
+  // Transaction dates are the user's local calendar dates (YYYY-MM-DD), so the series are
+  // built from date strings only — no server "today", no timezone shift.
+  const [year, mon] = month.split('-').map(Number)
+  const prevMonth = mon === 1 ? `${year - 1}-12` : `${year}-${String(mon - 1).padStart(2, '0')}`
+  const daysInMonth = (y: number, m: number) => new Date(Date.UTC(y, m, 0)).getUTCDate()
+
+  const dailySeries = (prefix: string, days: number) => {
+    const series = Array.from({ length: days }, (_, i) => ({
+      date: `${prefix}-${String(i + 1).padStart(2, '0')}`,
+      income: 0,
+      expense: 0
+    }))
+    txs.forEach(t => {
+      if (!counted(t) || !t.date.startsWith(prefix)) return
+      const day = series[parseInt(t.date.substring(8, 10), 10) - 1]
+      if (day) day[t.type === 'income' ? 'income' : 'expense'] += t.amount
+    })
+    return series
+  }
+
+  const daily = dailySeries(month, daysInMonth(year, mon))
+  const [prevYear, prevMon] = prevMonth.split('-').map(Number)
+  const prevDaily = dailySeries(prevMonth, daysInMonth(prevYear, prevMon))
+  // While a month is in progress the client sends today's day-of-month, so categories are
+  // compared with the same stretch of last month instead of the whole month.
+  const compareDay = parseInt(url.searchParams.get('compareDay') || '0', 10)
+  const prevMonthTransactions = txs.filter(
+    t => t.date.startsWith(prevMonth) && (!(compareDay > 0) || parseInt(t.date.substring(8, 10), 10) <= compareDay)
+  )
+  const toTotals = (list: { category: string; total: number }[]) =>
+    Object.fromEntries(list.map(c => [c.category, c.total]))
+  const prevCategoryTotals = {
+    expense: toTotals(categoryBreakdown(prevMonthTransactions, 'expense')),
+    income: toTotals(categoryBreakdown(prevMonthTransactions, 'income'))
+  }
 
   // Wallet Breakdown
   const expenseWalletMap: Record<string, number> = {}
@@ -210,9 +255,15 @@ export async function handleGetFinanceStats(userId: string, request: Request, en
       monthNet: monthIncome - monthExpense,
       weeklyStats,
       expenseByCategory,
+      incomeByCategory,
       expenseByWallet,
       incomeByWallet,
-      recentTransactions
+      recentTransactions,
+      daily,
+      prevDaily,
+      prevMonthIncome: prevDaily.reduce((s, d) => s + d.income, 0),
+      prevMonthExpense: prevDaily.reduce((s, d) => s + d.expense, 0),
+      prevCategoryTotals
     }
   })
 }

@@ -2,175 +2,27 @@
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { BarChart3, ArrowUpRight, ArrowDownRight, ArrowRight, Plus, Wallet } from 'lucide-vue-next'
+import { ArrowUpRight, ArrowDownRight, ArrowRight, Plus, Wallet } from 'lucide-vue-next'
 import { useFinancePolling } from '@/composables/useFinancePolling'
-import { formatMoneyShort } from '@/composables/useCurrency'
 import { formatVNDShort, formatVND, getCategoryConfig } from '@/constants/finance'
 import { getWalletBrand } from '@/constants/walletBrands'
 
-// Chart.js
-import { Line } from 'vue-chartjs'
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  ArcElement,
-  Filler,
-  Tooltip,
-  Legend
-} from 'chart.js'
+import DailyTrendCard from './DailyTrendCard.vue'
+import CategoryBreakdownCard from './CategoryBreakdownCard.vue'
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Filler, Tooltip, Legend)
-
-const { t, tm } = useI18n()
+const { t } = useI18n()
 const router = useRouter()
 const finance = useFinancePolling()
-
-const hoverIncome = ref<string | null>(null)
-const hoverExpense = ref<string | null>(null)
-const hoverDay = ref<string | null>(null)
-
-function dayLabel(dateStr: string) {
-  const d = new Date(dateStr)
-  const days = tm('days.short') as string[]
-  return days[d.getDay()]
-}
-
-function formatDateShort(dateStr: string) {
-  const d = new Date(dateStr)
-  return `${d.getDate()}/${d.getMonth() + 1}`
-}
 
 function timeSince(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime()
   const m = Math.floor(diff / 60000)
+  if (m < 1) return t('time.justNow')
   if (m < 60) return t('time.minutesAgo', { n: m })
   const h = Math.floor(m / 60)
   if (h < 24) return t('time.hoursAgo', { n: h })
   return t('time.daysAgo', { n: Math.floor(h / 24) })
 }
-const crosshairPlugin = {
-  id: 'crosshair',
-  afterDraw(chart: any) {
-    const tooltip = chart.tooltip
-    if (!tooltip || !tooltip.getActiveElements().length) return
-    const ctx = chart.ctx
-    const x = tooltip.caretX
-    const topY = chart.scales.y.top
-    const bottomY = chart.scales.y.bottom
-    ctx.save()
-    ctx.beginPath()
-    ctx.moveTo(x, topY)
-    ctx.lineTo(x, bottomY)
-    ctx.lineWidth = 1
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)'
-    ctx.setLineDash([4, 3])
-    ctx.stroke()
-    ctx.restore()
-  }
-}
-
-// ── Weekly Line Chart (TokenTerminal style) ──
-const weeklyChartData = computed(() => ({
-  labels: finance.weeklyStats.map(d => `${dayLabel(d.date)} ${formatDateShort(d.date)}`),
-  datasets: [
-    {
-      label: t('dashboard.income'),
-      data: finance.weeklyStats.map(d => d.income),
-      borderColor: '#7c6ff7',
-      backgroundColor: (ctx: any) => {
-        const chart = ctx.chart
-        const { ctx: c, chartArea } = chart
-        if (!chartArea) return 'rgba(16, 185, 129, 0.1)'
-        const gradient = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom)
-        gradient.addColorStop(0, 'rgba(124, 111, 247, 0.25)')
-        gradient.addColorStop(0.6, 'rgba(124, 111, 247, 0.05)')
-        gradient.addColorStop(1, 'rgba(124, 111, 247, 0)')
-        return gradient
-      },
-      borderWidth: 2,
-      pointRadius: 0,
-      pointHoverRadius: 5,
-      pointHoverBackgroundColor: '#7c6ff7',
-      pointHoverBorderColor: '#ffffff',
-      pointHoverBorderWidth: 2,
-      tension: 0.4,
-      fill: true
-    },
-    {
-      label: t('dashboard.expense'),
-      data: finance.weeklyStats.map(d => d.expense),
-      borderColor: '#ef4444',
-      backgroundColor: (ctx: any) => {
-        const chart = ctx.chart
-        const { ctx: c, chartArea } = chart
-        if (!chartArea) return 'rgba(239, 68, 68, 0.1)'
-        const gradient = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom)
-        gradient.addColorStop(0, 'rgba(239, 68, 68, 0.15)')
-        gradient.addColorStop(0.6, 'rgba(239, 68, 68, 0.03)')
-        gradient.addColorStop(1, 'rgba(239, 68, 68, 0)')
-        return gradient
-      },
-      borderWidth: 2,
-      pointRadius: 0,
-      pointHoverRadius: 5,
-      pointHoverBackgroundColor: '#ef4444',
-      pointHoverBorderColor: '#ffffff',
-      pointHoverBorderWidth: 2,
-      tension: 0.4,
-      fill: true
-    }
-  ]
-}))
-
-const weeklyChartOptions = computed(() => ({
-  responsive: true,
-  maintainAspectRatio: false,
-  animation: { duration: 700, easing: 'easeOutQuart' as const },
-  interaction: { mode: 'index' as const, intersect: false },
-  plugins: {
-    legend: { display: false },
-    tooltip: {
-      enabled: false,
-      external: (context: any) => {
-        const tooltip = context.tooltip
-        if (tooltip.opacity === 0) {
-          hoverIncome.value = null
-          hoverExpense.value = null
-          hoverDay.value = null
-          return
-        }
-        const idx = tooltip.dataPoints?.[0]?.dataIndex
-        if (idx != null) {
-          const stats = finance.weeklyStats
-          hoverDay.value = `${dayLabel(stats[idx].date)} ${formatDateShort(stats[idx].date)}`
-          hoverIncome.value = formatMoneyShort(stats[idx].income)
-          hoverExpense.value = formatMoneyShort(stats[idx].expense)
-        }
-      }
-    }
-  },
-  scales: {
-    x: {
-      grid: { display: false },
-      border: { display: false },
-      ticks: { color: '#737373', font: { size: 10, weight: 'bold' as const }, maxRotation: 0 }
-    },
-    y: {
-      grid: { color: 'rgba(255, 255, 255, 0.04)', drawTicks: false },
-      border: { display: false, dash: [4, 4] as number[] },
-      ticks: {
-        color: '#737373',
-        font: { size: 10 },
-        padding: 8,
-        callback: (v: any) => formatMoneyShort(v)
-      }
-    }
-  }
-}))
 
 // ── Expense by Wallet ──
 interface WalletStat {
@@ -210,43 +62,18 @@ const incomeByWallet = computed<WalletStat[]>(() => {
   })
 })
 
-const walletBreakdownTab = ref<'expense' | 'income'>('income')
+// Spending is what people check most: open on it
+const walletBreakdownTab = ref<'expense' | 'income'>('expense')
 const activeWalletStats = computed(() => walletBreakdownTab.value === 'expense' ? expenseByWallet.value : incomeByWallet.value)
 </script>
 <template>
-    <div class="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
-      <!-- Weekly Line Chart (TokenTerminal style) -->
-      <div class="bg-bg-surface border-border-default rounded-xl border p-5">
-        <!-- Header with live hover values -->
-        <div class="mb-1 flex items-center justify-between">
-          <div class="flex items-center gap-2">
-            <BarChart3 :size="18" class="text-text-tertiary" />
-            <h3 class="text-sm font-semibold">{{ t('dashboard.weeklyChart') }}</h3>
-          </div>
-          <span v-if="hoverDay" class="text-text-disabled text-[0.6875rem] font-medium">{{ hoverDay }}</span>
-        </div>
-        <!-- Live values row -->
-        <div class="mb-3 flex items-center gap-4">
-          <div class="flex items-center gap-1.5">
-            <span class="h-[3px] w-3 rounded-full bg-violet-400"></span>
-            <span class="text-text-tertiary text-[0.6875rem]">{{ t('dashboard.income') }}</span>
-            <span class="text-violet-400 text-[0.8125rem] font-bold tabular-nums">
-              {{ hoverIncome ?? formatMoneyShort(finance.monthIncome) }}
-            </span>
-          </div>
-          <div class="flex items-center gap-1.5">
-            <span class="h-[3px] w-3 rounded-full bg-error"></span>
-            <span class="text-text-tertiary text-[0.6875rem]">{{ t('dashboard.expense') }}</span>
-            <span class="text-error text-[0.8125rem] font-bold tabular-nums">
-              {{ hoverExpense ?? formatMoneyShort(finance.monthExpense) }}
-            </span>
-          </div>
-        </div>
-        <div class="h-[11rem]">
-          <Line :data="weeklyChartData" :options="weeklyChartOptions" :plugins="[crosshairPlugin]" />
-        </div>
-      </div>
+    <!-- Trend (daily / cumulative vs last month) + where the money went -->
+    <div class="mb-6 grid grid-cols-1 gap-4 xl:grid-cols-5">
+      <DailyTrendCard class="xl:col-span-3" />
+      <CategoryBreakdownCard class="xl:col-span-2" />
+    </div>
 
+    <div class="mb-6 grid grid-cols-1 gap-4 xl:grid-cols-2">
       <!-- Spending by Wallet -->
       <div class="bg-bg-surface border-border-default rounded-xl border p-5">
         <!-- Header with tabs -->
@@ -293,8 +120,8 @@ const activeWalletStats = computed(() => walletBreakdownTab.value === 'expense' 
             <!-- Progress bar -->
             <div class="bg-bg-elevated h-1.5 overflow-hidden rounded-full">
               <div
-                class="h-full rounded-full transition-all duration-500"
-                :style="{ width: ws.percentage + '%', backgroundColor: walletBreakdownTab === 'expense' ? 'var(--error)' : 'var(--success)' }"
+                class="h-full origin-left rounded-full transition-transform duration-500"
+                :style="{ transform: `scaleX(${ws.percentage / 100})`, backgroundColor: walletBreakdownTab === 'expense' ? 'var(--error)' : 'var(--success)' }"
               ></div>
             </div>
           </div>
@@ -304,12 +131,11 @@ const activeWalletStats = computed(() => walletBreakdownTab.value === 'expense' 
           {{ t('dashboard.noDataThisMonth') }}
         </div>
       </div>
-    </div>
 
-    <!-- Recent Transactions -->
-    <div class="mb-6">
-      <div class="mb-4 flex items-center justify-between">
-        <h3 class="text-lg font-semibold">{{ t('dashboard.recentTransactions') }}</h3>
+      <!-- Recent Transactions -->
+      <div class="bg-bg-surface border-border-default rounded-xl border p-5">
+      <div class="mb-3 flex items-center justify-between">
+        <h3 class="text-sm font-semibold">{{ t('dashboard.recentTransactions') }}</h3>
         <router-link
           to="/transactions"
           class="text-accent hover:text-accent-text flex items-center gap-1 text-sm transition-colors"
@@ -321,12 +147,12 @@ const activeWalletStats = computed(() => walletBreakdownTab.value === 'expense' 
 
       <div
         v-if="finance.recentTransactions.length"
-        class="bg-bg-surface border-border-default divide-border-subtle divide-y overflow-hidden rounded-xl border"
+        class="divide-border-subtle -mx-2 divide-y"
       >
         <div
           v-for="tx in finance.recentTransactions.slice(0, 5)"
           :key="tx.id"
-          class="hover:bg-bg-hover flex items-center gap-3 px-4 py-3 transition-colors cursor-pointer"
+          class="hover:bg-bg-hover flex items-center gap-3 rounded-lg px-2 py-2.5 transition-colors cursor-pointer"
           @click="router.push('/transactions')"
         >
           <!-- Wallet Logo / Category Icon -->
@@ -395,7 +221,7 @@ const activeWalletStats = computed(() => walletBreakdownTab.value === 'expense' 
 
       <div
         v-else
-        class="bg-bg-surface border-border-default flex flex-col items-center rounded-2xl border border-dashed py-12 text-center"
+        class="flex flex-col items-center py-8 text-center"
       >
         <Wallet
           :size="48"
@@ -413,6 +239,7 @@ const activeWalletStats = computed(() => walletBreakdownTab.value === 'expense' 
           {{ t('dashboard.addTransaction') }}
         </button>
       </div>
+    </div>
     </div>
 </template>
 

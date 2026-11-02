@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router'
 import { useFinancePolling } from '@/composables/useFinancePolling'
 import { useUiStore } from '@/stores/ui'
 import { getWalletBrand } from '@/constants/walletBrands'
+import { getCategoryConfig } from '@/constants/finance'
 import { useI18n } from 'vue-i18n'
 import type { Transaction } from '@/types'
 import {
@@ -13,7 +14,8 @@ import {
   Check,
   Wallet,
   Download,
-  Trash2
+  Trash2,
+  X
 } from 'lucide-vue-next'
 
 import TransactionTable from '@/components/finance/TransactionTable.vue'
@@ -165,6 +167,18 @@ useEventListener(document, 'click', handleClickOutside)
           {{ t(f.labelKey) }}
         </button>
       </div>
+
+      <!-- Category filter (set from the dashboard's category breakdown) -->
+      <button
+        v-if="finance.filter.category"
+        class="border-accent bg-accent-subtle text-accent flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm"
+        :title="t('transactions.clearCategory')"
+        @click="finance.filter = { ...finance.filter, category: undefined }"
+      >
+        <span class="font-emoji">{{ getCategoryConfig(finance.filter.category).icon }}</span>
+        {{ t(`categories.${finance.filter.category}`) }}
+        <X :size="14" />
+      </button>
 
       <!-- Wallet filter (custom dropdown) -->
       <div ref="walletDropdownRef" class="relative">

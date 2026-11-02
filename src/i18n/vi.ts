@@ -330,7 +330,38 @@ export default {
     stocksLabel: 'Cổ phiếu',
     fundsLabel: 'Chứng chỉ quỹ',
     monthlySavings: 'Tiết kiệm',
-    incomePercent: '% thu nhập'
+    incomePercent: '% thu nhập',
+    spentThisMonth: 'Đã chi tháng này',
+    spentInMonth: 'Đã chi trong tháng',
+    new: 'Mới',
+    vsSameDayLastMonth: 'so với cùng kỳ tháng trước',
+    vsLastMonth: 'so với tháng trước',
+    leftover: 'Còn lại',
+    dailyAverage: 'TB mỗi ngày',
+    budgetUsed: 'Đã dùng {pct}% ngân sách {limit}',
+    budgetOver: 'Vượt {amount}',
+    budgetPerDay: 'Còn ~{amount}/ngày',
+    budgetLeft: 'Còn {amount}',
+    addFirstWallet: 'Thêm nguồn tiền đầu tiên (ngân hàng, ví điện tử, tiền mặt…)',
+    trend: {
+      title: 'Xu hướng trong tháng',
+      kind: 'Loại',
+      mode: 'Cách xem',
+      daily: 'Theo ngày',
+      cumulative: 'Luỹ kế',
+      totalOut: 'Tổng chi',
+      totalIn: 'Tổng thu',
+      peak: 'Cao nhất {day}: {amount}',
+      lastMonthSameDay: 'Tháng trước cùng ngày: {amount}',
+      thisMonth: 'Tháng này',
+      lastMonth: 'Tháng trước'
+    },
+    categories: {
+      title: 'Theo danh mục',
+      txCount: '{n} giao dịch',
+      showAll: 'Xem tất cả {n} danh mục',
+      showLess: 'Thu gọn'
+    }
   },
 
   // ── Transactions ──
@@ -366,6 +397,7 @@ export default {
     wallet: 'Ví',
     source: 'Nguồn',
     clearData: 'Xóa dữ liệu',
+    clearCategory: 'Bỏ lọc danh mục',
     clearTitle: 'Xóa lịch sử giao dịch',
     clearDesc: 'Xóa giao dịch thu & chi theo tuần, tháng hoặc năm',
     clearScope: { week: 'Tuần', month: 'Tháng', year: 'Năm' },

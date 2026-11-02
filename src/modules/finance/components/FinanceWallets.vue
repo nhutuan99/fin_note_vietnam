@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { ArrowRight } from 'lucide-vue-next'
+import { ArrowRight, Plus } from 'lucide-vue-next'
 import { useFinancePolling } from '@/composables/useFinancePolling'
 import { getWalletBrand } from '@/constants/walletBrands'
 import { formatVNDShort } from '@/constants/finance'
@@ -70,6 +70,15 @@ const finance = useFinancePolling()
           {{ formatVNDShort(w.balance) }}
         </div>
       </div>
+      <!-- No wallets yet: a clear next step instead of an empty row -->
+      <button
+        v-if="!finance.wallets.length"
+        class="border-border-strong text-text-secondary hover:border-accent hover:text-accent col-span-2 flex items-center justify-center gap-2 rounded-xl border border-dashed p-4 text-sm transition-colors sm:col-span-3 lg:col-span-6"
+        @click="router.push('/wallets')"
+      >
+        <Plus :size="16" />
+        {{ t('dashboard.addFirstWallet') }}
+      </button>
     </div>
   </div>
 </template>

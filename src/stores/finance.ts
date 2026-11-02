@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import type {
   Wallet,
   Transaction,
@@ -13,9 +13,18 @@ import { getCategoryConfig } from '@/constants/finance'
 import { httpClient } from '@/shared/api/httpClient'
 import { AUTH_TOKEN_KEY } from '@/constants/auth'
 
-/** Quick check without importing auth store (avoids circular deps). */
+/**
+ * Signed in, or in guest mode (served by the localDb mock).
+ * Reads storage directly instead of the auth store to avoid circular deps.
+ */
 function isLoggedIn() {
-  return !!localStorage.getItem(AUTH_TOKEN_KEY)
+  return !!localStorage.getItem(AUTH_TOKEN_KEY) || localStorage.getItem('guest_mode') === 'true'
+}
+
+/** Current month as YYYY-MM in the user's local time (toISOString would use UTC) */
+function localMonth() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
 }
 
 /** AbortError is expected when httpClient cancels requests on 401 — not a real error. */
@@ -30,12 +39,7 @@ export const useFinanceStore = defineStore('finance', () => {
   const pendingTransfers = ref<PendingTransfer[]>([])
   const loading = ref(false)
   const filter = ref<TransactionFilter>({ type: 'all' })
-  const selectedMonth = ref(
-    (() => {
-      const d = new Date()
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-    })()
-  )
+  const selectedMonth = ref(localMonth())
 
   const stats = ref<FinanceStats>({
     monthIncome: 0,
@@ -104,15 +108,25 @@ export const useFinanceStore = defineStore('finance', () => {
 
   async function fetchStats() {
     if (!isLoggedIn()) return
+    const month = selectedMonth.value
+    // For the month in progress, compare categories with the same days of last month
+    const now = new Date()
+    const query = month === localMonth() ? `month=${month}&compareDay=${now.getDate()}` : `month=${month}`
     try {
-      const data = await httpClient.get<FinanceStats>(`/api/finance/stats?month=${selectedMonth.value}`)
-      if (data) {
+      const data = await httpClient.get<FinanceStats>(`/api/finance/stats?${query}`)
+      // Ignore a late response for a month the user already navigated away from
+      if (data && month === selectedMonth.value) {
         stats.value = data
       }
     } catch (err) {
       if (!isAbortError(err)) console.error('Failed to fetch stats:', err)
     }
   }
+
+  // Month navigation (‹ › on the dashboard) must load that month's figures
+  watch(selectedMonth, () => {
+    void fetchStats()
+  })
 
   async function fetchPaginatedTransactions() {
     if (!isLoggedIn()) return
@@ -199,7 +213,7 @@ export const useFinanceStore = defineStore('finance', () => {
     wallets.value = []
     stats.value = { monthIncome: 0, monthExpense: 0, monthNet: 0, weeklyStats: [], expenseByCategory: [], expenseByWallet: [], incomeByWallet: [], recentTransactions: [] }
     filter.value = { type: 'all' }
-    selectedMonth.value = new Date().toISOString().substring(0, 7)
+    selectedMonth.value = localMonth()
     _lastFetchTime = 0
   }
 
