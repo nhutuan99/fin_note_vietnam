@@ -15,6 +15,10 @@ import CurrencyInput from '@/components/ui/CurrencyInput.vue'
 /** Untouched automatic popups close after this long */
 const AUTO_CLOSE_MS = 5000
 const QUICK_AMOUNTS = [20_000, 50_000, 100_000, 200_000, 500_000]
+/** Amounts typed below this are read as thousands: "44" → 44.000 đ */
+const THOUSANDS_BELOW = 1000
+/** How long the filled-in amount stays on screen before saving, so the user sees what is saved */
+const FILL_PREVIEW_MS = 450
 // Assigned automatically from bank SMS/webhooks, not picked by hand
 const AUTO_ONLY_CATEGORIES = new Set(['bank_transfer', 'bank_receive', 'bank_fee'])
 
@@ -31,14 +35,18 @@ const amount = ref(0)
 const note = ref('')
 const submitting = ref(false)
 const shake = ref(false)
+const filled = ref(false)
 
 const dialogRef = ref<HTMLElement | null>(null)
 
 const categories = computed(() =>
   (type.value === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES).filter((c) => !AUTO_ONLY_CATEGORIES.has(c.key))
 )
-const selectedWallet = computed(() => finance.wallets.find((w) => w.id === walletId.value) ?? null)
+const selectedWallet = computed(() => finance.cashWallets.find((w) => w.id === walletId.value) ?? null)
 const canSubmit = computed(() => amount.value > 0 && !!selectedWallet.value && !submitting.value)
+
+/** "44" is shown as 44 + a faint ".000": what will actually be saved */
+const showThousands = computed(() => amount.value > 0 && amount.value < THOUSANDS_BELOW)
 
 /** The input hugs its digits so the sign and "đ" sit right next to the number */
 const amountWidth = computed(() => {
@@ -72,12 +80,17 @@ function pickWallet(preferred: string | null): string {
   return finance.cashWallets[0]?.id ?? ''
 }
 
+function focusAmount() {
+  dialogRef.value?.querySelector<HTMLInputElement>('.qa-amount-input')?.focus({ preventScroll: true })
+}
+
 async function initialise() {
   const prefs = store.prefs
   type.value = store.forcedType ?? prefs.type
   category.value = prefs.categories[type.value]
   amount.value = 0
   note.value = ''
+  filled.value = false
   if (!finance.wallets.length) await finance.fetchWallets()
   walletId.value = pickWallet(prefs.walletId)
   if (!categories.value.some((c) => c.key === category.value)) {
@@ -89,7 +102,7 @@ async function initialise() {
     autoCloseTimer = setTimeout(close, AUTO_CLOSE_MS)
   }
   await nextTick()
-  dialogRef.value?.querySelector<HTMLInputElement>('.qa-amount-input')?.focus({ preventScroll: true })
+  focusAmount()
 }
 
 watch(
@@ -145,10 +158,18 @@ async function submit() {
   if (!canSubmit.value) {
     shake.value = true
     setTimeout(() => (shake.value = false), 400)
-    dialogRef.value?.querySelector<HTMLInputElement>('.qa-amount-input')?.focus({ preventScroll: true })
+    focusAmount()
     return
   }
   submitting.value = true
+
+  // "44" means 44.000 đ: fill it in on screen first, then save
+  if (amount.value < THOUSANDS_BELOW) {
+    amount.value *= 1000
+    filled.value = true
+    await new Promise((resolve) => setTimeout(resolve, FILL_PREVIEW_MS))
+  }
+
   const wallet = selectedWallet.value!
   const tx = await finance.addTransaction({
     type: type.value,
@@ -173,7 +194,6 @@ async function submit() {
   )
   close()
 }
-
 
 function addWallet() {
   close()
@@ -204,8 +224,10 @@ function walletBrand(w: Wallet) {
 
 <template>
   <Teleport to="body">
-    <Transition name="qa">
-      <div v-if="store.isOpen" class="qa-overlay" @click.self="close">
+    <!-- Durations given explicitly: the overlay itself never fades (see .qa-scrim) -->
+    <Transition name="qa" :duration="{ enter: 280, leave: 160 }">
+      <div v-if="store.isOpen" class="qa-overlay">
+        <div class="qa-scrim" @click="close" />
         <div
           ref="dialogRef"
           class="qa-sheet"
@@ -220,141 +242,141 @@ function walletBrand(w: Wallet) {
           <!-- Auto-close countdown -->
           <div v-if="countingDown" class="qa-countdown" :style="{ animationDuration: `${AUTO_CLOSE_MS}ms` }" />
 
-          <div class="qa-grabber" aria-hidden="true" />
-
           <!-- Header -->
-          <div class="qa-header">
-            <div>
+          <header class="qa-header">
+            <div class="min-w-0">
               <h2 class="qa-title">{{ t('quickAdd.title') }}</h2>
               <p class="qa-subtitle">{{ t('quickAdd.subtitle') }}</p>
             </div>
             <button class="qa-icon-btn" :aria-label="t('common.close')" @click="close">
               <X :size="18" />
             </button>
-          </div>
+          </header>
 
-          <!-- In / out tabs -->
-          <div class="qa-tabs" role="tablist">
-            <button
-              role="tab"
-              class="qa-tab qa-tab--income"
-              :class="{ 'is-active': type === 'income' }"
-              :aria-selected="type === 'income'"
-              @click="setType('income')"
-            >
-              <ArrowDownLeft :size="18" />
-              {{ t('quickAdd.moneyIn') }}
-            </button>
-            <button
-              role="tab"
-              class="qa-tab qa-tab--expense"
-              :class="{ 'is-active': type === 'expense' }"
-              :aria-selected="type === 'expense'"
-              @click="setType('expense')"
-            >
-              <ArrowUpRight :size="18" />
-              {{ t('quickAdd.moneyOut') }}
-            </button>
-          </div>
-
-          <!-- Amount -->
-          <div class="qa-amount">
-            <span class="qa-amount__sign">{{ type === 'income' ? '+' : '−' }}</span>
-            <CurrencyInput
-              v-model="amount"
-              placeholder="0"
-              class-name="qa-amount-input"
-              :style="{ width: amountWidth }"
-              :aria-label="t('quickAdd.amount')"
-            />
-            <span class="qa-amount__unit">đ</span>
-          </div>
-          <div class="qa-chips qa-chips--amounts">
-            <button
-              v-for="value in QUICK_AMOUNTS"
-              :key="value"
-              class="qa-chip"
-              :class="{ 'is-active': amount === value }"
-              @click="amount = value"
-            >
-              {{ new Intl.NumberFormat('vi-VN').format(value / 1000) }}k
-            </button>
-          </div>
-
-          <!-- Money source -->
-          <div class="qa-section-label">
-            <WalletIcon :size="13" />
-            {{ type === 'income' ? t('quickAdd.toWallet') : t('quickAdd.fromWallet') }}
-          </div>
-          <!-- Every option visible at once: no hidden horizontal scrolling (unreachable with a mouse) -->
-          <div v-if="finance.cashWallets.length" class="qa-wallets">
-            <button
-              v-for="w in finance.cashWallets"
-              :key="w.id"
-              class="qa-wallet"
-              :class="{ 'is-active': walletId === w.id }"
-              :aria-pressed="walletId === w.id"
-              @click="setWallet(w)"
-            >
-              <span v-if="w.customLogoUrl || walletBrand(w)?.logoUrl" class="qa-wallet__logo">
-                <img :src="w.customLogoUrl || walletBrand(w)!.logoUrl" alt="" loading="lazy" />
-              </span>
-              <span
-                v-else-if="walletBrand(w)"
-                class="qa-wallet__logo qa-wallet__logo--abbr"
-                :style="{ backgroundColor: walletBrand(w)!.bgColor, color: walletBrand(w)!.textColor }"
+          <!-- Scrolling content -->
+          <div class="qa-body">
+            <!-- In / out tabs -->
+            <div class="qa-tabs" role="tablist">
+              <button
+                role="tab"
+                class="qa-tab qa-tab--income"
+                :class="{ 'is-active': type === 'income' }"
+                :aria-selected="type === 'income'"
+                @click="setType('income')"
               >
-                {{ walletBrand(w)!.abbr }}
-              </span>
-              <span v-else class="qa-wallet__emoji">{{ w.icon }}</span>
-              <span class="qa-wallet__text">
-                <span class="qa-wallet__name" :title="w.name">{{ w.name }}</span>
-                <span class="qa-wallet__balance">{{ formatVND(w.balance) }}</span>
-              </span>
+                <ArrowDownLeft :size="18" />
+                {{ t('quickAdd.moneyIn') }}
+              </button>
+              <button
+                role="tab"
+                class="qa-tab qa-tab--expense"
+                :class="{ 'is-active': type === 'expense' }"
+                :aria-selected="type === 'expense'"
+                @click="setType('expense')"
+              >
+                <ArrowUpRight :size="18" />
+                {{ t('quickAdd.moneyOut') }}
+              </button>
+            </div>
+
+            <!-- Amount -->
+            <div class="qa-amount" :class="{ 'is-filled': filled }">
+              <span class="qa-amount__sign">{{ type === 'income' ? '+' : '−' }}</span>
+              <CurrencyInput
+                v-model="amount"
+                placeholder="0"
+                class-name="qa-amount-input"
+                :style="{ width: amountWidth }"
+                :aria-label="t('quickAdd.amount')"
+              />
+              <span v-if="showThousands" class="qa-amount__ghost" aria-hidden="true">.000</span>
+              <span class="qa-amount__unit">đ</span>
+            </div>
+            <div class="qa-amounts">
+              <button
+                v-for="value in QUICK_AMOUNTS"
+                :key="value"
+                class="qa-chip"
+                :class="{ 'is-active': amount === value }"
+                @click="amount = value"
+              >
+                {{ new Intl.NumberFormat('vi-VN').format(value / 1000) }}k
+              </button>
+            </div>
+
+            <!-- Money source -->
+            <div class="qa-section-label">
+              <WalletIcon :size="13" />
+              {{ type === 'income' ? t('quickAdd.toWallet') : t('quickAdd.fromWallet') }}
+            </div>
+            <!-- Every option visible at once: no hidden horizontal scrolling (unreachable with a mouse) -->
+            <div v-if="finance.cashWallets.length" class="qa-wallets">
+              <button
+                v-for="w in finance.cashWallets"
+                :key="w.id"
+                class="qa-wallet"
+                :class="{ 'is-active': walletId === w.id }"
+                :aria-pressed="walletId === w.id"
+                @click="setWallet(w)"
+              >
+                <span v-if="w.customLogoUrl || walletBrand(w)?.logoUrl" class="qa-wallet__logo">
+                  <img :src="w.customLogoUrl || walletBrand(w)!.logoUrl" alt="" loading="lazy" />
+                </span>
+                <span
+                  v-else-if="walletBrand(w)"
+                  class="qa-wallet__logo qa-wallet__logo--abbr"
+                  :style="{ backgroundColor: walletBrand(w)!.bgColor, color: walletBrand(w)!.textColor }"
+                >
+                  {{ walletBrand(w)!.abbr }}
+                </span>
+                <span v-else class="qa-wallet__emoji">{{ w.icon }}</span>
+                <span class="qa-wallet__text">
+                  <span class="qa-wallet__name" :title="w.name">{{ w.name }}</span>
+                  <span class="qa-wallet__balance">{{ formatVND(w.balance) }}</span>
+                </span>
+              </button>
+            </div>
+            <button v-else class="qa-empty-wallet" @click="addWallet">
+              <Plus :size="15" />
+              {{ t('quickAdd.noWallet') }}
             </button>
-          </div>
-          <button v-else class="qa-empty-wallet" @click="addWallet">
-            <Plus :size="15" />
-            {{ t('quickAdd.noWallet') }}
-          </button>
 
-          <!-- Category -->
-          <div class="qa-section-label">
-            <Tag :size="13" />
-            {{ t('quickAdd.category') }}
+            <!-- Category: chips on larger screens, an icon grid on phones -->
+            <div class="qa-section-label">
+              <Tag :size="13" />
+              {{ t('quickAdd.category') }}
+            </div>
+            <div class="qa-cats">
+              <button
+                v-for="c in categories"
+                :key="c.key"
+                class="qa-cat"
+                :class="{ 'is-active': category === c.key }"
+                :aria-pressed="category === c.key"
+                @click="setCategory(c.key)"
+              >
+                <span class="qa-cat__icon font-emoji">{{ c.icon }}</span>
+                <span class="qa-cat__label">{{ t(`categories.${c.key}`) }}</span>
+              </button>
+            </div>
+
+            <!-- Note -->
+            <input
+              v-model="note"
+              type="text"
+              maxlength="200"
+              class="qa-note"
+              :placeholder="t('quickAdd.notePlaceholder')"
+            />
           </div>
-          <div class="qa-chips qa-chips--categories">
-            <button
-              v-for="c in categories"
-              :key="c.key"
-              class="qa-chip qa-chip--category"
-              :class="{ 'is-active': category === c.key }"
-              @click="setCategory(c.key)"
-            >
-              <span class="font-emoji">{{ c.icon }}</span>
-              {{ t(`categories.${c.key}`) }}
+
+          <!-- Save + auto-open switch, always in reach at the bottom -->
+          <footer class="qa-actions">
+            <button class="qa-submit" :disabled="submitting" @click="submit">
+              <AppSpinner v-if="submitting" :size="18" />
+              <Check v-else :size="18" />
+              {{ type === 'income' ? t('quickAdd.saveIncome') : t('quickAdd.saveExpense') }}
             </button>
-          </div>
-
-          <!-- Note -->
-          <input
-            v-model="note"
-            type="text"
-            maxlength="200"
-            class="qa-note"
-            :placeholder="t('quickAdd.notePlaceholder')"
-          />
-
-          <!-- Submit + footer stay pinned to the bottom when the sheet has to scroll -->
-          <div class="qa-actions">
-          <button class="qa-submit" :disabled="submitting" @click="submit">
-            <AppSpinner v-if="submitting" :size="18" />
-            <Check v-else :size="18" />
-            {{ type === 'income' ? t('quickAdd.saveIncome') : t('quickAdd.saveExpense') }}
-          </button>
-
-          <!-- Footer: auto-open switch -->
-          <div class="qa-footer">
             <label class="qa-switch">
               <input
                 type="checkbox"
@@ -364,8 +386,7 @@ function walletBrand(w: Wallet) {
               <span class="qa-switch__track" aria-hidden="true" />
               <span>{{ t('quickAdd.autoOpen') }}</span>
             </label>
-          </div>
-          </div>
+          </footer>
         </div>
       </div>
     </Transition>
@@ -373,68 +394,145 @@ function walletBrand(w: Wallet) {
 </template>
 
 <style scoped>
+/* ── Overlay: a light dim, no blur — the glass panel does the blurring, only where it sits ── */
 .qa-overlay {
   position: fixed;
   inset: 0;
   z-index: 95;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: center;
-  /* No backdrop-filter: blurring the whole page while it fades in is what made opening janky */
-  background: rgba(0, 0, 0, 0.6);
+}
+
+/*
+ * The dim lives on its own layer: fading the overlay itself (opacity < 1) would make it the
+ * panel's backdrop root, so the glass would blur a flat colour until the fade ended.
+ */
+.qa-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.34);
+}
+
+:global([data-theme='light'] .qa-scrim) {
+  background: rgba(15, 23, 42, 0.16);
 }
 
 @media (min-width: 640px) {
   .qa-overlay {
-    align-items: center;
     padding: 1rem;
   }
 }
 
-/* ── Sheet: bottom sheet on phones, centered card on larger screens ── */
+/*
+ * ── Liquid glass panel ──
+ * Translucent tint + backdrop blur/saturation, a bright specular rim on the top edge and
+ * a soft sheen in the corner. Controls inside are lighter glass layers (--qa-fill).
+ */
 .qa-sheet {
   --qa-color: var(--error);
+  --qa-glass: rgba(24, 24, 27, 0.6);
+  --qa-fill: rgba(255, 255, 255, 0.06);
+  --qa-fill-strong: rgba(255, 255, 255, 0.11);
+  --qa-stroke: rgba(255, 255, 255, 0.09);
+  --qa-rim: rgba(255, 255, 255, 0.2);
+  --qa-sheen: rgba(255, 255, 255, 0.09);
+  --qa-pad: 1.25rem;
+
   position: relative;
+  display: flex;
+  flex-direction: column;
   width: 100%;
-  max-height: calc(100dvh - 2rem);
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: 0.75rem 1.25rem 0;
-  border-radius: 1.5rem 1.5rem 0 0;
-  border: 1px solid var(--border-default);
-  border-bottom: none;
-  background: var(--bg-surface);
-  box-shadow: 0 -12px 48px rgba(0, 0, 0, 0.35);
-  scrollbar-width: none;
+  height: 100dvh;
+  overflow: hidden;
+  background: var(--qa-glass);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  backdrop-filter: blur(28px) saturate(180%);
+  box-shadow: inset 0 1px 0 var(--qa-rim), inset 0 0 0 1px var(--qa-stroke);
+}
+
+/* Light: pale grey frosted glass with white glass controls on top (as on iOS) */
+:global([data-theme='light'] .qa-sheet) {
+  --qa-glass: rgba(242, 242, 247, 0.7);
+  --qa-fill: rgba(255, 255, 255, 0.78);
+  --qa-fill-strong: rgba(255, 255, 255, 1);
+  --qa-stroke: rgba(15, 23, 42, 0.1);
+  --qa-rim: rgba(255, 255, 255, 0.95);
+  --qa-sheen: rgba(255, 255, 255, 0.5);
 }
 
 .qa-sheet--income {
   --qa-color: var(--success);
 }
 
-@media (min-width: 640px) {
-  .qa-sheet {
-    max-width: 36rem;
-    padding: 1.25rem 1.5rem 0;
-    border-radius: 1.5rem;
-    border-bottom: 1px solid var(--border-default);
-    box-shadow: var(--shadow-lg);
-  }
-}
-
-/* Soft glow in the tab colour, so money in / out reads at a glance */
+/* Specular sheen: light catching the top-left of the glass */
 .qa-sheet::before {
   content: '';
   position: absolute;
-  inset: 0 0 auto 0;
-  height: 9rem;
-  background: radial-gradient(120% 100% at 50% 0%, color-mix(in srgb, var(--qa-color) 16%, transparent), transparent 70%);
+  inset: 0;
+  border-radius: inherit;
+  background:
+    linear-gradient(165deg, var(--qa-sheen) 0%, transparent 28%),
+    radial-gradient(70% 40% at 0% 0%, var(--qa-sheen), transparent 70%);
   pointer-events: none;
-  transition: background 0.3s ease;
 }
 
 .qa-sheet > * {
   position: relative;
+}
+
+/* Phones: full screen, edge to edge */
+@media (max-width: 639px) {
+  .qa-sheet {
+    --qa-glass: rgba(18, 18, 20, 0.72);
+  }
+
+  :global([data-theme='light'] .qa-sheet) {
+    --qa-glass: rgba(242, 242, 247, 0.82);
+  }
+}
+
+/* Larger screens: a floating card */
+@media (min-width: 640px) {
+  .qa-sheet {
+    --qa-pad: 1.5rem;
+    max-width: 36rem;
+    height: auto;
+    max-height: calc(100dvh - 2rem);
+    border-radius: 1.75rem;
+    box-shadow:
+      inset 0 1px 0 var(--qa-rim),
+      inset 0 0 0 1px var(--qa-stroke),
+      0 30px 80px rgba(0, 0, 0, 0.45);
+  }
+
+  :global([data-theme='light'] .qa-sheet) {
+    box-shadow:
+      inset 0 1px 0 var(--qa-rim),
+      inset 0 0 0 1px var(--qa-stroke),
+      0 30px 80px rgba(15, 23, 42, 0.18);
+  }
+}
+
+/* No backdrop-filter support: solid surface */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .qa-sheet {
+    --qa-glass: var(--bg-surface);
+  }
+}
+
+/*
+ * Reduced transparency (e.g. Windows "Transparency effects" off): a denser tint, so text sits on
+ * an almost solid surface while the panel still reads as glass.
+ */
+@media (prefers-reduced-transparency: reduce) {
+  .qa-sheet {
+    --qa-glass: rgba(24, 24, 27, 0.86);
+  }
+
+  :global([data-theme='light'] .qa-sheet) {
+    --qa-glass: rgba(242, 242, 247, 0.88);
+  }
 }
 
 .qa-sheet.is-shaking {
@@ -450,6 +548,7 @@ function walletBrand(w: Wallet) {
   position: absolute;
   top: 0;
   left: 0;
+  z-index: 3;
   height: 3px;
   width: 100%;
   background: var(--qa-color);
@@ -462,31 +561,26 @@ function walletBrand(w: Wallet) {
   to { transform: scaleX(0); }
 }
 
-.qa-grabber {
-  width: 2.5rem;
-  height: 0.25rem;
-  margin: 0 auto 0.75rem;
-  border-radius: 999px;
-  background: var(--border-strong);
+/* ── Header ── */
+.qa-header {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: calc(env(safe-area-inset-top) + 1rem) var(--qa-pad) 0.875rem;
 }
 
 @media (min-width: 640px) {
-  .qa-grabber {
-    display: none;
+  .qa-header {
+    padding-top: 1.25rem;
   }
 }
 
-.qa-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-
 .qa-title {
-  font-size: 1.125rem;
+  font-size: 1.25rem;
   font-weight: 700;
+  letter-spacing: -0.01em;
   color: var(--text-primary);
 }
 
@@ -500,29 +594,45 @@ function walletBrand(w: Wallet) {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2rem;
-  height: 2rem;
+  width: 2.5rem;
+  height: 2.5rem;
   flex-shrink: 0;
   border-radius: 50%;
-  background: var(--bg-elevated);
-  color: var(--text-tertiary);
+  background: var(--qa-fill);
+  box-shadow: inset 0 0 0 1px var(--qa-stroke);
+  color: var(--text-secondary);
   transition: background var(--transition-fast), color var(--transition-fast);
 }
 
 .qa-icon-btn:hover {
-  background: var(--bg-hover);
+  background: var(--qa-fill-strong);
   color: var(--text-primary);
+}
+
+/* ── Body: the only part that scrolls ── */
+.qa-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0.25rem var(--qa-pad) 1rem;
+  scrollbar-width: none;
+}
+
+.qa-body::-webkit-scrollbar {
+  display: none;
 }
 
 /* ── Tabs ── */
 .qa-tabs {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0.5rem;
+  gap: 0.375rem;
   padding: 0.25rem;
-  margin-bottom: 1rem;
+  margin-bottom: 1.25rem;
   border-radius: 1rem;
-  background: var(--bg-elevated);
+  background: var(--qa-fill);
+  box-shadow: inset 0 0 0 1px var(--qa-stroke);
 }
 
 .qa-tab {
@@ -530,8 +640,8 @@ function walletBrand(w: Wallet) {
   align-items: center;
   justify-content: center;
   gap: 0.375rem;
-  height: 2.75rem;
-  border-radius: 0.75rem;
+  height: 2.875rem;
+  border-radius: 0.8125rem;
   font-size: 0.9375rem;
   font-weight: 600;
   color: var(--text-tertiary);
@@ -542,16 +652,18 @@ function walletBrand(w: Wallet) {
   color: var(--text-primary);
 }
 
+.qa-tab.is-active {
+  color: #fff;
+}
+
 .qa-tab--income.is-active {
   background: var(--success);
-  color: #fff;
-  box-shadow: 0 6px 18px color-mix(in srgb, var(--success) 35%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 6px 18px color-mix(in srgb, var(--success) 32%, transparent);
 }
 
 .qa-tab--expense.is-active {
   background: var(--error);
-  color: #fff;
-  box-shadow: 0 6px 18px color-mix(in srgb, var(--error) 35%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 6px 18px color-mix(in srgb, var(--error) 32%, transparent);
 }
 
 /* ── Amount ── */
@@ -560,8 +672,17 @@ function walletBrand(w: Wallet) {
   align-items: baseline;
   justify-content: center;
   gap: 0.25rem;
-  margin-bottom: 0.75rem;
+  margin: 0.5rem 0 1rem;
   color: var(--qa-color);
+}
+
+/* The filled-in thousands get a short pop so the change is noticed before saving */
+.qa-amount.is-filled {
+  animation: qaFilled 0.45s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+@keyframes qaFilled {
+  40% { transform: scale(1.08); }
 }
 
 .qa-amount__sign,
@@ -571,13 +692,23 @@ function walletBrand(w: Wallet) {
   opacity: 0.8;
 }
 
+.qa-amount__ghost {
+  margin-left: -0.25rem;
+  font-size: 3rem;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  opacity: 0.3;
+  font-variant-numeric: tabular-nums;
+}
+
 .qa-amount :deep(.qa-amount-input) {
   min-width: 1.5ch;
   max-width: 100%;
   border: none;
   background: transparent;
   color: var(--qa-color);
-  font-size: 2.75rem;
+  font-size: 3rem;
   font-weight: 800;
   line-height: 1.1;
   text-align: center;
@@ -591,65 +722,51 @@ function walletBrand(w: Wallet) {
   color: color-mix(in srgb, var(--qa-color) 35%, transparent);
 }
 
-/* ── Chips ── */
-.qa-chips {
-  display: flex;
-  gap: 0.375rem;
-  margin-bottom: 1rem;
-}
-
-.qa-chips--amounts {
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-/* Categories wrap onto as many lines as needed: every option is one tap/click away */
-.qa-chips--categories {
-  flex-wrap: wrap;
-}
-
-.qa-chips--categories .qa-chip {
-  height: 1.875rem;
-  padding: 0 0.625rem;
-  font-size: 0.75rem;
-}
-
-.qa-wallets {
+/* Quick amounts: an even row on phones, centered pills on larger screens */
+.qa-amounts {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 9.5rem), 1fr));
-  gap: 0.5rem;
-  margin-bottom: 1rem;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.375rem;
+  margin-bottom: 1.5rem;
+}
+
+@media (min-width: 640px) {
+  .qa-amounts {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 1.25rem;
+  }
 }
 
 .qa-chip {
-  flex-shrink: 0;
-  height: 2rem;
+  height: 2.5rem;
   padding: 0 0.75rem;
   border-radius: 999px;
-  border: 1px solid var(--border-default);
-  background: var(--bg-elevated);
+  background: var(--qa-fill);
+  box-shadow: inset 0 0 0 1px var(--qa-stroke);
   color: var(--text-secondary);
-  font-size: 0.8125rem;
-  font-weight: 500;
+  font-size: 0.875rem;
+  font-weight: 600;
   white-space: nowrap;
-  transition: all var(--transition-fast);
+  transition: background var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+@media (min-width: 640px) {
+  .qa-chip {
+    height: 2.125rem;
+    font-size: 0.8125rem;
+  }
 }
 
 .qa-chip:hover {
-  border-color: var(--border-strong);
+  background: var(--qa-fill-strong);
   color: var(--text-primary);
 }
 
 .qa-chip.is-active {
-  border-color: var(--qa-color);
-  background: color-mix(in srgb, var(--qa-color) 14%, transparent);
+  background: color-mix(in srgb, var(--qa-color) 16%, transparent);
+  box-shadow: inset 0 0 0 1.5px var(--qa-color);
   color: var(--qa-color);
-}
-
-.qa-chip--category {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
 }
 
 .qa-section-label {
@@ -665,27 +782,34 @@ function walletBrand(w: Wallet) {
 }
 
 /* ── Wallets ── */
+.qa-wallets {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 9.5rem), 1fr));
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+
 .qa-wallet {
   display: flex;
   align-items: center;
   gap: 0.625rem;
   min-width: 0;
-  padding: 0.4375rem 0.625rem 0.4375rem 0.4375rem;
+  min-height: 3.25rem;
+  padding: 0.5rem 0.625rem 0.5rem 0.5rem;
   border-radius: 0.875rem;
-  border: 1px solid var(--border-default);
-  background: var(--bg-elevated);
+  background: var(--qa-fill);
+  box-shadow: inset 0 0 0 1px var(--qa-stroke);
   text-align: left;
-  transition: all var(--transition-fast);
+  transition: background var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .qa-wallet:hover {
-  border-color: var(--border-strong);
+  background: var(--qa-fill-strong);
 }
 
 .qa-wallet.is-active {
-  border-color: var(--qa-color);
-  background: color-mix(in srgb, var(--qa-color) 10%, var(--bg-elevated));
-  box-shadow: 0 0 0 1px var(--qa-color) inset;
+  background: color-mix(in srgb, var(--qa-color) 12%, var(--qa-fill));
+  box-shadow: inset 0 0 0 1.5px var(--qa-color);
 }
 
 .qa-wallet__logo,
@@ -693,11 +817,11 @@ function walletBrand(w: Wallet) {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2rem;
-  height: 2rem;
+  width: 2.125rem;
+  height: 2.125rem;
   flex-shrink: 0;
   overflow: hidden;
-  border-radius: 0.5rem;
+  border-radius: 0.5625rem;
   background: #fff;
   font-size: 0.625rem;
   font-weight: 700;
@@ -711,7 +835,7 @@ function walletBrand(w: Wallet) {
 }
 
 .qa-wallet__emoji {
-  background: var(--bg-hover);
+  background: var(--qa-fill-strong);
   font-size: 1.125rem;
 }
 
@@ -747,25 +871,111 @@ function walletBrand(w: Wallet) {
   gap: 0.375rem;
   width: 100%;
   height: 3rem;
-  margin-bottom: 1rem;
+  margin-bottom: 1.25rem;
   border-radius: 0.875rem;
   border: 1px dashed var(--border-strong);
   color: var(--text-secondary);
   font-size: 0.8125rem;
 }
 
-/* ── Note & submit ── */
+/* ── Categories: icon grid on phones (big, thumb-sized targets), wrapping chips above ── */
+.qa-cats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.qa-cat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  min-width: 0;
+  min-height: 4.25rem;
+  padding: 0.5rem 0.25rem;
+  border-radius: 1rem;
+  background: var(--qa-fill);
+  box-shadow: inset 0 0 0 1px var(--qa-stroke);
+  color: var(--text-secondary);
+  transition: background var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.qa-cat__icon {
+  font-size: 1.375rem;
+  line-height: 1;
+}
+
+.qa-cat__label {
+  max-width: 100%;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  line-height: 1.2;
+  text-align: center;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.qa-cat:hover {
+  background: var(--qa-fill-strong);
+  color: var(--text-primary);
+}
+
+.qa-cat.is-active {
+  background: color-mix(in srgb, var(--qa-color) 16%, transparent);
+  box-shadow: inset 0 0 0 1.5px var(--qa-color);
+  color: var(--qa-color);
+}
+
+@media (min-width: 640px) {
+  .qa-cats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+  }
+
+  .qa-cat {
+    flex-direction: row;
+    gap: 0.375rem;
+    min-height: 0;
+    height: 2rem;
+    padding: 0 0.75rem;
+    border-radius: 999px;
+  }
+
+  .qa-cat__icon {
+    font-size: 0.875rem;
+  }
+
+  .qa-cat__label {
+    display: block;
+    font-size: 0.75rem;
+    white-space: nowrap;
+  }
+}
+
+/* ── Note ── */
 .qa-note {
   width: 100%;
-  height: 2.75rem;
-  margin-bottom: 0.25rem;
+  height: 3rem;
   padding: 0 0.875rem;
-  border-radius: 0.75rem;
-  border: 1px solid var(--border-default);
-  background: var(--bg-elevated);
+  border: none;
+  border-radius: 0.875rem;
+  background: var(--qa-fill);
+  box-shadow: inset 0 0 0 1px var(--qa-stroke);
   color: var(--text-primary);
-  font-size: 0.875rem;
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  font-size: 1rem;
+  transition: box-shadow var(--transition-fast);
+}
+
+@media (min-width: 640px) {
+  .qa-note {
+    height: 2.75rem;
+    font-size: 0.875rem;
+  }
 }
 
 .qa-note::placeholder {
@@ -774,8 +984,23 @@ function walletBrand(w: Wallet) {
 
 .qa-note:focus {
   outline: none;
-  border-color: var(--qa-color);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--qa-color) 18%, transparent);
+  box-shadow: inset 0 0 0 1.5px var(--qa-color), 0 0 0 4px color-mix(in srgb, var(--qa-color) 16%, transparent);
+}
+
+/* ── Actions: pinned below the scrolling body ── */
+.qa-actions {
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  gap: 0.875rem;
+  padding: 0.75rem var(--qa-pad) calc(env(safe-area-inset-bottom) + 1rem);
+  border-top: 1px solid var(--qa-stroke);
+}
+
+@media (min-width: 640px) {
+  .qa-actions {
+    padding-bottom: 1.25rem;
+  }
 }
 
 .qa-submit {
@@ -784,14 +1009,21 @@ function walletBrand(w: Wallet) {
   justify-content: center;
   gap: 0.5rem;
   width: 100%;
-  height: 3.25rem;
-  border-radius: 1rem;
+  height: 3.5rem;
+  border-radius: 1.125rem;
   background: var(--qa-color);
   color: #fff;
-  font-size: 1rem;
+  font-size: 1.0625rem;
   font-weight: 700;
-  box-shadow: 0 10px 24px color-mix(in srgb, var(--qa-color) 30%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 10px 26px color-mix(in srgb, var(--qa-color) 30%, transparent);
   transition: transform 0.1s ease, opacity var(--transition-fast), background 0.2s ease;
+}
+
+@media (min-width: 640px) {
+  .qa-submit {
+    height: 3.25rem;
+    font-size: 1rem;
+  }
 }
 
 .qa-submit:hover {
@@ -803,41 +1035,16 @@ function walletBrand(w: Wallet) {
 }
 
 .qa-submit:disabled {
-  opacity: 0.6;
+  opacity: 0.7;
 }
 
-/* Save button + footer pinned to the bottom edge; content scrolls underneath when space is short */
-.qa-actions {
-  position: sticky;
-  bottom: 0;
-  z-index: 2;
-  margin: 0 -1.25rem;
-  padding: 0.75rem 1.25rem calc(1rem + env(safe-area-inset-bottom));
-  background: linear-gradient(to bottom, transparent, var(--bg-surface) 0.75rem);
-}
-
-@media (min-width: 640px) {
-  .qa-actions {
-    margin: 0 -1.5rem;
-    padding: 0.75rem 1.5rem 1.25rem;
-  }
-}
-
-/* ── Footer ── */
-.qa-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  margin-top: 0.875rem;
-  font-size: 0.75rem;
-  color: var(--text-tertiary);
-}
-
+/* ── Auto-open switch ── */
 .qa-switch {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
   cursor: pointer;
   user-select: none;
 }
@@ -882,54 +1089,52 @@ function walletBrand(w: Wallet) {
   box-shadow: 0 0 0 3px var(--accent-subtle);
 }
 
-
 /*
  * ── Transitions ──
- * Only opacity/transform are animated (compositor-only, no layout or paint per frame).
- * Opening is quick and eased out; closing is quicker still.
+ * Only opacity/transform are animated (compositor-only). Short travel keeps the
+ * glass blur cheap while the panel moves.
  */
-.qa-enter-active {
-  transition: opacity 0.16s ease-out;
+.qa-enter-active .qa-scrim {
+  transition: opacity 0.18s ease-out;
 }
 
-.qa-leave-active {
+.qa-leave-active .qa-scrim {
   transition: opacity 0.14s ease-in;
 }
 
 .qa-enter-active .qa-sheet {
-  transition: transform 0.26s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.16s ease-out;
-  will-change: transform, opacity;
+  transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.18s ease-out;
 }
 
 .qa-leave-active .qa-sheet {
-  transition: transform 0.18s ease-in, opacity 0.14s ease-in;
-  will-change: transform, opacity;
+  transition: transform 0.16s ease-in, opacity 0.14s ease-in;
 }
 
-.qa-enter-from,
-.qa-leave-to {
+.qa-enter-from .qa-scrim,
+.qa-leave-to .qa-scrim {
   opacity: 0;
 }
 
-/* Phones: the sheet slides up from the bottom edge */
+/* Phones: the full-screen panel rises slightly into place */
 .qa-enter-from .qa-sheet,
 .qa-leave-to .qa-sheet {
-  transform: translate3d(0, 100%, 0);
+  transform: translate3d(0, 2.5rem, 0);
+  opacity: 0;
 }
 
 /* Larger screens: the card fades in with a short lift */
 @media (min-width: 640px) {
   .qa-enter-from .qa-sheet,
   .qa-leave-to .qa-sheet {
-    transform: translate3d(0, 8px, 0) scale(0.98);
-    opacity: 0;
+    transform: translate3d(0, 10px, 0) scale(0.97);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .qa-enter-active .qa-sheet,
   .qa-leave-active .qa-sheet,
-  .qa-sheet.is-shaking {
+  .qa-sheet.is-shaking,
+  .qa-amount.is-filled {
     transition: none;
     animation: none;
   }

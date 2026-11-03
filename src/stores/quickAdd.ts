@@ -15,7 +15,7 @@ export interface QuickAddPrefs {
 }
 
 /** Why the popup opened: automatic openings close themselves if left untouched */
-export type QuickAddReason = 'visibility' | 'shortcut' | 'manual'
+export type QuickAddReason = 'launch' | 'visibility' | 'shortcut' | 'manual'
 
 const CACHE_KEY = 'sn_quick_add_prefs'
 const SAVE_DEBOUNCE_MS = 400

@@ -229,7 +229,7 @@ const UNITS = ['cay', 'chi', 'phan'] as const
   text-align: center;
 }
 
-:global([data-theme='dark']) .gold-type__tag {
+:global([data-theme='dark'] .gold-type__tag) {
   color: #e8c25a;
 }
 

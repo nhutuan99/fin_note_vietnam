@@ -7,7 +7,7 @@ import type { TransactionType } from '@/types'
 
 /**
  * Opens the quick-add popup:
- * - every time the user comes back to the app/tab, on any page (when enabled in settings), and
+ * - when the app starts and every time the user comes back to the app/tab, on any page (when enabled), and
  * - from home-screen shortcuts / links with `?quick=1|income|expense`.
  * Mount once in the authenticated layout.
  */
@@ -27,19 +27,34 @@ export function useQuickAddTriggers() {
   })
 
   /** `?quick=` from the PWA shortcuts; the param is removed so a reload doesn't reopen it */
-  function handleQuickParam() {
+  function handleQuickParam(): boolean {
     const quick = route.query.quick
-    if (typeof quick !== 'string') return
+    if (typeof quick !== 'string') return false
     const type: TransactionType | null = quick === 'income' || quick === 'expense' ? quick : null
     store.open('shortcut', type)
     const { quick: _quick, ...rest } = route.query
     router.replace({ query: rest })
+    return true
   }
 
-  onMounted(() => {
-    void store.loadPrefs()
-    handleQuickParam()
+  /**
+   * App start: open straight away from the cached prefs, or — first launch on this device —
+   * as soon as the synced prefs say the popup is on. At most once per start.
+   */
+  let launchHandled = false
+  function openOnLaunch() {
+    if (launchHandled || !canAutoOpen()) return
+    launchHandled = true
+    store.open('launch')
+  }
+
+  onMounted(async () => {
+    launchHandled = handleQuickParam()
+    openOnLaunch()
+    await store.loadPrefs()
+    openOnLaunch()
+    launchHandled = true
   })
 
-  watch(() => route.query.quick, handleQuickParam)
+  watch(() => route.query.quick, () => void handleQuickParam())
 }
