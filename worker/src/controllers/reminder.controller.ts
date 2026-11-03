@@ -2,7 +2,6 @@ import { Env, ReminderData } from '../types'
 import { errorResponse, jsonResponse } from '../utils/response'
 import { generateId } from '../utils/crypto'
 import { getJSON, putJSON } from '../services/kv.service'
-import { registerReminderUser, unregisterReminderUserIfEmpty } from '../services/reminder.service'
 
 // ====== Reminder Handlers ======
 
@@ -47,20 +46,52 @@ function calculateRemindAt(eventDate: string, offsets: string[], customRemindAt?
   return [...new Set(results)].sort()
 }
 
+const REPEAT_MS: Record<string, number> = {
+  daily: 24 * 60 * 60_000,
+  weekly: 7 * 24 * 60 * 60_000,
+  monthly: 30 * 24 * 60 * 60_000,
+}
+
+/** Repeat step in ms: a preset, or a custom interval in minutes. 0 = not repeating */
+function repeatStepMs(interval?: string): number {
+  if (!interval || interval === 'none') return 0
+  if (REPEAT_MS[interval]) return REPEAT_MS[interval]
+  const minutes = parseInt(interval, 10)
+  return minutes > 0 ? minutes * 60_000 : 0
+}
+
+/** Move a past recurring reminder to its next upcoming cycle (done on read — no cron) */
+function advanceRecurring(r: ReminderData, step: number, now: number): void {
+  const eventMs = new Date(r.eventDate).getTime()
+  const shift = (Math.floor((now - eventMs) / step) + 1) * step
+  r.eventDate = new Date(eventMs + shift).toISOString()
+  if (r.customRemindAt) r.customRemindAt = new Date(new Date(r.customRemindAt).getTime() + shift).toISOString()
+  r.remindAt = calculateRemindAt(r.eventDate, r.offsets, r.customRemindAt)
+  r.notifiedAt = []
+  r.acknowledged = false
+  r.lastChanceSent = false
+  r.updatedAt = new Date(now).toISOString()
+}
+
 export async function handleListReminders(userId: string, env: Env): Promise<Response> {
   const reminders = (await getJSON<ReminderData[]>(
     env.SMART_NOTE_KV, `users/${userId}/reminders`
   )) || []
 
-  // Auto-expire old reminders (non-repeating only)
+  // Past reminders: recurring ones roll over to their next cycle, the rest expire
   const now = Date.now()
   let modified = false
   for (const r of reminders) {
-    if (r.status === 'active' && new Date(r.eventDate).getTime() < now && (!r.repeatInterval || r.repeatInterval === 'none')) {
+    // `!(x < now)` also skips an unparsable date (NaN), as before
+    if (r.status !== 'active' || !(new Date(r.eventDate).getTime() < now)) continue
+    const step = repeatStepMs(r.repeatInterval)
+    if (step) {
+      advanceRecurring(r, step, now)
+    } else {
       r.status = 'expired'
-      r.updatedAt = new Date().toISOString()
-      modified = true
+      r.updatedAt = new Date(now).toISOString()
     }
+    modified = true
   }
   if (modified) {
     await putJSON(env.SMART_NOTE_KV, `users/${userId}/reminders`, reminders)
@@ -121,7 +152,6 @@ export async function handleCreateReminder(userId: string, request: Request, env
   )
 
   await putJSON(env.SMART_NOTE_KV, `users/${userId}/reminders`, cleaned)
-  await registerReminderUser(userId, env)
 
   return jsonResponse({ success: true, data: reminder }, 201)
 }
@@ -171,7 +201,6 @@ export async function handleDeleteReminder(userId: string, reminderId: string, e
 
   const filtered = reminders.filter(r => r.id !== reminderId)
   await putJSON(env.SMART_NOTE_KV, `users/${userId}/reminders`, filtered)
-  await unregisterReminderUserIfEmpty(userId, env)
 
   return jsonResponse({ success: true })
 }
@@ -195,9 +224,6 @@ export async function handleClearReminders(userId: string, request: Request, env
   }
 
   await putJSON(env.SMART_NOTE_KV, `users/${userId}/reminders`, reminders)
-  if (reminders.length === 0) {
-    await unregisterReminderUserIfEmpty(userId, env)
-  }
 
   return jsonResponse({ success: true })
 }
@@ -215,7 +241,6 @@ export async function handleCompleteReminder(userId: string, reminderId: string,
   reminders[idx].updatedAt = new Date().toISOString()
 
   await putJSON(env.SMART_NOTE_KV, `users/${userId}/reminders`, reminders)
-  await unregisterReminderUserIfEmpty(userId, env)
 
   return jsonResponse({ success: true })
 }

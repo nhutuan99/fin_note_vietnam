@@ -103,8 +103,7 @@ import {
   handleUpdateStock,
   handleDeleteStock,
   handleAddStockAlert,
-  handleDeleteStockAlert,
-  handleResetStockAlert
+  handleDeleteStockAlert
 } from './controllers/stock.controller'
 
 import {
@@ -137,11 +136,6 @@ import {
   handleEmailOtpWebhook,
 } from './controllers/otp-hub.controller'
 
-import { checkAllStockAlerts } from './services/stock-alert.service'
-import { checkAllReminders } from './services/reminder.service'
-import { checkSavingsReminders } from './services/savings-reminder.service'
-
-
 async function handleRequest(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url)
   const path = url.pathname
@@ -158,11 +152,11 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
       return handleProxyExchangeRate(request)
     }
     if (path === '/api/proxy/stock-price' && request.method === 'GET') {
-      return handleProxyStockPrice(request, env)
+      return handleProxyStockPrice(request)
     }
 
     if (path === '/api/proxy/stock-history' && request.method === 'GET') {
-      return handleProxyStockHistory(request, env)
+      return handleProxyStockHistory(request)
     }
 
     if (path === '/api/proxy/logo' && request.method === 'GET') {
@@ -176,13 +170,13 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
 
     // Fmarket Fund Proxy (public, no auth)
     if (path === '/api/proxy/fund-nav' && request.method === 'GET') {
-      return handleProxyFundNav(request, env)
+      return handleProxyFundNav(request)
     }
     if (path === '/api/proxy/fund-history' && request.method === 'GET') {
-      return handleProxyFundHistory(request, env)
+      return handleProxyFundHistory(request)
     }
     if (path === '/api/proxy/fund-list' && request.method === 'GET') {
-      return handleProxyFundList(request, env)
+      return handleProxyFundList(request)
     }
 
       if (path === '/api/auth/register' && request.method === 'POST') {
@@ -480,10 +474,6 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
       if (alertDeleteMatch && request.method === 'DELETE') {
         return handleDeleteStockAlert(userId, alertDeleteMatch[1], alertDeleteMatch[2], env)
       }
-      const alertResetMatch = path.match(/^\/api\/stocks\/([^\/]+)\/alerts\/([^\/]+)\/reset$/)
-      if (alertResetMatch && request.method === 'POST') {
-        return handleResetStockAlert(userId, alertResetMatch[1], alertResetMatch[2], env)
-      }
 
       const stockMatch = path.match(/^\/api\/stocks\/([^\/]+)$/)
       if (stockMatch) {
@@ -586,38 +576,5 @@ export default {
       statusText: response.statusText,
       headers: finalHeaders
     })
-  },
-
-  // ── Cloudflare Cron Trigger ──
-  // Cron 1: */30 2-8 * * 1-5 = Stock alerts every 30 min during trading hours (9-15h VN, Mon-Fri)
-  // Cron 2: */15 * * * * = Reminders + savings reminders every 15 minutes
-  async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
-    // Always check stock alerts during trading hours
-    const cronTime = new Date(event.scheduledTime)
-    const day = cronTime.getUTCDay()
-    const hour = cronTime.getUTCHours()
-    
-    // Only check stock alerts Mon-Fri (1-5) and between 2-8 UTC (9h-15h VN)
-    if (day >= 1 && day <= 5 && hour >= 2 && hour <= 8) {
-      ctx.waitUntil(
-        checkAllStockAlerts(env)
-          .then(result => console.log(`[Cron] StockAlerts: ${result}`))
-          .catch(err => console.error('[Cron] StockAlerts failed:', err))
-      )
-    }
-
-    // Reminders: check every 15 minutes (all cron triggers hit this handler)
-    ctx.waitUntil(
-      checkAllReminders(env)
-        .then(result => console.log(`[Cron] Reminders: ${result}`))
-        .catch(err => console.error('[Cron] Reminders failed:', err))
-    )
-
-    // Savings reminders
-    ctx.waitUntil(
-      checkSavingsReminders(env)
-        .then(result => console.log(result))
-        .catch(err => console.error('[Cron] SavingsReminder failed:', err))
-    )
   }
 }

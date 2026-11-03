@@ -1,6 +1,5 @@
 <script setup lang="ts">
 // 1. Vue ecosystem
-import { useI18n } from 'vue-i18n'
 import { onMounted, computed, ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useUiStore } from '@/stores/ui'

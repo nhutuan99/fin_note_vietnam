@@ -235,18 +235,16 @@ function parseSmsTransaction(text: string, senderHint = ''): SmsParsedResult | n
   }
 }
 
-export async function updateWebhookStatus(userId: string, env: Env, updateData: any) {
-  // 1. Update latest_request
-  const latest = await getJSON<any>(env.SMART_NOTE_KV, `users/${userId}/finance/latest_request`) || {}
-  const merged = { ...latest, ...updateData }
-  await putJSON(env.SMART_NOTE_KV, `users/${userId}/finance/latest_request`, merged)
+/** Debug record of one webhook request, shown on the Auto-sync screen */
+type WebhookLog = Record<string, unknown>
 
-  // 2. Update history
-  const history = await getJSON<any[]>(env.SMART_NOTE_KV, `users/${userId}/finance/request_history`) || []
-  if (history.length > 0) {
-    history[0] = { ...history[0], ...updateData }
-    await putJSON(env.SMART_NOTE_KV, `users/${userId}/finance/request_history`, history)
-  }
+/** Append to the last-20 request history (the latest request is its first entry) */
+async function saveWebhookLog(userId: string, entry: WebhookLog, env: Env): Promise<void> {
+  const key = `users/${userId}/finance/request_history`
+  const history = (await getJSON<WebhookLog[]>(env.SMART_NOTE_KV, key)) || []
+  history.unshift(entry)
+  if (history.length > 20) history.splice(20)
+  await putJSON(env.SMART_NOTE_KV, key, history)
 }
 
 export async function handleSmsWebhook(request: Request, env: Env): Promise<Response> {
@@ -280,26 +278,32 @@ export async function handleSmsWebhook(request: Request, env: Env): Promise<Resp
     return errorResponse('Failed to read request body')
   }
 
-  // ── Debug: save raw request to KV for troubleshooting ──
-  if (userId) {
-    // AWAIT this write to ensure debug data is always persisted
-    // Also append to request_history (last 20 entries) for full audit trail
-    const logEntry = {
-      contentType,
-      rawDump: rawBody.substring(0, 2000), // cap at 2KB
-      headers: Object.fromEntries([...request.headers]),
-      time: new Date().toISOString(),
-      status: 'received' // will be overwritten to 'success' or 'pending' later
-    }
-    await putJSON(env.SMART_NOTE_KV, `users/${userId}/finance/latest_request`, logEntry)
+  if (!userId) return errorResponse('Missing userId query param')
 
-    // Append to history log (keep last 20 entries)
-    const history = (await getJSON<any[]>(env.SMART_NOTE_KV, `users/${userId}/finance/request_history`)) || []
-    history.unshift(logEntry)
-    if (history.length > 20) history.splice(20)
-    await putJSON(env.SMART_NOTE_KV, `users/${userId}/finance/request_history`, history)
+  // ── Debug log for troubleshooting ──
+  // Built up in memory while processing and written once when the request ends
+  // (finally → also persisted on errors): one KV write per webhook instead of four.
+  const logEntry: WebhookLog = {
+    contentType,
+    rawDump: rawBody.substring(0, 2000), // cap at 2KB
+    headers: Object.fromEntries([...request.headers]),
+    time: new Date().toISOString(),
+    status: 'received' // overwritten to 'success' or 'pending' below
   }
+  try {
+    return await processSmsWebhook(userId, contentType, rawBody, logEntry, env)
+  } finally {
+    await saveWebhookLog(userId, logEntry, env).catch(() => {})
+  }
+}
 
+async function processSmsWebhook(
+  userId: string,
+  contentType: string,
+  rawBody: string,
+  log: WebhookLog,
+  env: Env
+): Promise<Response> {
   // ── Extract SMS text from rawBody based on content-type ──
   let items: { text: string; senderHint: string }[] = []
 
@@ -367,8 +371,6 @@ export async function handleSmsWebhook(request: Request, env: Env): Promise<Resp
     })
   }
 
-  if (!userId) return errorResponse('Missing userId query param')
-
   const user = await getJSON<UserData>(env.SMART_NOTE_KV, `users/${userId}/profile`)
   if (!user) return errorResponse('User not found', 404)
 
@@ -396,7 +398,7 @@ export async function handleSmsWebhook(request: Request, env: Env): Promise<Resp
           bankName: notiParsed.walletHint || senderHint || '',
           rawText: text.substring(0, 200)
         }
-        lastResponse = await processSmsTransaction(fallbackParsed, text, userId, env)
+        lastResponse = await processSmsTransaction(fallbackParsed, text, userId, env, log)
         results.push({ status: 'success (fallback)', text: text.substring(0, 50) })
         hasSuccess = true
         continue
@@ -417,18 +419,18 @@ export async function handleSmsWebhook(request: Request, env: Env): Promise<Resp
       continue
     }
 
-    lastResponse = await processSmsTransaction(parsed, text, userId, env)
+    lastResponse = await processSmsTransaction(parsed, text, userId, env, log)
     results.push({ status: 'success', text: text.substring(0, 50) })
     hasSuccess = true
   }
 
-  // Update latest_request with summary if multiple items or if all failed
+  // Summarise in the log if multiple items or if all failed
   if (items.length > 1 || !hasSuccess) {
-    await updateWebhookStatus(userId, env, {
+    Object.assign(log, {
       status: hasSuccess ? 'success' : 'pending',
       error: hasSuccess ? undefined : 'Không thể nhận diện cú pháp từ SMS nào',
       rawDump: `Processed ${items.length} items. Results:\n${JSON.stringify(results, null, 2)}\n\nOriginal Payload:\n${rawBody.substring(0, 1000)}`
-    }).catch(() => {})
+    })
   }
 
   if (items.length === 1 && lastResponse && hasSuccess) {
@@ -445,8 +447,9 @@ export async function handleSmsWebhook(request: Request, env: Env): Promise<Resp
 export async function processSmsTransaction(
   parsed: SmsParsedResult, 
   originalText: string, 
-  userId: string, 
-  env: Env
+  userId: string,
+  env: Env,
+  log?: WebhookLog
 ): Promise<Response> {
   const wallets = (await getJSON<WalletData[]>(env.SMART_NOTE_KV, `users/${userId}/finance/wallets`)) || []
   const txs = (await getJSON<TransactionData[]>(env.SMART_NOTE_KV, `users/${userId}/finance/transactions`)) || []
@@ -594,8 +597,8 @@ export async function processSmsTransaction(
     await sendPushToUser(userId, env, { title: pushTitle, body: pushBody, tag: `sms-${tx.id}`, url, unreadCount })
   } catch { /* push is best-effort */ }
 
-  // Update latest_request and history with success details (awaited — ensures debug data is persisted)
-  await updateWebhookStatus(userId, env, {
+  // Success details for the debug log (persisted by the webhook handler)
+  if (log) Object.assign(log, {
     status: 'success',
     transactionId: tx.id,
     parsedData: {
@@ -609,8 +612,7 @@ export async function processSmsTransaction(
       balance: parsed.balance,
       account: parsed.account
     }
-  }).catch(() => {})
-
+  })
 
   return jsonResponse({ 
     success: true, 

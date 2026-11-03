@@ -39,9 +39,11 @@ const filled = ref(false)
 
 const dialogRef = ref<HTMLElement | null>(null)
 
-const categories = computed(() =>
-  (type.value === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES).filter((c) => !AUTO_ONLY_CATEGORIES.has(c.key))
-)
+const pickableCategories = {
+  income: INCOME_CATEGORIES.filter((c) => !AUTO_ONLY_CATEGORIES.has(c.key)),
+  expense: EXPENSE_CATEGORIES.filter((c) => !AUTO_ONLY_CATEGORIES.has(c.key))
+} as const
+const categories = computed(() => pickableCategories[type.value])
 const selectedWallet = computed(() => finance.cashWallets.find((w) => w.id === walletId.value) ?? null)
 const canSubmit = computed(() => amount.value > 0 && !!selectedWallet.value && !submitting.value)
 
@@ -346,18 +348,31 @@ function walletBrand(w: Wallet) {
               <Tag :size="13" />
               {{ t('quickAdd.category') }}
             </div>
-            <div class="qa-cats">
-              <button
-                v-for="c in categories"
-                :key="c.key"
-                class="qa-cat"
-                :class="{ 'is-active': category === c.key }"
-                :aria-pressed="category === c.key"
-                @click="setCategory(c.key)"
+            <!--
+              Both lists share one grid cell; the other tab's list stays laid out but invisible,
+              so the panel is as tall as the longer list and doesn't jump when switching in/out.
+            -->
+            <div class="qa-cats-stack">
+              <div
+                v-for="kind in (['income', 'expense'] as const)"
+                :key="kind"
+                class="qa-cats"
+                :class="{ 'is-hidden': kind !== type }"
+                :inert="kind !== type"
+                :aria-hidden="kind !== type"
               >
-                <span class="qa-cat__icon font-emoji">{{ c.icon }}</span>
-                <span class="qa-cat__label">{{ t(`categories.${c.key}`) }}</span>
-              </button>
+                <button
+                  v-for="c in pickableCategories[kind]"
+                  :key="c.key"
+                  class="qa-cat"
+                  :class="{ 'is-active': kind === type && category === c.key }"
+                  :aria-pressed="kind === type && category === c.key"
+                  @click="setCategory(c.key)"
+                >
+                  <span class="qa-cat__icon font-emoji">{{ c.icon }}</span>
+                  <span class="qa-cat__label">{{ t(`categories.${c.key}`) }}</span>
+                </button>
+              </div>
             </div>
 
             <!-- Note -->
@@ -394,7 +409,7 @@ function walletBrand(w: Wallet) {
 </template>
 
 <style scoped>
-/* ── Overlay: a light dim, no blur — the glass panel does the blurring, only where it sits ── */
+/* ── Overlay: dims and blurs the page behind so the eye lands on the panel ── */
 .qa-overlay {
   position: fixed;
   inset: 0;
@@ -411,23 +426,44 @@ function walletBrand(w: Wallet) {
 .qa-scrim {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.34);
+  background: rgba(0, 0, 0, 0.6);
 }
 
 :global([data-theme='light'] .qa-scrim) {
-  background: rgba(15, 23, 42, 0.16);
+  background: rgba(15, 23, 42, 0.4);
 }
 
 @media (min-width: 640px) {
   .qa-overlay {
     padding: 1rem;
   }
+
+  /* Blur only where the page shows around the card — phones get a full-screen panel, no blur cost */
+  .qa-scrim {
+    background: rgba(0, 0, 0, 0.5);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+  }
+
+  :global([data-theme='light'] .qa-scrim) {
+    background: rgba(15, 23, 42, 0.28);
+  }
+}
+
+/*
+ * No blur available: a darker plain dim does the job. Kept blurred even with reduced transparency
+ * (Windows "Transparency effects" off is common) — the blur is what pushes the page back.
+ */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .qa-scrim {
+    background: rgba(0, 0, 0, 0.65);
+  }
 }
 
 /*
  * ── Liquid glass panel ──
- * Translucent tint + backdrop blur/saturation, a bright specular rim on the top edge and
- * a soft sheen in the corner. Controls inside are lighter glass layers (--qa-fill).
+ * Translucent tint + backdrop blur/saturation and a bright specular rim on the top edge.
+ * Controls inside are lighter glass layers (--qa-fill).
  */
 .qa-sheet {
   --qa-color: var(--error);
@@ -436,7 +472,6 @@ function walletBrand(w: Wallet) {
   --qa-fill-strong: rgba(255, 255, 255, 0.11);
   --qa-stroke: rgba(255, 255, 255, 0.09);
   --qa-rim: rgba(255, 255, 255, 0.2);
-  --qa-sheen: rgba(255, 255, 255, 0.09);
   --qa-pad: 1.25rem;
 
   position: relative;
@@ -458,27 +493,10 @@ function walletBrand(w: Wallet) {
   --qa-fill-strong: rgba(255, 255, 255, 1);
   --qa-stroke: rgba(15, 23, 42, 0.1);
   --qa-rim: rgba(255, 255, 255, 0.95);
-  --qa-sheen: rgba(255, 255, 255, 0.5);
 }
 
 .qa-sheet--income {
   --qa-color: var(--success);
-}
-
-/* Specular sheen: light catching the top-left of the glass */
-.qa-sheet::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background:
-    linear-gradient(165deg, var(--qa-sheen) 0%, transparent 28%),
-    radial-gradient(70% 40% at 0% 0%, var(--qa-sheen), transparent 70%);
-  pointer-events: none;
-}
-
-.qa-sheet > * {
-  position: relative;
 }
 
 /* Phones: full screen, edge to edge */
@@ -499,7 +517,7 @@ function walletBrand(w: Wallet) {
     max-width: 36rem;
     height: auto;
     max-height: calc(100dvh - 2rem);
-    border-radius: 1.75rem;
+    border-radius: 1rem;
     box-shadow:
       inset 0 1px 0 var(--qa-rim),
       inset 0 0 0 1px var(--qa-stroke),
@@ -630,7 +648,7 @@ function walletBrand(w: Wallet) {
   gap: 0.375rem;
   padding: 0.25rem;
   margin-bottom: 1.25rem;
-  border-radius: 1rem;
+  border-radius: 0.75rem;
   background: var(--qa-fill);
   box-shadow: inset 0 0 0 1px var(--qa-stroke);
 }
@@ -641,7 +659,7 @@ function walletBrand(w: Wallet) {
   justify-content: center;
   gap: 0.375rem;
   height: 2.875rem;
-  border-radius: 0.8125rem;
+  border-radius: 0.5625rem;
   font-size: 0.9375rem;
   font-weight: 600;
   color: var(--text-tertiary);
@@ -796,7 +814,7 @@ function walletBrand(w: Wallet) {
   min-width: 0;
   min-height: 3.25rem;
   padding: 0.5rem 0.625rem 0.5rem 0.5rem;
-  border-radius: 0.875rem;
+  border-radius: 0.625rem;
   background: var(--qa-fill);
   box-shadow: inset 0 0 0 1px var(--qa-stroke);
   text-align: left;
@@ -821,7 +839,7 @@ function walletBrand(w: Wallet) {
   height: 2.125rem;
   flex-shrink: 0;
   overflow: hidden;
-  border-radius: 0.5625rem;
+  border-radius: 0.4375rem;
   background: #fff;
   font-size: 0.625rem;
   font-weight: 700;
@@ -872,18 +890,31 @@ function walletBrand(w: Wallet) {
   width: 100%;
   height: 3rem;
   margin-bottom: 1.25rem;
-  border-radius: 0.875rem;
+  border-radius: 0.625rem;
   border: 1px dashed var(--border-strong);
   color: var(--text-secondary);
   font-size: 0.8125rem;
 }
 
 /* ── Categories: icon grid on phones (big, thumb-sized targets), wrapping chips above ── */
+.qa-cats-stack {
+  display: grid;
+  margin-bottom: 1.25rem;
+}
+
+.qa-cats-stack > .qa-cats {
+  grid-area: 1 / 1;
+  align-self: start;
+}
+
+.qa-cats.is-hidden {
+  visibility: hidden;
+}
+
 .qa-cats {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.5rem;
-  margin-bottom: 1.25rem;
 }
 
 .qa-cat {
@@ -895,7 +926,7 @@ function walletBrand(w: Wallet) {
   min-width: 0;
   min-height: 4.25rem;
   padding: 0.5rem 0.25rem;
-  border-radius: 1rem;
+  border-radius: 0.625rem;
   background: var(--qa-fill);
   box-shadow: inset 0 0 0 1px var(--qa-stroke);
   color: var(--text-secondary);
@@ -963,7 +994,7 @@ function walletBrand(w: Wallet) {
   height: 3rem;
   padding: 0 0.875rem;
   border: none;
-  border-radius: 0.875rem;
+  border-radius: 0.625rem;
   background: var(--qa-fill);
   box-shadow: inset 0 0 0 1px var(--qa-stroke);
   color: var(--text-primary);
@@ -1010,7 +1041,7 @@ function walletBrand(w: Wallet) {
   gap: 0.5rem;
   width: 100%;
   height: 3.5rem;
-  border-radius: 1.125rem;
+  border-radius: 0.75rem;
   background: var(--qa-color);
   color: #fff;
   font-size: 1.0625rem;

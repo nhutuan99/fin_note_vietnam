@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, computed, watch, nextTick } from 'vue'
+import { onMounted, ref, computed, watch, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Plus, Trash2, LineChart, TrendingUp, TrendingDown, Bell, BellRing, RotateCcw, X, Landmark, Pencil } from 'lucide-vue-next'
+import { Plus, Trash2, LineChart, TrendingUp, TrendingDown, Bell, BellRing, X, Landmark, Pencil } from 'lucide-vue-next'
 import { useStockStore } from '@/stores/stock'
 import { useFundStore } from '@/stores/fund'
 import { useUiStore } from '@/stores/ui'
 import { formatVNDShort } from '@/constants/finance'
-import type { StockPosition, FundPosition } from '@/types'
+import type { StockPosition, StockAlert, FundPosition } from '@/types'
 import stocksList from '@/constants/stocks.json'
 import fundsList from '@/constants/funds.json'
 import LogoLoader from '@/components/ui/LogoLoader.vue'
@@ -111,12 +111,7 @@ const searchResults = computed(() => {
 
 onMounted(() => {
   stockStore.fetchPositions(true)
-  stockStore.startPolling()
   fundStore.fetchPositions(true)
-})
-
-onUnmounted(() => {
-  stockStore.stopPolling()
 })
 
 const totalValue = computed(() => {
@@ -394,11 +389,11 @@ async function handleDeleteAlert(stockId: string, alertId: string) {
   } catch (e) {}
 }
 
-async function handleResetAlert(stockId: string, alertId: string) {
-  try {
-    await stockStore.resetAlert(stockId, alertId)
-    ui.showToast('success', t('stockAlert.resetDone'))
-  } catch (e) {}
+/** Live price is within ±0.5% of the alert target (or past it) — evaluated on screen, no background job */
+function isAlertHit(pos: StockPosition, alert: StockAlert) {
+  const price = stockStore.prices[pos.symbol]
+  if (!price) return false
+  return alert.direction === 'above' ? price >= alert.targetPrice * 0.995 : price <= alert.targetPrice * 1.005
 }
 
 // ── Price bar helpers ──
@@ -713,14 +708,14 @@ function getChartData(symbol: string) {
             <div 
               v-for="alert in pos.alerts" :key="alert.id"
               class="absolute top-0 h-full w-0.5 z-5"
-              :class="alert.triggered ? 'bg-text-disabled' : (alert.direction === 'below' ? 'bg-success' : 'bg-error')"
+              :class="alert.direction === 'below' ? 'bg-success' : 'bg-error'"
               :style="{ left: priceToPercent(alert.targetPrice, getPriceRange(pos).min, getPriceRange(pos).range) + '%' }"
               :title="alert.label + ': ' + alert.targetPrice"
             >
               <!-- Dot -->
               <div 
                 class="absolute -top-1 left-1/2 -translate-x-1/2 h-2 w-2 rounded-full"
-                :class="alert.triggered ? 'bg-text-disabled' : (alert.direction === 'below' ? 'bg-success' : 'bg-error')"
+                :class="alert.direction === 'below' ? 'bg-success' : 'bg-error'"
               ></div>
             </div>
           </div>
@@ -735,22 +730,15 @@ function getChartData(symbol: string) {
           <div 
             v-for="alert in pos.alerts" :key="alert.id"
             class="group/alert flex items-center gap-1 text-[10px] px-2 py-1 rounded-lg font-medium transition-all"
-            :class="alert.triggered 
-              ? 'bg-bg-elevated text-text-disabled line-through' 
-              : (alert.direction === 'below' ? 'bg-success/10 text-success' : 'bg-error/10 text-error')"
+            :class="[
+              alert.direction === 'below' ? 'bg-success/10 text-success' : 'bg-error/10 text-error',
+              { 'ring-1 ring-current': isAlertHit(pos, alert) }
+            ]"
           >
-            <BellRing v-if="alert.triggered" :size="10" />
+            <BellRing v-if="isAlertHit(pos, alert)" :size="10" />
             <Bell v-else :size="10" />
             <span>{{ alert.direction === 'below' ? '📉' : '📈' }} {{ alert.targetPrice }}</span>
             <!-- Alert actions -->
-            <button 
-              v-if="alert.triggered"
-              @click.stop="handleResetAlert(pos.id, alert.id)" 
-              class="ml-0.5 p-0.5 rounded hover:bg-bg-hover active:bg-bg-hover transition-colors"
-              :title="t('stockAlert.reset')"
-            >
-              <RotateCcw :size="9" />
-            </button>
             <button 
               @click.stop="handleDeleteAlert(pos.id, alert.id)" 
               class="ml-0.5 p-0.5 rounded hover:bg-error/20 active:bg-error/20 hover:text-error active:text-error transition-colors opacity-100 md:opacity-0 md:group-hover/alert:opacity-100"

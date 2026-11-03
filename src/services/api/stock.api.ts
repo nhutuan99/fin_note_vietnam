@@ -25,8 +25,5 @@ export const stockApi = {
     httpClient.post<StockAlert>(`/api/stocks/${stockId}/alerts`, data),
 
   deleteAlert: (stockId: string, alertId: string) =>
-    httpClient.del(`/api/stocks/${stockId}/alerts/${alertId}`),
-
-  resetAlert: (stockId: string, alertId: string) =>
-    httpClient.post<StockAlert>(`/api/stocks/${stockId}/alerts/${alertId}/reset`)
+    httpClient.del(`/api/stocks/${stockId}/alerts/${alertId}`)
 }

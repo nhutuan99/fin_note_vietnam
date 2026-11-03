@@ -7,8 +7,9 @@ import { RESEND_API_URL } from '../constants/api'
 // ====== Live Debug / Logs ======
 
 export async function handleGetLatestSmsLog(userId: string, env: Env): Promise<Response> {
-  const latest = await getJSON(env.SMART_NOTE_KV, `users/${userId}/finance/latest_request`)
-  return jsonResponse({ success: true, data: latest || null })
+  // Newest request is the head of the history (no separate latest_request key to keep in sync)
+  const history = (await getJSON<any[]>(env.SMART_NOTE_KV, `users/${userId}/finance/request_history`)) || []
+  return jsonResponse({ success: true, data: history[0] || null })
 }
 
 export async function handleGetWebhookHistory(userId: string, env: Env): Promise<Response> {

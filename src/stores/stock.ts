@@ -9,8 +9,6 @@ export const useStockStore = defineStore('stock', () => {
   const prices = ref<Record<string, number>>({})
   const histories = ref<Record<string, { price: number, open: number, high: number, low: number, volume: number, time: number }[]>>({})
 
-  let pollTimer: ReturnType<typeof setInterval> | null = null
-
   async function fetchPositions(force = false) {
     loading.value = true
     try {
@@ -114,35 +112,6 @@ export const useStockStore = defineStore('stock', () => {
     }
   }
 
-  async function resetAlert(stockId: string, alertId: string) {
-    const alert = await stockApi.resetAlert(stockId, alertId)
-    if (alert) {
-      const pos = positions.value.find(p => p.id === stockId)
-      const existing = pos?.alerts?.find(a => a.id === alertId)
-      if (existing) {
-        existing.triggered = false
-        existing.notifiedAt = undefined
-      }
-    }
-  }
-
-  // ── Client-side Polling ─────────────────────────────────────
-  // Poll prices every 60s when user is on the Stocks page
-
-  function startPolling() {
-    if (pollTimer) return
-    pollTimer = setInterval(() => {
-      fetchAllPrices()
-    }, 60_000)
-  }
-
-  function stopPolling() {
-    if (pollTimer) {
-      clearInterval(pollTimer)
-      pollTimer = null
-    }
-  }
-
   return {
     positions,
     loading,
@@ -156,9 +125,6 @@ export const useStockStore = defineStore('stock', () => {
     updatePosition,
     deletePosition,
     addAlert,
-    deleteAlert,
-    resetAlert,
-    startPolling,
-    stopPolling
+    deleteAlert
   }
 })

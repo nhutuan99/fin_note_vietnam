@@ -68,8 +68,6 @@ export default {
     sellPlaceholder: 'Chốt lời khi đạt mốc',
     triggered: 'Đã chạm mốc!',
     added: 'Đã thêm mốc giá thành công',
-    reset: 'Đặt lại',
-    resetDone: 'Đã đặt lại mốc giá',
     delete: 'Xóa mốc',
     noAlerts: 'Chưa có mốc giá',
     stopLoss: 'Cắt lỗ',

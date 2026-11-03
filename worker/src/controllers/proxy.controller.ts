@@ -1,5 +1,5 @@
-import { Env } from '../types'
 import { jsonResponse, errorResponse } from '../utils/response'
+import { getCached, setCached } from '../services/cache.service'
 import { FREE_IP_API, OPEN_METEO_FORECAST_API, OPEN_METEO_AQI_API, EXCHANGERATE_API, ENTRADE_CHART_API, FMARKET_API_BASE } from '../constants/api'
 
 /**
@@ -163,9 +163,9 @@ export async function handleProxyExchangeRate(request: Request): Promise<Respons
 
 /**
  * Handle /api/proxy/stock-price
- * Fetch from DNSE API and cache in KV to prevent rate limits
+ * Fetch from DNSE API, cached in memory/edge (not KV) to prevent rate limits
  */
-export async function handleProxyStockPrice(request: Request, env: Env): Promise<Response> {
+export async function handleProxyStockPrice(request: Request): Promise<Response> {
   const url = new URL(request.url)
   const symbol = url.searchParams.get('symbol')?.toUpperCase()
   const force = url.searchParams.get('force') === 'true' || url.searchParams.get('force') === '1'
@@ -180,9 +180,8 @@ export async function handleProxyStockPrice(request: Request, env: Env): Promise
   try {
     // Try cache first (valid for 5 minutes)
     if (!force) {
-      const cachedStr = await env.SMART_NOTE_KV.get(cacheKey)
-      if (cachedStr) {
-        const cached = JSON.parse(cachedStr)
+      const cached = await getCached<any>(cacheKey)
+      if (cached) {
         if (now - cached.timestamp < 5 * 60 * 1000) {
           return jsonResponse({ success: true, data: { currentPrice: cached.price, symbol } })
         }
@@ -206,7 +205,7 @@ export async function handleProxyStockPrice(request: Request, env: Env): Promise
     const currentPrice = data.c[data.c.length - 1]
 
     // Cache the result
-    await env.SMART_NOTE_KV.put(cacheKey, JSON.stringify({ price: currentPrice, timestamp: now }), { expirationTtl: 3600 })
+    await setCached(cacheKey, { price: currentPrice, timestamp: now }, 3600)
 
     return jsonResponse({
       success: true,
@@ -219,9 +218,9 @@ export async function handleProxyStockPrice(request: Request, env: Env): Promise
 
 /**
  * Handle /api/proxy/stock-history
- * Fetch from DNSE API and cache in KV
+ * Fetch from DNSE API, cached in memory/edge (not KV)
  */
-export async function handleProxyStockHistory(request: Request, env: Env): Promise<Response> {
+export async function handleProxyStockHistory(request: Request): Promise<Response> {
   const url = new URL(request.url)
   const symbol = url.searchParams.get('symbol')?.toUpperCase()
   const days = parseInt(url.searchParams.get('days') || '7', 10)
@@ -237,9 +236,8 @@ export async function handleProxyStockHistory(request: Request, env: Env): Promi
   try {
     // Try cache first (valid for 15 minutes)
     if (!force) {
-      const cachedStr = await env.SMART_NOTE_KV.get(cacheKey)
-      if (cachedStr) {
-        const cached = JSON.parse(cachedStr)
+      const cached = await getCached<any>(cacheKey)
+      if (cached) {
         if (now - cached.timestamp < 15 * 60 * 1000) {
           return jsonResponse({ success: true, data: { history: cached.history, symbol } })
         }
@@ -276,7 +274,7 @@ export async function handleProxyStockHistory(request: Request, env: Env): Promi
       time: timestamps[i] * 1000
     }))
 
-    await env.SMART_NOTE_KV.put(cacheKey, JSON.stringify({ history, timestamp: now }), { expirationTtl: 3600 })
+    await setCached(cacheKey, { history, timestamp: now }, 3600)
 
     return jsonResponse({
       success: true,
@@ -346,7 +344,7 @@ const FMARKET_HEADERS = {
  * Fetch current NAV for one fund symbol from Fmarket.
  * Cache: 4 hours (NAV is published daily at T+1)
  */
-export async function handleProxyFundNav(request: Request, env: Env): Promise<Response> {
+export async function handleProxyFundNav(request: Request): Promise<Response> {
   const url = new URL(request.url)
   const symbol = url.searchParams.get('symbol')?.toUpperCase()
   const force = url.searchParams.get('force') === 'true' || url.searchParams.get('force') === '1'
@@ -359,9 +357,8 @@ export async function handleProxyFundNav(request: Request, env: Env): Promise<Re
   try {
     // Cache for 4 hours — NAV updates once a day
     if (!force) {
-      const cached = await env.SMART_NOTE_KV.get(cacheKey)
-      if (cached) {
-        const parsed = JSON.parse(cached)
+      const parsed = await getCached<any>(cacheKey)
+      if (parsed) {
         if (now - parsed.timestamp < 4 * 60 * 60 * 1000) {
           return jsonResponse({ success: true, data: { nav: parsed.nav, symbol } })
         }
@@ -398,7 +395,7 @@ export async function handleProxyFundNav(request: Request, env: Env): Promise<Re
     if (!fund) return errorResponse('Fund not found', 404)
 
     const nav = fund.nav || fund.navCurrent || 0
-    await env.SMART_NOTE_KV.put(cacheKey, JSON.stringify({ nav, timestamp: now }), { expirationTtl: 14400 })
+    await setCached(cacheKey, { nav, timestamp: now }, 14400)
 
     return jsonResponse({ success: true, data: { nav, symbol, fundName: fund.name, productId: fund.id } })
   } catch (err: any) {
@@ -411,7 +408,7 @@ export async function handleProxyFundNav(request: Request, env: Env): Promise<Re
  * Fetch historical NAV for a fund from Fmarket.
  * Cache: 6 hours
  */
-export async function handleProxyFundHistory(request: Request, env: Env): Promise<Response> {
+export async function handleProxyFundHistory(request: Request): Promise<Response> {
   const url = new URL(request.url)
   const symbol = url.searchParams.get('symbol')?.toUpperCase()
   const days = parseInt(url.searchParams.get('days') || '7', 10)
@@ -425,9 +422,8 @@ export async function handleProxyFundHistory(request: Request, env: Env): Promis
 
   try {
     if (!force) {
-      const cached = await env.SMART_NOTE_KV.get(cacheKey)
-      if (cached) {
-        const parsed = JSON.parse(cached)
+      const parsed = await getCached<any>(cacheKey)
+      if (parsed) {
         if (now - parsed.timestamp < 6 * 60 * 60 * 1000) {
           return jsonResponse({ success: true, data: { history: parsed.history, symbol } })
         }
@@ -481,7 +477,7 @@ export async function handleProxyFundHistory(request: Request, env: Env): Promis
       }))
       .filter((h: any) => h.nav > 0)
 
-    await env.SMART_NOTE_KV.put(cacheKey, JSON.stringify({ history, timestamp: now }), { expirationTtl: 21600 })
+    await setCached(cacheKey, { history, timestamp: now }, 21600)
 
     return jsonResponse({ success: true, data: { history, symbol } })
   } catch (err: any) {
@@ -493,7 +489,7 @@ export async function handleProxyFundHistory(request: Request, env: Env): Promis
  * GET /api/proxy/fund-list?q=SSI
  * Search funds from Fmarket (for autocomplete). Cache: 24 hours.
  */
-export async function handleProxyFundList(request: Request, env: Env): Promise<Response> {
+export async function handleProxyFundList(request: Request): Promise<Response> {
   const url = new URL(request.url)
   const query = (url.searchParams.get('q') || '').trim()
 
@@ -501,9 +497,8 @@ export async function handleProxyFundList(request: Request, env: Env): Promise<R
   const now = Date.now()
 
   try {
-    const cached = await env.SMART_NOTE_KV.get(cacheKey)
-    if (cached) {
-      const parsed = JSON.parse(cached)
+    const parsed = await getCached<any>(cacheKey)
+    if (parsed) {
       if (now - parsed.timestamp < 24 * 60 * 60 * 1000) {
         return jsonResponse({ success: true, data: { funds: parsed.funds } })
       }
@@ -532,7 +527,7 @@ export async function handleProxyFundList(request: Request, env: Env): Promise<R
       issuer: f.managementFee?.name || ''
     }))
 
-    await env.SMART_NOTE_KV.put(cacheKey, JSON.stringify({ funds, timestamp: now }), { expirationTtl: 86400 })
+    await setCached(cacheKey, { funds, timestamp: now }, 86400)
 
     return jsonResponse({ success: true, data: { funds } })
   } catch (err: any) {

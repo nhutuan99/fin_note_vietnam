@@ -1,7 +1,6 @@
 import { Env, StockData, StockAlert } from '../types'
 import { jsonResponse, errorResponse } from '../utils/response'
 import { getJSON, putJSON } from '../services/kv.service'
-import { registerAlertUser, unregisterAlertUserIfEmpty } from '../services/stock-alert.service'
 
 function generateId(): string {
   return crypto.randomUUID()
@@ -35,11 +34,6 @@ export async function handleCreateStock(userId: string, request: Request, env: E
   stocks.push(newStock)
   await putJSON(env.SMART_NOTE_KV, `users/${userId}/stocks`, stocks)
 
-  // Register user for cron if they have targetProfit or stopLoss
-  if (newStock.targetProfit || newStock.stopLoss) {
-    await registerAlertUser(userId, env)
-  }
-
   return jsonResponse({ success: true, data: newStock }, 201)
 }
 
@@ -61,11 +55,6 @@ export async function handleUpdateStock(userId: string, stockId: string, request
   stocks[index] = updatedStock
   await putJSON(env.SMART_NOTE_KV, `users/${userId}/stocks`, stocks)
 
-  // Register user for cron if targetProfit or stopLoss is set
-  if (updatedStock.targetProfit || updatedStock.stopLoss) {
-    await registerAlertUser(userId, env)
-  }
-
   return jsonResponse({ success: true, data: updatedStock })
 }
 
@@ -74,8 +63,7 @@ export async function handleDeleteStock(userId: string, stockId: string, env: En
   const newStocks = stocks.filter(s => s.id !== stockId)
   
   await putJSON(env.SMART_NOTE_KV, `users/${userId}/stocks`, newStocks)
-  await unregisterAlertUserIfEmpty(userId, env)
-  
+
   return jsonResponse({ success: true })
 }
 
@@ -113,9 +101,6 @@ export async function handleAddStockAlert(userId: string, stockId: string, reque
   stock.updatedAt = new Date().toISOString()
   await putJSON(env.SMART_NOTE_KV, `users/${userId}/stocks`, stocks)
 
-  // Register user for cron-based alert checking
-  await registerAlertUser(userId, env)
-
   return jsonResponse({ success: true, data: newAlert }, 201)
 }
 
@@ -129,25 +114,6 @@ export async function handleDeleteStockAlert(userId: string, stockId: string, al
   stock.updatedAt = new Date().toISOString()
 
   await putJSON(env.SMART_NOTE_KV, `users/${userId}/stocks`, stocks)
-  await unregisterAlertUserIfEmpty(userId, env)
 
   return jsonResponse({ success: true })
-}
-
-export async function handleResetStockAlert(userId: string, stockId: string, alertId: string, env: Env): Promise<Response> {
-  const stocks = await getJSON<StockData[]>(env.SMART_NOTE_KV, `users/${userId}/stocks`) || []
-  const stock = stocks.find(s => s.id === stockId)
-  if (!stock) return errorResponse('Stock not found', 404)
-
-  const alert = stock.alerts?.find(a => a.id === alertId)
-  if (!alert) return errorResponse('Alert not found', 404)
-
-  alert.triggered = false
-  alert.notifiedAt = undefined
-  stock.updatedAt = new Date().toISOString()
-
-  await putJSON(env.SMART_NOTE_KV, `users/${userId}/stocks`, stocks)
-  await registerAlertUser(userId, env)
-
-  return jsonResponse({ success: true, data: alert })
 }

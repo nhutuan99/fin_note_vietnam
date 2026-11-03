@@ -81,7 +81,6 @@ const passwordError = ref(false)
 
 const now = ref(Date.now())
 let countdownInterval: ReturnType<typeof setInterval> | null = null
-let pollInterval: ReturnType<typeof setInterval> | null = null
 
 interface OtpCode {
   id: string; service: string; serviceName: string; code: string; expiresAt: string; createdAt: string
@@ -349,28 +348,9 @@ function copyCode(code: string, id: string) {
   navigator.clipboard.writeText(code).then(() => { copiedId.value = id; setTimeout(() => { copiedId.value = null }, 2000) })
 }
 
-let pollCount = 0
-
-function startPolling() {
-  if (pollInterval) {
-    clearInterval(pollInterval)
-    pollInterval = null
-  }
-  pollCount = 0
-  pollInterval = setInterval(() => {
-    fetchOtpCodes()
-    pollCount++
-    if (pollCount >= 3 && pollInterval) {
-      clearInterval(pollInterval)
-      pollInterval = null
-    }
-  }, 10000)
-}
-
 function handleVisibilityChange() {
   if (document.visibilityState === 'visible') {
     fetchOtpCodes()
-    startPolling()
   }
 }
 
@@ -378,9 +358,7 @@ function handleVisibilityChange() {
 onMounted(() => {
   fetchOtpCodes(); checkPushState()
   countdownInterval = setInterval(() => { now.value = Date.now() }, 1000)
-  
-  startPolling()
-  
+
   if (isAdmin.value) { showAdminPanel.value = true; fetchSubscriberCount(); fetchSettings() }
   document.addEventListener('click', handleClickOutside)
   document.addEventListener('visibilitychange', handleVisibilityChange)
@@ -388,7 +366,6 @@ onMounted(() => {
 
 onUnmounted(() => {
   if (countdownInterval) clearInterval(countdownInterval)
-  if (pollInterval) clearInterval(pollInterval)
   document.removeEventListener('click', handleClickOutside)
   document.removeEventListener('visibilitychange', handleVisibilityChange)
 })

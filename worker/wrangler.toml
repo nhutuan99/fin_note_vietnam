@@ -18,8 +18,7 @@ ENVIRONMENT = "production"
 FRONTEND_URL = "https://finnote-f4n.pages.dev"
 API_URL = "https://smart-note-api.smart-note.workers.dev"
 
-# Cron Triggers:
-# 1. Stock alert checks every 30 min during trading hours 9-15h VN (2-8 UTC), Mon-Fri
-# 2. Reminder checks every 15 minutes (24/7)
+# No cron triggers: nothing runs in the background against KV.
+# An empty list (rather than omitting the table) makes `wrangler deploy` remove any deployed crons.
 [triggers]
-crons = ["*/30 2-8 * * 1-5", "*/15 * * * *"]
+crons = []

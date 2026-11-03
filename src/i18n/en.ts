@@ -68,8 +68,6 @@ export default {
     sellPlaceholder: 'Take profit at target',
     triggered: 'Alert triggered!',
     added: 'Price alert added successfully',
-    reset: 'Reset',
-    resetDone: 'Price alert has been reset',
     delete: 'Delete alert',
     noAlerts: 'No price alerts set',
     stopLoss: 'Stop Loss',
