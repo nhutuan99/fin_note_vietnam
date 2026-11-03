@@ -75,7 +75,7 @@ export interface TransactionData {
   category: string
   note: string
   walletId: string
-  source: 'manual' | 'telegram' | 'notification' | 'sms'
+  source: 'manual' | 'telegram' | 'notification' | 'sms' | 'routine'
   date: string
   createdAt: string
 }
@@ -280,3 +280,63 @@ export interface OtpHubSubscriber {
   createdAt: string
 }
 
+
+// ── Routines: recurring money in/out, reminded by push and recorded automatically if ignored ──
+
+export type RoutineRepeat =
+  | { kind: 'daily' }
+  /** 0 = Sunday … 6 = Saturday (Mon–Fri = [1,2,3,4,5]) */
+  | { kind: 'weekdays'; days: number[] }
+  /** Day of month; clamped to the month's last day (31 → 30/28) */
+  | { kind: 'monthly'; day: number }
+
+export interface RoutineData {
+  id: string
+  name: string
+  type: 'income' | 'expense'
+  amount: number
+  category: string
+  walletId: string
+  note: string
+  repeat: RoutineRepeat
+  /** Local reminder time "HH:MM", 15-minute steps */
+  time: string
+  /** Minutes east of UTC when the routine was saved (Vietnam = 420) */
+  tzOffset: number
+  /** What happens when the user doesn't respond by the end of the day */
+  onMissed: 'record' | 'skip'
+  enabled: boolean
+  /** No occurrences before this local date (YYYY-MM-DD) */
+  pausedUntil?: string
+  /** Created / last re-enabled: nothing is due before this moment (no back-filling) */
+  activeFrom: string
+  createdAt: string
+  updatedAt: string
+}
+
+export type RoutineOccurrenceStatus = 'pending' | 'confirmed' | 'skipped' | 'auto' | 'missed'
+
+export interface RoutineOccurrence {
+  /** `${routineId}:${date}` — deterministic, so a repeated cron run can't create duplicates */
+  id: string
+  routineId: string
+  /** Local date the occurrence belongs to (YYYY-MM-DD); also the transaction date */
+  date: string
+  status: RoutineOccurrenceStatus
+  /** Planned amount (the routine's at the time); the recorded one once confirmed */
+  amount: number
+  /** Transaction recorded for it (confirmed / auto) */
+  txId?: string
+  /** End of the local day: after this an unanswered occurrence is settled */
+  deadline: string
+  createdAt: string
+  resolvedAt?: string
+  /** Auto-recorded and already shown to the user */
+  acknowledged?: boolean
+}
+
+export interface RoutineOccurrenceDoc {
+  /** Last local date materialised per routine */
+  cursor: Record<string, string>
+  items: RoutineOccurrence[]
+}

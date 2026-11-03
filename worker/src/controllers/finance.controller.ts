@@ -3,6 +3,7 @@ import { errorResponse, jsonResponse } from '../utils/response'
 import { generateId } from '../utils/crypto'
 import { getJSON, putJSON } from '../services/kv.service'
 import { getGoldPrices, goldValue } from '../services/gold-price.service'
+import { applyLedger } from '../services/routine.service'
 
 // ====== Finance Handlers ======
 
@@ -373,6 +374,27 @@ export async function handleCreateTransaction(
   }
 
   return jsonResponse({ success: true, data: tx }, 201)
+}
+
+/** Edit amount / wallet / category / note / date; wallet balances follow */
+export async function handleUpdateTransaction(userId: string, txId: string, request: Request, env: Env): Promise<Response> {
+  const body = (await request.json()) as any
+  const patch: Partial<TransactionData> = {}
+  if (body.amount !== undefined) {
+    if (typeof body.amount !== 'number' || !(body.amount > 0) || !isFinite(body.amount)) return errorResponse('Số tiền phải là số dương hợp lệ')
+    patch.amount = Math.round(body.amount)
+  }
+  if (typeof body.category === 'string') patch.category = body.category.substring(0, 40)
+  if (typeof body.note === 'string') patch.note = body.note.substring(0, 500)
+  if (typeof body.walletId === 'string') {
+    const wallets = (await getJSON<WalletData[]>(env.SMART_NOTE_KV, `users/${userId}/finance/wallets`)) || []
+    if (!wallets.some((w) => w.id === body.walletId && w.kind !== 'gold')) return errorResponse('Ví không hợp lệ')
+    patch.walletId = body.walletId
+  }
+  const txs = (await getJSON<TransactionData[]>(env.SMART_NOTE_KV, `users/${userId}/finance/transactions`)) || []
+  if (!txs.some((t) => t.id === txId)) return errorResponse('Transaction not found', 404)
+  await applyLedger(env, userId, { update: [{ id: txId, patch }] })
+  return jsonResponse({ success: true, data: { ...txs.find((t) => t.id === txId), ...patch } })
 }
 
 export async function handleDeleteTransaction(

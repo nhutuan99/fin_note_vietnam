@@ -56,6 +56,7 @@ function getSourceLabel(source: string) {
     'sms': 'SMS',
     'telegram': 'Telegram',
     'notification': 'Auto',
+    'routine': 'Routine',
     'manual': 'Manual'
   }
   return map[source] || source
@@ -66,6 +67,7 @@ function getSourceClass(source: string) {
     'sms': 'tx-badge--sms',
     'telegram': 'tx-badge--telegram',
     'notification': 'tx-badge--auto',
+    'routine': 'tx-badge--auto',
     'manual': 'tx-badge--manual'
   }
   return map[source] || 'tx-badge--manual'

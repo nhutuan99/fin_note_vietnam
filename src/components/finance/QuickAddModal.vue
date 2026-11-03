@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n'
 import { ArrowDownLeft, ArrowUpRight, X, Check, Wallet as WalletIcon, Plus, Tag } from 'lucide-vue-next'
 import type { TransactionType, Wallet } from '@/types'
 import { useQuickAddStore } from '@/stores/quickAdd'
+import { useRoutinesStore } from '@/stores/routines'
 import { useFinanceStore } from '@/stores/finance'
 import { useUiStore } from '@/stores/ui'
 import { useEventListener } from '@/composables/useEventListener'
@@ -27,6 +28,7 @@ const router = useRouter()
 const store = useQuickAddStore()
 const finance = useFinanceStore()
 const ui = useUiStore()
+const routines = useRoutinesStore()
 
 const type = ref<TransactionType>('expense')
 const walletId = ref('')
@@ -38,6 +40,45 @@ const shake = ref(false)
 const filled = ref(false)
 
 const dialogRef = ref<HTMLElement | null>(null)
+
+// ── Routine mode: confirming (or editing) a routine occurrence instead of a blank entry ──
+const routineItem = computed(() => (store.reason === 'routine' ? routines.current : null))
+const routineMore = computed(() => Math.max(0, routines.queue.length - 1))
+
+function dayLabel(date: string) {
+  const today = new Date()
+  const iso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+  return date === iso ? t('routine.today') : date.split('-').reverse().slice(0, 2).join('/')
+}
+
+const routineSubtitle = computed(() => {
+  const item = routineItem.value
+  if (!item) return ''
+  const { occurrence: o, routine: r } = item
+  if (o.status === 'pending') return t('routine.popupPending', { when: `${dayLabel(o.date)} · ${r.time}` })
+  if (o.status === 'auto') return t('routine.popupAuto', { date: dayLabel(o.date) })
+  if (o.status === 'confirmed') return t('routine.popupDone', { date: dayLabel(o.date) })
+  return t('routine.popupMissed', { date: dayLabel(o.date) })
+})
+
+/** Fill the form from the routine occurrence at the head of the queue */
+function fillFromRoutine() {
+  const item = routineItem.value
+  if (!item) return
+  type.value = item.routine.type
+  amount.value = item.occurrence.amount
+  walletId.value = pickWallet(item.routine.walletId)
+  category.value = item.routine.category
+  note.value = item.routine.note
+  filled.value = false
+}
+
+watch(
+  () => routineItem.value?.occurrence.id,
+  (id) => {
+    if (id && store.isOpen) fillFromRoutine()
+  }
+)
 
 const categories = computed(() =>
   (type.value === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES).filter((c) => !AUTO_ONLY_CATEGORIES.has(c.key))
@@ -93,6 +134,12 @@ async function initialise() {
   filled.value = false
   if (!finance.wallets.length) await finance.fetchWallets()
   walletId.value = pickWallet(prefs.walletId)
+  if (routineItem.value) {
+    fillFromRoutine()
+    await nextTick()
+    focusAmount()
+    return
+  }
   if (!categories.value.some((c) => c.key === category.value)) {
     category.value = categories.value[categories.value.length - 1]?.key ?? ''
   }
@@ -127,7 +174,33 @@ watch(
 
 function close() {
   stopCountdown()
+  // Auto-recorded routine items that were shown count as seen (kept as recorded)
+  if (store.reason === 'routine') {
+    void routines.acknowledge(routines.queue.filter((i) => i.occurrence.status === 'auto').map((i) => i.occurrence.id))
+    routines.queue = []
+  }
   store.close()
+}
+
+/** Next routine occurrence in the queue, or close when done */
+function advanceRoutine() {
+  routines.queue = routines.queue.slice(1)
+  if (!routines.queue.length) close()
+}
+
+async function skipRoutine() {
+  const item = routineItem.value
+  if (!item || submitting.value) return
+  submitting.value = true
+  try {
+    await routines.skip(item.occurrence.id)
+    ui.showToast('info', t(item.occurrence.txId ? 'routine.undone' : 'routine.skipped', { name: item.routine.name }))
+    advanceRoutine()
+  } catch {
+    // httpClient already showed the error
+  } finally {
+    submitting.value = false
+  }
 }
 
 // ── Choices (remembered on the server for every device) ──
@@ -135,17 +208,17 @@ function setType(next: TransactionType) {
   if (type.value === next) return
   type.value = next
   category.value = store.prefs.categories[next]
-  store.updatePrefs({ type: next })
+  if (!routineItem.value) store.updatePrefs({ type: next })
 }
 
 function setWallet(w: Wallet) {
   walletId.value = w.id
-  store.updatePrefs({ walletId: w.id })
+  if (!routineItem.value) store.updatePrefs({ walletId: w.id })
 }
 
 function setCategory(key: string) {
   category.value = key
-  store.updatePrefs({ categories: { ...store.prefs.categories, [type.value]: key } })
+  if (!routineItem.value) store.updatePrefs({ categories: { ...store.prefs.categories, [type.value]: key } })
 }
 
 function setEnabled(enabled: boolean) {
@@ -171,6 +244,26 @@ async function submit() {
   }
 
   const wallet = selectedWallet.value!
+
+  const item = routineItem.value
+  if (item) {
+    try {
+      await routines.confirm(item.occurrence.id, {
+        amount: amount.value,
+        walletId: wallet.id,
+        category: category.value,
+        note: note.value.trim()
+      })
+      ui.showToast('success', t('routine.confirmed', { amount: formatVND(amount.value), name: item.routine.name }))
+      advanceRoutine()
+    } catch {
+      // httpClient already showed the error
+    } finally {
+      submitting.value = false
+    }
+    return
+  }
+
   const tx = await finance.addTransaction({
     type: type.value,
     amount: amount.value,
@@ -245,8 +338,8 @@ function walletBrand(w: Wallet) {
           <!-- Header -->
           <header class="qa-header">
             <div class="min-w-0">
-              <h2 class="qa-title">{{ t('quickAdd.title') }}</h2>
-              <p class="qa-subtitle">{{ t('quickAdd.subtitle') }}</p>
+              <h2 class="qa-title">{{ routineItem ? routineItem.routine.name : t('quickAdd.title') }}</h2>
+              <p class="qa-subtitle">{{ routineItem ? routineSubtitle : t('quickAdd.subtitle') }}</p>
             </div>
             <button class="qa-icon-btn" :aria-label="t('common.close')" @click="close">
               <X :size="18" />
@@ -256,7 +349,7 @@ function walletBrand(w: Wallet) {
           <!-- Scrolling content -->
           <div class="qa-body">
             <!-- In / out tabs -->
-            <div class="qa-tabs" role="tablist">
+            <div v-if="!routineItem" class="qa-tabs" role="tablist">
               <button
                 role="tab"
                 class="qa-tab qa-tab--income"
@@ -375,9 +468,17 @@ function walletBrand(w: Wallet) {
             <button class="qa-submit" :disabled="submitting" @click="submit">
               <AppSpinner v-if="submitting" :size="18" />
               <Check v-else :size="18" />
-              {{ type === 'income' ? t('quickAdd.saveIncome') : t('quickAdd.saveExpense') }}
+              <template v-if="routineItem && routineItem.occurrence.txId">{{ t('routine.save') }}</template>
+              <template v-else>{{ type === 'income' ? t('quickAdd.saveIncome') : t('quickAdd.saveExpense') }}</template>
             </button>
-            <label class="qa-switch">
+            <!-- Routine: skip this time / undo what was recorded -->
+            <div v-if="routineItem" class="qa-routine-row">
+              <button class="qa-secondary" :disabled="submitting" @click="skipRoutine">
+                {{ routineItem.occurrence.txId ? t('routine.undo') : t('routine.skipThis') }}
+              </button>
+              <span v-if="routineMore" class="qa-routine-more">{{ t('routine.more', { n: routineMore }) }}</span>
+            </div>
+            <label v-else class="qa-switch">
               <input
                 type="checkbox"
                 :checked="store.prefs.enabled"
@@ -1036,6 +1137,36 @@ function walletBrand(w: Wallet) {
 
 .qa-submit:disabled {
   opacity: 0.7;
+}
+
+/* ── Routine mode: secondary action under the save button ── */
+.qa-routine-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.qa-secondary {
+  height: 2.5rem;
+  padding: 0 1rem;
+  border-radius: 999px;
+  background: var(--qa-fill);
+  box-shadow: inset 0 0 0 1px var(--qa-stroke);
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.qa-secondary:hover {
+  background: var(--qa-fill-strong);
+  color: var(--text-primary);
+}
+
+.qa-routine-more {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
 }
 
 /* ── Auto-open switch ── */

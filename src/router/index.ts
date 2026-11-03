@@ -47,9 +47,10 @@ const router = createRouter({
       component: () => import('@/views/WalletsView.vue')
     },
     {
-      path: '/recurring',
-      name: 'recurring',
-      component: () => import('@/views/RecurringView.vue'),
+      path: '/routines',
+      alias: '/recurring',
+      name: 'routines',
+      component: () => import('@/views/RoutinesView.vue'),
       meta: { parentRoute: '/planning' }
     },
     {
