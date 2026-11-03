@@ -205,8 +205,8 @@ async function handleDelete(debt: Debt) {
                 {{ t('debt.dueSoon') }}
               </span>
             </div>
-            <h3 class="text-sm font-semibold truncate">{{ debt.title }}</h3>
-            <p v-if="debt.counterparty" class="text-[0.75rem] text-text-tertiary truncate">{{ debt.counterparty }}</p>
+            <h3 class="text-sm font-semibold min-w-0 wrap-break-word">{{ debt.title }}</h3>
+            <p v-if="debt.counterparty" class="text-[0.75rem] text-text-tertiary min-w-0 wrap-break-word">{{ debt.counterparty }}</p>
           </div>
           <div class="text-right shrink-0 ml-3">
             <div class="text-base font-bold">{{ formatVND(debt.remainingAmount) }}</div>

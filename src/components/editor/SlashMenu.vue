@@ -162,9 +162,7 @@ defineExpose({ onKeyDown })
 .slash-menu__desc {
   font-size: 0.6875rem;
   color: var(--text-tertiary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: break-word;
 }
 
 .slash-menu__empty {

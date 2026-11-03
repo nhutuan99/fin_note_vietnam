@@ -390,7 +390,7 @@ async function importLegacy() {
           <button class="rt-pending__main" @click="openInPopup(item)">
             <span class="rt-emoji font-emoji">{{ getCategoryConfig(item.routine.category).icon }}</span>
             <span class="min-w-0 flex-1 text-left">
-              <span class="block truncate text-sm font-semibold">{{ item.routine.name }}</span>
+              <span class="block min-w-0 wrap-break-word text-sm font-semibold">{{ item.routine.name }}</span>
               <span class="text-text-tertiary block text-xs">
                 {{ occurrenceDay(item.occurrence.date) }}
                 <template v-if="item.occurrence.status === 'auto'"> · <span class="text-warning">{{ t('routine.autoTitle') }}</span></template>
@@ -476,7 +476,7 @@ async function importLegacy() {
               >
                 <img v-if="walletLogo(w.id)" :src="walletLogo(w.id)" alt="" class="rt-wallet__logo" loading="lazy" />
                 <span v-else class="rt-wallet__logo rt-wallet__logo--emoji">{{ w.icon }}</span>
-                <span class="truncate">{{ w.name }}</span>
+                <span class="min-w-0 wrap-break-word">{{ w.name }}</span>
               </button>
             </div>
           </div>
@@ -586,11 +586,11 @@ async function importLegacy() {
       <div v-for="r in store.routines" :key="r.id" class="rt-card" :class="{ 'is-off': !r.enabled }">
         <span class="rt-emoji font-emoji">{{ getCategoryConfig(r.category).icon }}</span>
         <div class="min-w-0 flex-1">
-          <div class="flex items-center gap-2">
-            <span class="truncate text-sm font-semibold">{{ r.name }}</span>
+          <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span class="min-w-0 wrap-break-word text-sm font-semibold">{{ r.name }}</span>
             <span v-if="r.onMissed === 'record'" class="rt-tag"><Zap :size="10" /> {{ t('routine.autoRecord') }}</span>
           </div>
-          <div class="text-text-tertiary mt-0.5 truncate text-xs">
+          <div class="text-text-tertiary mt-0.5 min-w-0 wrap-break-word text-xs">
             {{ scheduleLabel(r) }}
             <template v-if="walletOf(r.walletId)"> · {{ walletOf(r.walletId)!.name }}</template>
           </div>

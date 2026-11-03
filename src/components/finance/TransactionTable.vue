@@ -210,15 +210,15 @@ function dayTotal(txs: Transaction[]) {
                     
                     <!-- Text Info -->
                     <div class="min-w-0 flex-1">
-                      <div class="flex items-center gap-2">
-                        <span class="text-sm font-semibold text-text-primary truncate max-w-[10rem] sm:max-w-[18rem]">
+                      <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                        <span class="text-sm font-semibold text-text-primary min-w-0 wrap-break-word">
                           {{ t(`categories.${tx.category}`) }}
                         </span>
                         <span :class="['tx-badge', getSourceClass(tx.source)]">
                           {{ getSourceLabel(tx.source) }}
                         </span>
                       </div>
-                      <div class="text-[0.6875rem] text-text-disabled mt-0.5 flex items-center gap-1.5 truncate max-w-[14rem] sm:max-w-[22rem]">
+                      <div class="text-[0.6875rem] text-text-disabled mt-0.5 flex flex-wrap items-center gap-x-1.5 min-w-0 wrap-break-word">
                         <span>{{ finance.getWalletName(tx.walletId) }}</span>
                         <span class="opacity-40">•</span>
                         <span>{{ formatTime(tx.createdAt || tx.date) }}</span>

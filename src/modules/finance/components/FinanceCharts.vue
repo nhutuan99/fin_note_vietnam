@@ -113,7 +113,7 @@ const activeWalletStats = computed(() => walletBreakdownTab.value === 'expense' 
                 <span v-else class="text-[9px] font-bold" :style="{ color: ws.color }">{{ ws.name.substring(0, 2).toUpperCase() }}</span>
               </div>
               <!-- Name + Amount -->
-              <span class="text-text-secondary text-[0.8125rem] font-medium group-hover:text-text-primary transition-colors truncate">{{ ws.name }}</span>
+              <span class="text-text-secondary text-[0.8125rem] font-medium group-hover:text-text-primary transition-colors min-w-0 wrap-break-word">{{ ws.name }}</span>
               <span class="text-text-primary ml-auto text-[0.8125rem] font-bold tabular-nums whitespace-nowrap">{{ formatVNDShort(ws.total) }}</span>
               <span class="text-text-disabled text-[0.6875rem] w-[2.5rem] text-right tabular-nums">{{ ws.percentage.toFixed(0) }}%</span>
             </div>
@@ -185,7 +185,7 @@ const activeWalletStats = computed(() => walletBreakdownTab.value === 'expense' 
           </div>
           <div class="min-w-0 flex-1">
             <div class="flex items-center gap-2">
-              <span class="text-sm font-semibold text-text-primary truncate">
+              <span class="text-sm font-semibold text-text-primary min-w-0 wrap-break-word">
                 {{ t(`categories.${tx.category}`) }}
               </span>
               <span

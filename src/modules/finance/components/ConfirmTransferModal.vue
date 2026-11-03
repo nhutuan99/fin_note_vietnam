@@ -122,7 +122,7 @@ async function handleConfirmExpense() {
             </div>
             <div class="flex justify-between">
               <span class="text-xs text-text-tertiary">{{ t('transfer.content') }}</span>
-              <span class="text-xs text-text-secondary text-right truncate max-w-[200px]">{{ transfer.note }}</span>
+              <span class="text-xs text-text-secondary text-right min-w-0 wrap-break-word">{{ transfer.note }}</span>
             </div>
             <div class="flex justify-between">
               <span class="text-xs text-text-tertiary">{{ t('transfer.date') }}</span>

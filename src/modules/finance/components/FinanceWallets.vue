@@ -60,7 +60,7 @@ const finance = useFinancePolling()
             {{ w.icon }}
           </div>
         </div>
-        <div class="text-text-tertiary mb-1 truncate text-[0.6875rem]">
+        <div class="text-text-tertiary mb-1 min-w-0 wrap-break-word text-[0.6875rem]">
           {{ w.name }}
         </div>
         <div

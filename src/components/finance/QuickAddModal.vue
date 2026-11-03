@@ -940,10 +940,12 @@ function walletBrand(w: Wallet) {
   min-width: 0;
 }
 
-.qa-wallet__name,
+/* Names wrap so a long wallet name stays readable; the balance stays on one line */
+.qa-wallet__name {
+  overflow-wrap: break-word;
+}
+
 .qa-wallet__balance {
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -1021,10 +1023,7 @@ function walletBrand(w: Wallet) {
   font-weight: 500;
   line-height: 1.2;
   text-align: center;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  overflow-wrap: break-word;
 }
 
 .qa-cat:hover {

@@ -238,9 +238,8 @@ const UNITS = ['cay', 'chi', 'phan'] as const
   min-width: 0;
   font-size: 0.8125rem;
   font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.3;
+  overflow-wrap: break-word;
 }
 
 .gold-type__price {

@@ -302,7 +302,7 @@ function onDragEnd() {
                   </span>
                 </template>
                 <span v-else class="text-sm font-emoji shrink-0">{{ w.icon }}</span>
-                <span class="truncate text-[0.75rem] text-text-secondary">{{ w.name }}</span>
+                <span class="min-w-0 wrap-break-word text-[0.75rem] text-text-secondary">{{ w.name }}</span>
               </span>
               <span
                 class="text-[0.6875rem] font-semibold tabular-nums shrink-0"
@@ -368,7 +368,7 @@ function onDragEnd() {
             >
               <GripVertical :size="11" class="shrink-0 text-text-disabled/30 cursor-grab drag-handle" />
               <FileText :size="13" class="shrink-0 text-text-disabled" />
-              <span class="truncate text-[0.75rem] text-text-secondary flex-1">
+              <span class="min-w-0 wrap-break-word text-[0.75rem] text-text-secondary flex-1">
                 {{ note.title || t('notes.untitled') }}
               </span>
               <ChevronRightIcon :size="11" class="shrink-0 text-text-disabled/40 opacity-0 group-hover:opacity-100 transition-opacity" />

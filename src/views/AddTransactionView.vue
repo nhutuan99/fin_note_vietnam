@@ -205,7 +205,7 @@ async function submit() {
             {{ getWalletBrand(w.name)!.abbr }}
           </div>
           <span v-else class="text-lg">{{ w.icon }}</span>
-          <span class="text-text-secondary w-full truncate text-center text-[0.6875rem]">
+          <span class="text-text-secondary w-full min-w-0 wrap-break-word text-center text-[0.6875rem]">
             {{ w.name }}
           </span>
         </button>
@@ -218,7 +218,7 @@ async function submit() {
           <div class="flex h-7 w-7 items-center justify-center rounded-[4px] bg-bg-elevated text-text-tertiary">
              <Plus :size="16" />
           </div>
-          <span class="text-text-secondary w-full truncate text-center text-[0.6875rem]">
+          <span class="text-text-secondary w-full min-w-0 wrap-break-word text-center text-[0.6875rem]">
             {{ t('addTx.addWallet') }}
           </span>
         </button>

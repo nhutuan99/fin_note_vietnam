@@ -429,7 +429,7 @@ watch(isAdmin, (val) => {
           </div>
           <div class="text-left">
             <span class="text-[0.875rem] font-bold block">{{ t('otpHub.pwaGuideTitle') }}</span>
-            <span class="text-text-tertiary text-[0.75rem] font-normal block max-w-[250px] sm:max-w-none truncate">{{ t('otpHub.pwaGuideDesc') }}</span>
+            <span class="text-text-tertiary text-[0.75rem] font-normal block min-w-0 wrap-break-word">{{ t('otpHub.pwaGuideDesc') }}</span>
           </div>
         </div>
         <component :is="showPwaGuide ? ChevronUp : ChevronDown" :size="16" class="text-text-tertiary" />

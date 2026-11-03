@@ -221,10 +221,9 @@ const budget = computed(() => {
 
 .month-stat__label {
   font-size: 0.6875rem;
+  line-height: 1.3;
   color: var(--text-tertiary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: break-word;
 }
 
 .month-stat__value {

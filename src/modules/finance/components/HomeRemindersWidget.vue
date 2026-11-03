@@ -110,7 +110,7 @@ function formatEventDate(dateStr: string): string {
 
         <!-- Content -->
         <div class="min-w-0 flex-1">
-          <p class="text-sm font-medium text-text-primary truncate leading-tight">{{ r.title }}</p>
+          <p class="text-sm font-medium text-text-primary min-w-0 wrap-break-word leading-tight">{{ r.title }}</p>
           <div class="flex items-center gap-1 text-[11px] text-text-disabled mt-0.5">
             <Clock :size="11" />
             {{ formatEventDate(r.eventDate) }}

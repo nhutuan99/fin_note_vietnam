@@ -263,7 +263,7 @@ const depositWalletOptions = computed(() => [
         <div class="flex items-center gap-3 mb-3">
           <div class="flex h-11 w-11 items-center justify-center rounded-xl text-xl" :style="{ backgroundColor: g.color + '20' }">{{ g.icon }}</div>
           <div class="flex-1 min-w-0">
-            <div class="text-sm font-semibold truncate">{{ g.name }}</div>
+            <div class="text-sm font-semibold min-w-0 wrap-break-word">{{ g.name }}</div>
             <div class="text-text-disabled text-[0.6875rem] flex items-center gap-1">
               <span v-if="daysLeft(g.deadline) !== null">{{ t('savings.daysLeft', { n: daysLeft(g.deadline) }) }}</span>
               <span v-if="g.autoSaveEnabled" class="text-accent flex items-center gap-0.5 ml-1"><Zap :size="10" /> Auto</span>

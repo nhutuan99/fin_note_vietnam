@@ -114,7 +114,7 @@ async function handleCleanup() {
               <Square v-else :size="18" class="text-text-disabled" />
             </div>
             <div class="item-content min-w-0">
-              <div class="text-sm font-medium text-text-primary truncate mb-0.5" :class="{ 'opacity-70 line-through': selectedIds.has(r.id) }">{{ r.title }}</div>
+              <div class="text-sm font-medium text-text-primary min-w-0 wrap-break-word mb-0.5" :class="{ 'opacity-70 line-through': selectedIds.has(r.id) }">{{ r.title }}</div>
               <div class="text-[0.6875rem] text-text-tertiary flex items-center gap-1 opacity-80">
                 <Clock :size="10" /> {{ formatDateTime(r.eventDate) }}
               </div>

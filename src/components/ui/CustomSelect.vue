@@ -42,7 +42,7 @@ onUnmounted(() => document.removeEventListener('click', handleClickOutside))
       class="flex w-full items-center justify-between gap-2 rounded-lg border border-border-default bg-bg-elevated px-3 py-2.5 text-left text-text-primary focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent-subtle transition-all"
       :class="{ 'opacity-50 cursor-not-allowed': disabled, 'border-accent ring-1 ring-accent-subtle': isOpen }"
     >
-      <span class="truncate" :class="{ 'text-text-disabled': !modelValue && !options.find(o => o.value === modelValue) }">
+      <span class="min-w-0 wrap-break-word" :class="{ 'text-text-disabled': !modelValue && !options.find(o => o.value === modelValue) }">
         {{ options.find(o => o.value === modelValue)?.label || placeholder || 'Select...' }}
       </span>
       <ChevronDown class="text-text-tertiary shrink-0 transition-transform duration-200" :class="{ 'rotate-180': isOpen }" :size="16" />
@@ -69,7 +69,7 @@ onUnmounted(() => document.removeEventListener('click', handleClickOutside))
             class="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm transition-colors"
             :class="opt.value === modelValue ? 'bg-accent/15 text-accent font-semibold' : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'"
           >
-            <span class="truncate">{{ opt.label }}</span>
+            <span class="min-w-0 wrap-break-word">{{ opt.label }}</span>
             <Check v-if="opt.value === modelValue" :size="16" class="shrink-0" />
           </button>
         </div>

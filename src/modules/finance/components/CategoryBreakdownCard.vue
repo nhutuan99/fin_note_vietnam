@@ -310,9 +310,7 @@ const money = (v: number) => (ui.hideBalances ? '••••' : formatMoneyShor
 }
 
 .cat-head__label {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: break-word;
   font-size: 0.75rem;
   color: var(--text-tertiary);
 }
@@ -409,9 +407,7 @@ const money = (v: number) => (ui.hideBalances ? '••••' : formatMoneyShor
   gap: 0.375rem;
   flex: 1;
   min-width: 0;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  overflow-wrap: break-word;
   color: var(--text-primary);
 }
 

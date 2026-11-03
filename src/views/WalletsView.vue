@@ -547,9 +547,9 @@ function onDragEnd() {
             </div>
           </div>
 
-          <div class="min-w-[4.5rem] flex-1">
-            <div class="truncate text-sm font-semibold">{{ w.name }}</div>
-            <div v-if="w.kind === 'gold'" class="text-text-tertiary truncate text-[0.6875rem]">
+          <div class="min-w-0 flex-1">
+            <div class="wrap-break-word text-sm leading-snug font-semibold">{{ w.name }}</div>
+            <div v-if="w.kind === 'gold'" class="text-text-tertiary min-w-0 wrap-break-word text-[0.6875rem]">
               <span class="text-text-secondary font-medium">{{ goldQtyLabel(w) }}</span>
               <template v-if="w.goldPrice">
                 · {{ t('wallets.goldPerChi', { price: formatVNDShort(w.goldPrice.buy) }) }}
@@ -559,6 +559,14 @@ function onDragEnd() {
               <span v-else class="text-warning"> · {{ t('wallets.goldNoPrice') }}</span>
             </div>
             <div v-else class="text-text-tertiary text-[0.6875rem]">{{ w.currency }}</div>
+            <!-- Phones: the amount sits under the name, so long names get the full width -->
+            <div
+              v-if="editId !== w.id"
+              class="mt-1 text-sm font-bold whitespace-nowrap tabular-nums sm:hidden"
+              :class="w.balance >= 0 ? 'text-text-primary' : 'text-error'"
+            >
+              {{ formatVND(w.balance) }}
+            </div>
           </div>
 
           <!-- Edit mode -->
@@ -580,7 +588,7 @@ function onDragEnd() {
 
           <!-- Normal mode -->
           <div v-else class="flex shrink-0 items-center gap-0.5 sm:gap-2">
-            <span class="text-sm font-bold whitespace-nowrap sm:text-base" :class="w.balance >= 0 ? 'text-text-primary' : 'text-error'">
+            <span class="hidden text-base font-bold whitespace-nowrap tabular-nums sm:inline" :class="w.balance >= 0 ? 'text-text-primary' : 'text-error'">
               {{ formatVND(w.balance) }}
             </span>
             <button

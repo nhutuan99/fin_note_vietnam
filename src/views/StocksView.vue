@@ -637,7 +637,7 @@ function getChartData(symbol: string) {
             </div>
             <div class="min-w-0 flex-1">
               <p class="font-semibold text-lg cursor-help inline-block leading-tight" @mouseenter="fetchCompanyInfo(pos.symbol)" @mouseleave="clearTooltip">{{ pos.symbol }}</p>
-              <p class="text-xs text-text-tertiary line-clamp-2 leading-tight mt-0.5" :title="getCompanyName(pos.symbol)">{{ getCompanyName(pos.symbol) }}</p>
+              <p class="text-xs text-text-tertiary leading-tight mt-0.5" :title="getCompanyName(pos.symbol)">{{ getCompanyName(pos.symbol) }}</p>
               <p class="text-[10px] text-text-disabled mt-0.5">{{ pos.quantity }} {{ t('common.shares') }}</p>
             </div>
             
@@ -653,7 +653,7 @@ function getChartData(symbol: string) {
                   <div class="flex justify-between"><span class="text-text-tertiary">{{ t('stocks.listedCode') }}</span> <span class="font-medium">{{ tooltipInfo.code }}</span></div>
                   <div class="flex justify-between"><span class="text-text-tertiary">{{ t('stocks.exchange') }}</span> <span class="font-medium">{{ tooltipInfo.floor }}</span></div>
                   <div class="flex justify-between"><span class="text-text-tertiary">{{ t('stocks.listedDate') }}</span> <span class="font-medium">{{ tooltipInfo.listedDate }}</span></div>
-                  <div class="flex justify-between gap-2"><span class="text-text-tertiary shrink-0">{{ t('stocks.intlName') }}</span> <span class="font-medium truncate text-right min-w-0" :title="tooltipInfo.companyNameEng">{{ tooltipInfo.companyNameEng || '---' }}</span></div>
+                  <div class="flex justify-between gap-2"><span class="text-text-tertiary shrink-0">{{ t('stocks.intlName') }}</span> <span class="font-medium wrap-break-word text-right min-w-0" :title="tooltipInfo.companyNameEng">{{ tooltipInfo.companyNameEng || '---' }}</span></div>
                 </div>
               </div>
             </transition>
@@ -802,7 +802,7 @@ function getChartData(symbol: string) {
                   </div>
                   <div class="overflow-hidden">
                     <div class="font-bold text-sm text-text-primary">{{ stock.symbol }}</div>
-                    <div class="text-xs text-text-tertiary truncate">{{ stock.name }}</div>
+                    <div class="text-xs text-text-tertiary min-w-0 wrap-break-word">{{ stock.name }}</div>
                   </div>
                   <div class="ml-auto flex-shrink-0 text-[10px] bg-bg-surface px-1.5 py-0.5 rounded text-text-tertiary border border-border-subtle">{{ stock.exchange }}</div>
                 </div>
@@ -982,7 +982,7 @@ function getChartData(symbol: string) {
           <div class="flex items-center justify-between mb-4 pr-20 gap-2">
             <div class="min-w-0 flex-1">
               <p class="font-bold text-lg text-accent leading-tight">{{ pos.symbol }}</p>
-              <p class="text-xs text-text-tertiary line-clamp-2 leading-tight mt-0.5" :title="pos.fundName">{{ pos.fundName || '—' }}</p>
+              <p class="text-xs text-text-tertiary leading-tight mt-0.5" :title="pos.fundName">{{ pos.fundName || '—' }}</p>
               <p class="text-[10px] text-text-disabled mt-0.5">{{ t('funds.unitCount', { count: pos.quantity.toLocaleString() }) }}</p>
             </div>
             <div class="text-right flex-shrink-0">
@@ -1061,7 +1061,7 @@ function getChartData(symbol: string) {
                     </div>
                     <div class="overflow-hidden flex-1">
                       <div class="font-bold text-sm text-accent">{{ fund.symbol }}</div>
-                      <div class="text-xs text-text-tertiary truncate">{{ fund.name }}</div>
+                      <div class="text-xs text-text-tertiary min-w-0 wrap-break-word">{{ fund.name }}</div>
                     </div>
                     <div class="text-[10px] px-1.5 py-0.5 rounded border border-border-subtle text-text-disabled shrink-0"
                          :class="fund.type === 'STOCK' ? 'text-success border-success/30' : (fund.type === 'BOND' ? 'text-blue-400 border-blue-400/30' : 'text-orange-400 border-orange-400/30')">

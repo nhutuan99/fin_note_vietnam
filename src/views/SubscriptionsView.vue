@@ -92,7 +92,7 @@ function fmtDate(d: string) { const [, m, dd] = d.split('-'); return `${dd}/${m}
         <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-lg" :style="{ backgroundColor: getCategoryConfig(sub.category).color + '15' }">{{ getCategoryConfig(sub.category).icon }}</div>
         <div class="min-w-0 flex-1">
           <div class="flex items-center gap-2">
-            <span class="text-sm font-semibold truncate">{{ sub.note || t(`categories.${sub.category}`) }}</span>
+            <span class="text-sm font-semibold min-w-0 wrap-break-word">{{ sub.note || t(`categories.${sub.category}`) }}</span>
             <span v-if="sub.isUpcoming" class="text-[0.625rem] font-bold px-1.5 py-px rounded bg-warning/15 text-warning">{{ t('subs.soon') }}</span>
           </div>
           <div class="text-text-disabled flex items-center gap-2 text-[0.6875rem] mt-0.5">

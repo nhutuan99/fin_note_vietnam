@@ -124,7 +124,7 @@ async function copyLink() {
               :key="email"
               class="border-border-subtle bg-bg-elevated flex items-center justify-between rounded-lg border px-3 py-2 text-sm"
             >
-              <span class="text-text-secondary truncate">{{ email }}</span>
+              <span class="text-text-secondary min-w-0 wrap-anywhere">{{ email }}</span>
               <button
                 class="text-text-tertiary hover:text-error transition-colors"
                 @click="removeEmail(email)"
@@ -139,7 +139,7 @@ async function copyLink() {
         <div>
           <label class="text-text-secondary mb-2 block text-sm font-medium">{{ t('notes.share.shareLink') }}</label>
           <div class="border-border-default bg-bg-elevated flex items-center justify-between rounded-lg border p-1 pl-3">
-            <span class="text-text-tertiary truncate text-xs">{{ shareLink }}</span>
+            <span class="text-text-tertiary min-w-0 wrap-anywhere text-xs">{{ shareLink }}</span>
             <button
               class="bg-bg-surface border-border-default hover:bg-bg-hover flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors"
               :class="copied ? 'text-success' : 'text-text-primary'"

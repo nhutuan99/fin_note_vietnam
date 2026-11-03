@@ -238,11 +238,7 @@ const hiddenTagCount = computed(() => Math.max(0, props.note.tags.length - 3))
   font-weight: 600;
   line-height: 1.4;
   color: var(--text-primary);
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .note-card__title.is-untitled {

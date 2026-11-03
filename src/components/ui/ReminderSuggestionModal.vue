@@ -136,14 +136,14 @@ async function handleBatchCreate() {
             <div class="suggestion-info" @click="selectSuggestion(s)">
               <Bell :size="14" class="text-accent shrink-0 mt-0.5" />
               <div class="flex-1 min-w-0">
-                <div class="text-sm font-semibold truncate">{{ s.title }}</div>
+                <div class="text-sm font-semibold min-w-0 wrap-break-word">{{ s.title }}</div>
                 <div class="text-[0.6875rem] text-text-tertiary flex items-center gap-2">
                   {{ formatDate(s.eventDate) }}
                   <span v-if="s.url" class="inline-flex items-center gap-1 text-accent bg-accent/10 px-1.5 py-0.5 rounded">
                     <Link :size="10" /> Link
                   </span>
                 </div>
-                <div v-if="s.description" class="text-xs text-text-disabled mt-0.5 truncate">{{ s.description }}</div>
+                <div v-if="s.description" class="text-xs text-text-disabled mt-0.5 min-w-0 wrap-break-word">{{ s.description }}</div>
               </div>
               <ChevronRight :size="14" class="text-text-disabled shrink-0" />
             </div>

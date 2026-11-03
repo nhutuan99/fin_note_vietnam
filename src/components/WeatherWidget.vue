@@ -199,7 +199,7 @@ const trafficBg = computed(() => {
         <!-- Error -->
         <template v-else>
           <div class="flex items-center justify-between text-[0.8125rem] text-text-tertiary relative z-10 w-full">
-            <span class="truncate pr-4" :title="error || $t('weather.error')">⚡ {{ error || $t('weather.error') }}</span>
+            <span class="min-w-0 wrap-break-word pr-4" :title="error || $t('weather.error')">⚡ {{ error || $t('weather.error') }}</span>
             <button
               class="text-accent border border-accent rounded-lg px-2.5 py-1 text-[0.75rem] font-semibold bg-transparent cursor-pointer hover:bg-accent-subtle transition-colors duration-150"
               @click="fetchWeather"

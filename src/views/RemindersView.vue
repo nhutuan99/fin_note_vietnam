@@ -371,7 +371,7 @@ const groupedReminders = computed<DateGroup[]>(() => {
               {{ reminder.title }}
             </h3>
 
-            <!-- Description (truncated) -->
+            <!-- Description -->
             <p v-if="reminder.description" class="tl-card__desc" v-html="formatDescription(reminder.description)"></p>
 
             <!-- URL -->
@@ -383,7 +383,7 @@ const groupedReminders = computed<DateGroup[]>(() => {
               @click.stop
             >
               <Link :size="11" class="shrink-0" />
-              <span class="truncate">{{ getDisplayUrl(reminder.url) }}</span>
+              <span class="min-w-0 wrap-anywhere">{{ getDisplayUrl(reminder.url) }}</span>
             </a>
 
             <!-- Footer: offsets + meta -->
@@ -769,20 +769,15 @@ const groupedReminders = computed<DateGroup[]>(() => {
   color: var(--text-primary);
   margin-bottom: 0.25rem;
   line-height: 1.4;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  overflow-wrap: break-word;
 }
 .tl-card__desc {
   font-size: 0.8125rem;
   color: var(--text-tertiary);
   margin-bottom: 0.5rem;
   line-height: 1.4;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  overflow-wrap: break-word;
+  white-space: pre-line;
 }
 .tl-card__url {
   display: inline-flex;
