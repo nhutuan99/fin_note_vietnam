@@ -58,7 +58,7 @@ export async function handleClearNotifications(userId: string, env: Env): Promis
  * 
  * Also handles generic: +500,000VND or -300.000VND
  */
-interface SmsParsedResult {
+export interface SmsParsedResult {
   type: 'income' | 'expense'
   amount: number
   note: string        // extracted ND or truncated text
@@ -444,12 +444,24 @@ async function processSmsWebhook(
   })
 }
 
+/** Where a bank transaction came from (SMS forwarded by the phone, or a bank-sync service) */
+export interface TransactionChannel {
+  source: TransactionData['source']
+  /** Shown in the in-app notification title, e.g. "SMS", "SePay" */
+  label: string
+  /** Transaction date (YYYY-MM-DD) when the sender knows it; today otherwise */
+  date?: string
+}
+
+const SMS_CHANNEL: TransactionChannel = { source: 'sms', label: 'SMS' }
+
 export async function processSmsTransaction(
   parsed: SmsParsedResult, 
   originalText: string, 
   userId: string,
   env: Env,
-  log?: WebhookLog
+  log?: WebhookLog,
+  channel: TransactionChannel = SMS_CHANNEL
 ): Promise<Response> {
   const wallets = (await getJSON<WalletData[]>(env.SMART_NOTE_KV, `users/${userId}/finance/wallets`)) || []
   const txs = (await getJSON<TransactionData[]>(env.SMART_NOTE_KV, `users/${userId}/finance/transactions`)) || []
@@ -545,8 +557,8 @@ export async function processSmsTransaction(
     category: parsed.type === 'income' ? 'bank_receive' : 'bank_transfer',
     note: `${noteContent}${extraInfo}${bankLabel} ${smsHash}`.trim(),
     walletId,
-    source: 'sms',
-    date: new Date().toISOString().substring(0, 10),
+    source: channel.source,
+    date: channel.date || new Date().toISOString().substring(0, 10),
     createdAt: new Date().toISOString()
   }
 
@@ -568,11 +580,11 @@ export async function processSmsTransaction(
   notiList.unshift({
     id: generateId(),
     type: parsed.type === 'income' ? 'bank_in' : 'bank_out',
-    title: `[SMS] ${parsed.type === 'income' ? 'Tiền vào tài khoản' : 'Tiền ra tài khoản'}`,
+    title: `[${channel.label}] ${parsed.type === 'income' ? 'Tiền vào tài khoản' : 'Tiền ra tài khoản'}`,
     body: `${parsed.type === 'income' ? '+' : '-'}${parsed.amount.toLocaleString('vi-VN')}đ • Ghi vào ví: ${walletName}`,
     read: false,
     createdAt: new Date().toISOString(),
-    meta: { amount: parsed.amount, txType: parsed.type, walletName, bankName: parsed.bankName || 'SMS' }
+    meta: { amount: parsed.amount, txType: parsed.type, walletName, bankName: parsed.bankName || channel.label }
   })
   if (notiList.length > 100) notiList.splice(100)
   

@@ -192,12 +192,12 @@ const activeWalletStats = computed(() => walletBreakdownTab.value === 'expense' 
                 v-if="tx.source && tx.source !== 'manual'"
                 class="inline-flex items-center text-[0.625rem] font-bold px-1.5 py-px rounded shrink-0"
                 :class="{
-                  'bg-success/10 text-success': tx.source === 'sms',
+                  'bg-success/10 text-success': tx.source === 'sms' || tx.source === 'bank',
                   'bg-info/10 text-info': tx.source === 'telegram',
                   'bg-warning/10 text-warning': tx.source === 'notification' || tx.source === 'routine'
                 }"
               >
-                {{ tx.source === 'sms' ? 'SMS' : tx.source === 'telegram' ? 'TG' : tx.source === 'routine' ? 'Routine' : 'Auto' }}
+                {{ tx.source === 'sms' ? 'SMS' : tx.source === 'telegram' ? 'TG' : tx.source === 'routine' ? 'Routine' : tx.source === 'bank' ? 'Bank' : 'Auto' }}
               </span>
             </div>
             <div class="text-text-disabled flex items-center gap-1.5 text-[0.6875rem] mt-0.5">

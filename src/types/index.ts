@@ -97,7 +97,7 @@ export interface Transaction {
   category: string
   note: string
   walletId: string
-  source: 'manual' | 'telegram' | 'notification' | 'sms' | 'routine'
+  source: 'manual' | 'telegram' | 'notification' | 'sms' | 'routine' | 'bank'
   date: string
   createdAt: string
 }

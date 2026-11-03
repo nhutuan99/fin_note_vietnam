@@ -5,6 +5,7 @@ import { useUiStore } from '@/stores/ui'
 import { Copy, ShieldCheck, Smartphone, CheckCircle } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import { useFinanceStore } from '@/stores/finance'
+import SepaySyncCard from '@/components/finance/SepaySyncCard.vue'
 
 const auth = useAuthStore()
 const ui = useUiStore()
@@ -51,6 +52,9 @@ onMounted(() => {
       <h2 class="mb-2 text-2xl font-bold tracking-tight">{{ t('autoSync.title') }}</h2>
       <p class="text-text-secondary text-sm">{{ t('autoSync.desc') }}</p>
     </div>
+
+    <!-- Bank sync service (no SMS needed) -->
+    <SepaySyncCard class="mb-8" />
 
     <!-- Intro Card -->
     <div class="card-premium mb-8 overflow-hidden p-0 border-accent/20">
