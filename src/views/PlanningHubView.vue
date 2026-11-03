@@ -30,10 +30,10 @@ const features = computed(() => {
     {
       id: 'recurring',
       key: 'nav.recurring',
-      desc: 'recurring.emptyHint',
+      desc: 'routine.subtitle',
       icon: Repeat,
       color: '#8b5cf6',
-      route: '/recurring'
+      route: '/routines'
     },
     {
       id: 'subscriptions',

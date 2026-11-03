@@ -97,7 +97,7 @@ export interface Transaction {
   category: string
   note: string
   walletId: string
-  source: 'manual' | 'telegram' | 'notification' | 'sms'
+  source: 'manual' | 'telegram' | 'notification' | 'sms' | 'routine'
   date: string
   createdAt: string
 }
@@ -257,3 +257,54 @@ export interface PendingTransfer {
   status: 'pending' | 'resolved'
 }
 
+
+// ── Finance: Routines (push reminder at a set time, auto-recorded if unanswered) ──
+
+export type RoutineRepeat =
+  | { kind: 'daily' }
+  /** 0 = Sunday … 6 = Saturday */
+  | { kind: 'weekdays'; days: number[] }
+  | { kind: 'monthly'; day: number }
+
+export interface Routine {
+  id: string
+  name: string
+  type: TransactionType
+  amount: number
+  category: string
+  walletId: string
+  note: string
+  repeat: RoutineRepeat
+  /** Local "HH:MM", 15-minute steps */
+  time: string
+  tzOffset: number
+  onMissed: 'record' | 'skip'
+  enabled: boolean
+  pausedUntil?: string
+  activeFrom: string
+  createdAt: string
+  updatedAt: string
+  /** Next reminder (ISO), from the server; null when off */
+  nextDueAt?: string | null
+}
+
+export type RoutineInput = Pick<Routine, 'name' | 'type' | 'amount' | 'category' | 'walletId' | 'note' | 'repeat' | 'time' | 'onMissed'>
+
+export interface RoutineOccurrence {
+  id: string
+  routineId: string
+  date: string
+  status: 'pending' | 'confirmed' | 'skipped' | 'auto' | 'missed'
+  amount: number
+  txId?: string
+  deadline: string
+  createdAt: string
+  resolvedAt?: string
+  acknowledged?: boolean
+}
+
+export interface RoutineInbox {
+  pending: RoutineOccurrence[]
+  autoRecorded: RoutineOccurrence[]
+  routines: Routine[]
+}

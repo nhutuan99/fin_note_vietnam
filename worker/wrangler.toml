@@ -18,7 +18,7 @@ ENVIRONMENT = "production"
 FRONTEND_URL = "https://finnote-f4n.pages.dev"
 API_URL = "https://smart-note-api.smart-note.workers.dev"
 
-# No cron triggers: nothing runs in the background against KV.
-# An empty list (rather than omitting the table) makes `wrangler deploy` remove any deployed crons.
+# One cron, for routines only: each run is a single KV list of the current 15-minute slot
+# (routines/slots/{HHmm}/…), ~96 list operations a day. Nothing else runs in the background.
 [triggers]
-crons = []
+crons = ["*/15 * * * *"]

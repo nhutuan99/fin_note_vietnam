@@ -194,10 +194,10 @@ const activeWalletStats = computed(() => walletBreakdownTab.value === 'expense' 
                 :class="{
                   'bg-success/10 text-success': tx.source === 'sms',
                   'bg-info/10 text-info': tx.source === 'telegram',
-                  'bg-warning/10 text-warning': tx.source === 'notification'
+                  'bg-warning/10 text-warning': tx.source === 'notification' || tx.source === 'routine'
                 }"
               >
-                {{ tx.source === 'sms' ? 'SMS' : tx.source === 'telegram' ? 'TG' : 'Auto' }}
+                {{ tx.source === 'sms' ? 'SMS' : tx.source === 'telegram' ? 'TG' : tx.source === 'routine' ? 'Routine' : 'Auto' }}
               </span>
             </div>
             <div class="text-text-disabled flex items-center gap-1.5 text-[0.6875rem] mt-0.5">

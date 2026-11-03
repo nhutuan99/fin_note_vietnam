@@ -50,6 +50,7 @@ import {
   handleListTransactions,
   handleCreateTransaction,
   handleDeleteTransaction,
+  handleUpdateTransaction,
   handleClearTransactions,
   handleGetFinanceStats,
   handleGetBudget,
@@ -135,6 +136,19 @@ import {
   handleOtpUnsubscribe,
   handleEmailOtpWebhook,
 } from './controllers/otp-hub.controller'
+
+import {
+  handleListRoutines,
+  handleCreateRoutine,
+  handleUpdateRoutine,
+  handleDeleteRoutine,
+  handleRoutineInbox,
+  handleGetOccurrence,
+  handleConfirmOccurrence,
+  handleSkipOccurrence,
+  handleAcknowledgeOccurrences
+} from './controllers/routine.controller'
+import { runRoutineSlot } from './services/routine.service'
 
 async function handleRequest(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url)
@@ -367,6 +381,9 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
       if (txMatch && request.method === 'DELETE') {
         return handleDeleteTransaction(userId, txMatch[1], env)
       }
+      if (txMatch && request.method === 'PUT') {
+        return handleUpdateTransaction(userId, txMatch[1], request, env)
+      }
 
       // Finance: Pending Transfers
       if (path === '/api/finance/pending-transfers' && request.method === 'GET') {
@@ -391,6 +408,32 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
       }
       if (path === '/api/quick-add/prefs' && request.method === 'PUT') {
         return handleUpdateQuickAddPrefs(userId, request, env)
+      }
+
+      // Finance: Routines (recurring in/out, push reminder + auto-record)
+      if (path === '/api/routines' && request.method === 'GET') {
+        return handleListRoutines(userId, env)
+      }
+      if (path === '/api/routines' && request.method === 'POST') {
+        return handleCreateRoutine(userId, request, env)
+      }
+      if (path === '/api/routines/inbox' && request.method === 'GET') {
+        return handleRoutineInbox(userId, env)
+      }
+      if (path === '/api/routines/occurrences/ack' && request.method === 'POST') {
+        return handleAcknowledgeOccurrences(userId, request, env)
+      }
+      const occurrenceMatch = path.match(/^\/api\/routines\/occurrences\/([^/]+?)(?:\/(confirm|skip))?$/)
+      if (occurrenceMatch) {
+        const occurrenceId = decodeURIComponent(occurrenceMatch[1])
+        if (!occurrenceMatch[2] && request.method === 'GET') return handleGetOccurrence(userId, occurrenceId, env)
+        if (occurrenceMatch[2] === 'confirm' && request.method === 'POST') return handleConfirmOccurrence(userId, occurrenceId, request, env)
+        if (occurrenceMatch[2] === 'skip' && request.method === 'POST') return handleSkipOccurrence(userId, occurrenceId, env)
+      }
+      const routineMatch = path.match(/^\/api\/routines\/([^/]+)$/)
+      if (routineMatch) {
+        if (request.method === 'PUT') return handleUpdateRoutine(userId, routineMatch[1], request, env)
+        if (request.method === 'DELETE') return handleDeleteRoutine(userId, routineMatch[1], env)
       }
 
       // Finance: Savings
@@ -576,5 +619,15 @@ export default {
       statusText: response.statusText,
       headers: finalHeaders
     })
+  },
+
+  // ── Cloudflare Cron Trigger (*/15 * * * *) ──
+  // Only routines run in the background: one KV list of the current 15-minute slot per run.
+  async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
+    ctx.waitUntil(
+      runRoutineSlot(env, event.scheduledTime)
+        .then((result) => console.log(result))
+        .catch((err) => console.error('[Cron] Routines failed:', err))
+    )
   }
 }
