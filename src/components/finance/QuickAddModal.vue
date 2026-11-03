@@ -532,14 +532,15 @@ function walletBrand(w: Wallet) {
  * forced the whole blurred area to be recomputed — that was the lag. The dim and the panel are
  * plain painted layers now, so opening and the countdown run on the compositor alone.
  */
+/* A deep dim so the eye goes straight to the panel */
 .qa-scrim {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(0, 0, 0, 0.78);
 }
 
 :global([data-theme='light'] .qa-scrim) {
-  background: rgba(15, 23, 42, 0.38);
+  background: rgba(15, 23, 42, 0.55);
 }
 
 @media (min-width: 640px) {
@@ -753,12 +754,12 @@ function walletBrand(w: Wallet) {
 
 .qa-tab--income.is-active {
   background: var(--success);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 6px 18px color-mix(in srgb, var(--success) 32%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
 }
 
 .qa-tab--expense.is-active {
   background: var(--error);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 6px 18px color-mix(in srgb, var(--error) 32%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
 }
 
 /* ── Amount ── */
@@ -1091,7 +1092,7 @@ function walletBrand(w: Wallet) {
 
 .qa-note:focus {
   outline: none;
-  box-shadow: inset 0 0 0 1.5px var(--qa-color), 0 0 0 4px color-mix(in srgb, var(--qa-color) 16%, transparent);
+  box-shadow: inset 0 0 0 1.5px var(--qa-color);
 }
 
 /* ── Actions: pinned below the scrolling body ── */
@@ -1122,7 +1123,8 @@ function walletBrand(w: Wallet) {
   color: #fff;
   font-size: 1.0625rem;
   font-weight: 700;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 10px 26px color-mix(in srgb, var(--qa-color) 30%, transparent);
+  /* Solid colour only — no coloured glow spilling around the button */
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
   transition: transform 0.1s ease, opacity var(--transition-fast), background 0.2s ease;
 }
 
