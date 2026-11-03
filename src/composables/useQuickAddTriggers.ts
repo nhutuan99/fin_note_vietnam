@@ -2,7 +2,7 @@ import { onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useQuickAddStore } from '@/stores/quickAdd'
-import { useRoutinesStore } from '@/stores/routines'
+import { useRoutinesStore, type RoutineItem } from '@/stores/routines'
 import { useUiStore } from '@/stores/ui'
 import { useEventListener } from '@/composables/useEventListener'
 import type { TransactionType } from '@/types'
@@ -37,23 +37,47 @@ export function useQuickAddTriggers() {
     return store.prefs.enabled && nothingOpen()
   }
 
-  /** Waiting routine occurrences open first (regardless of the quick-add switch) */
-  async function openRoutinesIfWaiting(maxAgeMs: number): Promise<boolean> {
-    if (!nothingOpen()) return false
-    const items = await Promise.race([
-      routines.fetchInbox(maxAgeMs),
-      new Promise<typeof routines.attention>((resolve) => setTimeout(() => resolve(routines.attention), INBOX_WAIT_MS))
-    ])
-    if (!items.length || !nothingOpen()) return false
+  function openRoutineQueue(items: RoutineItem[]) {
     routines.queue = [...items]
     store.open('routine')
+  }
+
+  /** App start: waiting routine occurrences open first (regardless of the quick-add switch) */
+  async function openRoutinesIfWaiting(): Promise<boolean> {
+    if (!nothingOpen()) return false
+    const items = await Promise.race([
+      routines.fetchInbox(),
+      new Promise<RoutineItem[]>((resolve) => setTimeout(() => resolve(routines.attention), INBOX_WAIT_MS))
+    ])
+    if (!items.length || !nothingOpen()) return false
+    openRoutineQueue(items)
     return true
   }
 
-  useEventListener(document, 'visibilitychange', async () => {
-    if (document.visibilityState !== 'visible') return
-    if (await openRoutinesIfWaiting(INBOX_MAX_AGE_MS)) return
-    if (canAutoOpen()) store.open('visibility')
+  /**
+   * Back in the app: open at once from what is already known — never wait on the network — then
+   * refresh the routine inbox in the background. Newly waiting occurrences take over the popup only
+   * if it opened by itself and hasn't been touched; otherwise they wait for the next return.
+   */
+  useEventListener(document, 'visibilitychange', () => {
+    if (document.visibilityState !== 'visible' || !nothingOpen()) return
+    if (routines.attention.length) openRoutineQueue(routines.attention)
+    else if (canAutoOpen()) store.open('visibility')
+    const openedNow = store.isOpen
+
+    void routines.fetchInbox(INBOX_MAX_AGE_MS).then((items) => {
+      if (!items.length) return
+      if (!store.isOpen) {
+        // Nothing was shown on this return (quick add off) → show the routines; but a popup the
+        // user already closed is not brought back
+        if (!openedNow && nothingOpen()) openRoutineQueue(items)
+        return
+      }
+      if (store.reason === 'routine') return
+      const queueBefore = routines.queue
+      routines.queue = [...items]
+      if (!store.switchToRoutine()) routines.queue = queueBefore
+    })
   })
 
   function dropQuery(key: string) {
@@ -101,7 +125,7 @@ export function useQuickAddTriggers() {
 
   onMounted(async () => {
     const prefsLoaded = store.loadPrefs()
-    launchHandled = handleQuickParam() || (await handleRoutineParam()) || (await openRoutinesIfWaiting(0))
+    launchHandled = handleQuickParam() || (await handleRoutineParam()) || (await openRoutinesIfWaiting())
     openOnLaunch()
     await prefsLoaded
     openOnLaunch()

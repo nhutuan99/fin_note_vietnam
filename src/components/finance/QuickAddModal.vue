@@ -79,10 +79,13 @@ function fillFromRoutine() {
   filled.value = false
 }
 
+// Next item in the queue, or an untouched quick-add popup switched to routine mode in place
 watch(
   () => routineItem.value?.occurrence.id,
   (id) => {
-    if (id && store.isOpen) fillFromRoutine()
+    if (!id || !store.isOpen) return
+    stopCountdown()
+    fillFromRoutine()
   }
 )
 
@@ -110,6 +113,7 @@ function stopCountdown() {
 
 /** Any interaction with the popup means the user is using it: cancel the auto close for good */
 function markTouched() {
+  store.markInteracted()
   if (countingDown.value) stopCountdown()
 }
 
@@ -522,8 +526,11 @@ function walletBrand(w: Wallet) {
 }
 
 /*
- * The dim lives on its own layer: fading the overlay itself (opacity < 1) would make it the
- * panel's backdrop root, so the glass would blur a flat colour until the fade ended.
+ * ── Performance ──
+ * No backdrop-filter anywhere in this popup. With a blurred backdrop, every frame of the
+ * countdown (and every repaint of the page behind, e.g. the dashboard refreshing on return)
+ * forced the whole blurred area to be recomputed — that was the lag. The dim and the panel are
+ * plain painted layers now, so opening and the countdown run on the compositor alone.
  */
 .qa-scrim {
   position: absolute;
@@ -532,48 +539,29 @@ function walletBrand(w: Wallet) {
 }
 
 :global([data-theme='light'] .qa-scrim) {
-  background: rgba(15, 23, 42, 0.4);
+  background: rgba(15, 23, 42, 0.38);
 }
 
 @media (min-width: 640px) {
   .qa-overlay {
     padding: 1rem;
   }
-
-  /* Blur only where the page shows around the card — phones get a full-screen panel, no blur cost */
-  .qa-scrim {
-    background: rgba(0, 0, 0, 0.5);
-    -webkit-backdrop-filter: blur(6px);
-    backdrop-filter: blur(6px);
-  }
-
-  :global([data-theme='light'] .qa-scrim) {
-    background: rgba(15, 23, 42, 0.28);
-  }
 }
 
 /*
- * No blur available: a darker plain dim does the job. Kept blurred even with reduced transparency
- * (Windows "Transparency effects" off is common) — the blur is what pushes the page back.
- */
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .qa-scrim {
-    background: rgba(0, 0, 0, 0.65);
-  }
-}
-
-/*
- * ── Liquid glass panel ──
- * Translucent tint + backdrop blur/saturation and a bright specular rim on the top edge.
- * Controls inside are lighter glass layers (--qa-fill).
+ * ── Liquid glass panel (static material) ──
+ * A glass look without sampling the page: a tinted vertical gradient, a bright specular rim on
+ * the top edge, a hairline stroke and a soft sheen — painted once. Controls inside are lighter
+ * glass layers (--qa-fill).
  */
 .qa-sheet {
   --qa-color: var(--error);
-  --qa-glass: rgba(24, 24, 27, 0.6);
+  --qa-glass: linear-gradient(180deg, #26262b 0%, #1b1b1f 48%, #151518 100%);
   --qa-fill: rgba(255, 255, 255, 0.06);
   --qa-fill-strong: rgba(255, 255, 255, 0.11);
-  --qa-stroke: rgba(255, 255, 255, 0.09);
-  --qa-rim: rgba(255, 255, 255, 0.2);
+  --qa-stroke: rgba(255, 255, 255, 0.08);
+  --qa-rim: rgba(255, 255, 255, 0.16);
+  --qa-sheen: rgba(255, 255, 255, 0.05);
   --qa-pad: 1.25rem;
 
   position: relative;
@@ -583,33 +571,35 @@ function walletBrand(w: Wallet) {
   height: 100dvh;
   overflow: hidden;
   background: var(--qa-glass);
-  -webkit-backdrop-filter: blur(28px) saturate(180%);
-  backdrop-filter: blur(28px) saturate(180%);
   box-shadow: inset 0 1px 0 var(--qa-rim), inset 0 0 0 1px var(--qa-stroke);
+  /* Repaints inside (caret, chip states) stay inside the panel */
+  contain: layout paint;
+  isolation: isolate;
 }
 
-/* Light: pale grey frosted glass with white glass controls on top (as on iOS) */
+/* Light: iOS-style pale grey glass with white glass controls on top */
 :global([data-theme='light'] .qa-sheet) {
-  --qa-glass: rgba(242, 242, 247, 0.7);
-  --qa-fill: rgba(255, 255, 255, 0.78);
-  --qa-fill-strong: rgba(255, 255, 255, 1);
-  --qa-stroke: rgba(15, 23, 42, 0.1);
-  --qa-rim: rgba(255, 255, 255, 0.95);
+  --qa-glass: linear-gradient(180deg, #fcfcfe 0%, #f4f4f8 52%, #eeeef3 100%);
+  --qa-fill: rgba(255, 255, 255, 0.9);
+  --qa-fill-strong: #fff;
+  --qa-stroke: rgba(15, 23, 42, 0.09);
+  --qa-rim: rgba(255, 255, 255, 1);
+  --qa-sheen: rgba(255, 255, 255, 0.7);
 }
 
 .qa-sheet--income {
   --qa-color: var(--success);
 }
 
-/* Phones: full screen, edge to edge */
-@media (max-width: 639px) {
-  .qa-sheet {
-    --qa-glass: rgba(18, 18, 20, 0.72);
-  }
-
-  :global([data-theme='light'] .qa-sheet) {
-    --qa-glass: rgba(242, 242, 247, 0.82);
-  }
+/* Sheen: light catching the top-left corner of the glass */
+.qa-sheet::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: radial-gradient(90% 55% at 0% 0%, var(--qa-sheen), transparent 70%);
+  pointer-events: none;
 }
 
 /* Larger screens: a floating card */
@@ -634,27 +624,6 @@ function walletBrand(w: Wallet) {
   }
 }
 
-/* No backdrop-filter support: solid surface */
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .qa-sheet {
-    --qa-glass: var(--bg-surface);
-  }
-}
-
-/*
- * Reduced transparency (e.g. Windows "Transparency effects" off): a denser tint, so text sits on
- * an almost solid surface while the panel still reads as glass.
- */
-@media (prefers-reduced-transparency: reduce) {
-  .qa-sheet {
-    --qa-glass: rgba(24, 24, 27, 0.86);
-  }
-
-  :global([data-theme='light'] .qa-sheet) {
-    --qa-glass: rgba(242, 242, 247, 0.88);
-  }
-}
-
 .qa-sheet.is-shaking {
   animation: qaShake 0.35s ease;
 }
@@ -664,15 +633,21 @@ function walletBrand(w: Wallet) {
   40%, 80% { transform: translateX(6px); }
 }
 
+/*
+ * Auto-close countdown: a transform-only animation on its own layer — runs on the compositor,
+ * no paint per frame. Inset from the edges so it never needs the rounded-corner clip.
+ */
 .qa-countdown {
   position: absolute;
   top: 0;
-  left: 0;
+  left: 1.25rem;
+  right: 1.25rem;
   z-index: 3;
   height: 3px;
-  width: 100%;
+  border-radius: 0 0 3px 3px;
   background: var(--qa-color);
   transform-origin: left;
+  will-change: transform;
   animation: qaCountdown linear forwards;
 }
 
@@ -1254,8 +1229,7 @@ function walletBrand(w: Wallet) {
 
 /*
  * ── Transitions ──
- * Only opacity/transform are animated (compositor-only). Short travel keeps the
- * glass blur cheap while the panel moves.
+ * Only opacity/transform are animated, on plain painted layers (compositor-only).
  */
 .qa-enter-active .qa-scrim {
   transition: opacity 0.18s ease-out;

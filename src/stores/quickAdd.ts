@@ -94,15 +94,36 @@ export const useQuickAddStore = defineStore('quickAdd', () => {
     }, SAVE_DEBOUNCE_MS)
   }
 
+  /** The user has touched the open popup (tap, key, input): automatic switches must leave it alone */
+  const interacted = ref(false)
+
   function open(why: QuickAddReason, type: TransactionType | null = null) {
     reason.value = why
     forcedType.value = type
+    interacted.value = false
     isOpen.value = true
+  }
+
+  function markInteracted() {
+    interacted.value = true
+  }
+
+  /**
+   * Turn an open, untouched automatic popup into routine mode in place (no close/reopen, so
+   * no second animation and never two popups). Returns false when it isn't safe to switch.
+   */
+  function switchToRoutine(): boolean {
+    // Only popups the app opened by itself; never one the user asked for (button, shortcut)
+    const automatic = reason.value === 'launch' || reason.value === 'visibility'
+    if (!isOpen.value || interacted.value || !automatic) return false
+    reason.value = 'routine'
+    forcedType.value = null
+    return true
   }
 
   function close() {
     isOpen.value = false
   }
 
-  return { prefs, loaded, isOpen, reason, forcedType, loadPrefs, updatePrefs, open, close }
+  return { prefs, loaded, isOpen, reason, forcedType, interacted, loadPrefs, updatePrefs, open, close, markInteracted, switchToRoutine }
 })
