@@ -339,16 +339,17 @@ function walletBrand(w: Wallet) {
           @keydown="markTouched"
           @input="markTouched"
         >
-          <!-- Auto-close countdown -->
-          <div v-if="countingDown" class="qa-countdown" :style="{ animationDuration: `${AUTO_CLOSE_MS}ms` }" />
-
           <!-- Header -->
           <header class="qa-header">
             <div class="min-w-0">
               <h2 class="qa-title">{{ routineItem ? routineItem.routine.name : t('quickAdd.title') }}</h2>
               <p class="qa-subtitle">{{ routineItem ? routineSubtitle : t('quickAdd.subtitle') }}</p>
             </div>
+            <!-- Auto-close countdown: a ring around the close button that runs down -->
             <button class="qa-icon-btn" :aria-label="t('common.close')" @click="close">
+              <svg v-if="countingDown" class="qa-close-ring" viewBox="0 0 40 40" aria-hidden="true">
+                <circle cx="20" cy="20" r="19" pathLength="100" :style="{ animationDuration: `${AUTO_CLOSE_MS}ms` }" />
+              </svg>
               <X :size="18" />
             </button>
           </header>
@@ -550,19 +551,17 @@ function walletBrand(w: Wallet) {
 }
 
 /*
- * ── Liquid glass panel (static material) ──
- * A glass look without sampling the page: a tinted vertical gradient, a bright specular rim on
- * the top edge, a hairline stroke and a soft sheen — painted once. Controls inside are lighter
- * glass layers (--qa-fill).
+ * ── Panel ──
+ * One solid surface colour (no gradient or sheen, so it reads the same edge to edge), a faint
+ * top rim and a hairline stroke. Controls inside are lighter layers (--qa-fill).
  */
 .qa-sheet {
   --qa-color: var(--error);
-  --qa-glass: linear-gradient(180deg, #26262b 0%, #1b1b1f 48%, #151518 100%);
+  --qa-glass: #1c1c1f;
   --qa-fill: rgba(255, 255, 255, 0.06);
   --qa-fill-strong: rgba(255, 255, 255, 0.11);
   --qa-stroke: rgba(255, 255, 255, 0.08);
-  --qa-rim: rgba(255, 255, 255, 0.16);
-  --qa-sheen: rgba(255, 255, 255, 0.05);
+  --qa-rim: rgba(255, 255, 255, 0.1);
   --qa-pad: 1.25rem;
 
   position: relative;
@@ -578,29 +577,17 @@ function walletBrand(w: Wallet) {
   isolation: isolate;
 }
 
-/* Light: iOS-style pale grey glass with white glass controls on top */
+/* Light: iOS-style pale grey surface with white controls on top */
 :global([data-theme='light'] .qa-sheet) {
-  --qa-glass: linear-gradient(180deg, #fcfcfe 0%, #f4f4f8 52%, #eeeef3 100%);
+  --qa-glass: #f4f4f7;
   --qa-fill: rgba(255, 255, 255, 0.9);
   --qa-fill-strong: #fff;
   --qa-stroke: rgba(15, 23, 42, 0.09);
   --qa-rim: rgba(255, 255, 255, 1);
-  --qa-sheen: rgba(255, 255, 255, 0.7);
 }
 
 .qa-sheet--income {
   --qa-color: var(--success);
-}
-
-/* Sheen: light catching the top-left corner of the glass */
-.qa-sheet::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  border-radius: inherit;
-  background: radial-gradient(90% 55% at 0% 0%, var(--qa-sheen), transparent 70%);
-  pointer-events: none;
 }
 
 /* Larger screens: a floating card */
@@ -634,29 +621,6 @@ function walletBrand(w: Wallet) {
   40%, 80% { transform: translateX(6px); }
 }
 
-/*
- * Auto-close countdown: a transform-only animation on its own layer — runs on the compositor,
- * no paint per frame. Inset from the edges so it never needs the rounded-corner clip.
- */
-.qa-countdown {
-  position: absolute;
-  top: 0;
-  left: 1.25rem;
-  right: 1.25rem;
-  z-index: 3;
-  height: 3px;
-  border-radius: 0 0 3px 3px;
-  background: var(--qa-color);
-  transform-origin: left;
-  will-change: transform;
-  animation: qaCountdown linear forwards;
-}
-
-@keyframes qaCountdown {
-  from { transform: scaleX(1); }
-  to { transform: scaleX(0); }
-}
-
 /* ── Header ── */
 .qa-header {
   display: flex;
@@ -687,6 +651,7 @@ function walletBrand(w: Wallet) {
 }
 
 .qa-icon-btn {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -703,6 +668,33 @@ function walletBrand(w: Wallet) {
 .qa-icon-btn:hover {
   background: var(--qa-fill-strong);
   color: var(--text-primary);
+}
+
+/*
+ * Countdown ring: starts full at 12 o'clock and runs down clockwise. A 40px SVG — the per-frame
+ * repaint is tiny (the panel has no backdrop blur to recompute).
+ */
+.qa-close-ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg) scaleY(-1);
+  pointer-events: none;
+}
+
+.qa-close-ring circle {
+  fill: none;
+  stroke: var(--qa-color);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-dasharray: 100;
+  stroke-dashoffset: 0;
+  animation: qaRing linear forwards;
+}
+
+@keyframes qaRing {
+  to { stroke-dashoffset: 100; }
 }
 
 /* ── Body: the only part that scrolls ── */
