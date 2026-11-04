@@ -451,6 +451,8 @@ export interface TransactionChannel {
   label: string
   /** Transaction date (YYYY-MM-DD) when the sender knows it; today otherwise */
   date?: string
+  /** Wallet chosen by the caller (e.g. a bank account mapped to a wallet); skips name matching */
+  walletId?: string
 }
 
 const SMS_CHANNEL: TransactionChannel = { source: 'sms', label: 'SMS' }
@@ -470,7 +472,9 @@ export async function processSmsTransaction(
   const cashWallets = wallets.filter(w => w.kind !== 'gold')
   // ── Match wallet by bank name ──
   let walletId = cashWallets[0]?.id || ''
-  if (parsed.bankName) {
+  if (channel.walletId && cashWallets.some(w => w.id === channel.walletId)) {
+    walletId = channel.walletId
+  } else if (parsed.bankName) {
     // 1. Direct name match (preferred)
     const found = cashWallets.find(w => w.name.toLowerCase().includes(parsed.bankName.toLowerCase()))
     if (found) {

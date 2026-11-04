@@ -1,5 +1,6 @@
-import { Env } from '../types'
+import { Env, WalletData } from '../types'
 import { errorResponse, jsonResponse } from '../utils/response'
+import { generateId } from '../utils/crypto'
 import { getJSON, putJSON } from '../services/kv.service'
 import { processSmsTransaction, type SmsParsedResult } from './notification.controller'
 
@@ -12,7 +13,19 @@ import { processSmsTransaction, type SmsParsedResult } from './notification.cont
  * - API Key: FinNote generates the key, the user pastes it into SePay → `Authorization: Apikey <key>`
  * - HMAC-SHA256: SePay generates the secret, the user pastes it into FinNote →
  *   `X-SePay-Signature: sha256=<hex of HMAC(secret, "{timestamp}.{raw body}")>` + `X-SePay-Timestamp`
+ *
+ * Wallets: each bank account number is mapped to one wallet and remembered. A new account is
+ * matched to a wallet named after its bank (preferring one with the account's last 4 digits);
+ * with no such wallet a new one is created — never a guess that would overwrite another
+ * wallet's balance with this account's.
  */
+
+interface SepayAccount {
+  walletId: string
+  bank: string
+  events: number
+  lastEventAt?: string
+}
 
 interface SepayIntegration {
   apiKey: string
@@ -23,6 +36,8 @@ interface SepayIntegration {
   events: number
   /** Recent SePay transaction ids: SePay retries/replays carry the same id */
   seenIds: string[]
+  /** Bank account number (digits) → wallet */
+  accounts?: Record<string, SepayAccount>
 }
 
 interface SepayPayload {
@@ -72,6 +87,49 @@ async function isAuthorized(request: Request, rawBody: string, integration: Sepa
   return safeEqual(signature.slice(7).toLowerCase(), expected)
 }
 
+const normalizeAccount = (raw: unknown) => String(raw ?? '').replace(/\D/g, '').slice(0, 30)
+const lettersOnly = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '')
+
+/**
+ * Wallet for a bank account: the remembered one if it still exists; otherwise a wallet named after
+ * the bank (one with the last 4 digits first), or a new wallet. The choice is remembered.
+ */
+async function walletForAccount(env: Env, userId: string, integration: SepayIntegration, account: string, bank: string): Promise<string> {
+  const walletsKey = `users/${userId}/finance/wallets`
+  const wallets = (await getJSON<WalletData[]>(env.SMART_NOTE_KV, walletsKey)) || []
+  const cash = wallets.filter((w) => w.kind !== 'gold')
+  integration.accounts ??= {}
+
+  const mapped = integration.accounts[account]
+  if (mapped && cash.some((w) => w.id === mapped.walletId)) {
+    // Mapped by hand before its first transaction: learn the bank name now
+    if (!mapped.bank && bank) mapped.bank = bank
+    return mapped.walletId
+  }
+
+  const last4 = account.slice(-4)
+  const bankKey = lettersOnly(bank)
+  const named = bankKey ? cash.filter((w) => lettersOnly(w.name).includes(bankKey)) : []
+  let wallet = (last4 && named.find((w) => w.name.includes(last4))) || named[0]
+
+  if (!wallet) {
+    wallet = {
+      id: generateId(),
+      name: [bank || 'Ngân hàng', last4 && `•${last4}`].filter(Boolean).join(' '),
+      balance: 0,
+      currency: 'VND',
+      icon: '🏦',
+      color: '#0ea5e9',
+      order: wallets.length
+    }
+    wallets.push(wallet)
+    await putJSON(env.SMART_NOTE_KV, walletsKey, wallets)
+  }
+
+  integration.accounts[account] = { walletId: wallet.id, bank, events: mapped?.events ?? 0, lastEventAt: mapped?.lastEventAt }
+  return wallet.id
+}
+
 /** "2024-07-02 11:08:33" → "2024-07-02" (bank local date) */
 function datePart(transactionDate?: string): string | undefined {
   const m = transactionDate?.match(/^(\d{4}-\d{2}-\d{2})/)
@@ -117,15 +175,23 @@ export async function handleSepayWebhook(request: Request, env: Env): Promise<Re
     rawText: (payload.description || note).substring(0, 200)
   }
 
+  const account = normalizeAccount(payload.accountNumber) || 'unknown'
+  const walletId = await walletForAccount(env, userId, integration, account, payload.gateway || '')
+
   await processSmsTransaction(parsed, parsed.rawText, userId, env, undefined, {
     source: 'bank',
     label: 'SePay',
-    date: datePart(payload.transactionDate)
+    date: datePart(payload.transactionDate),
+    walletId
   })
 
+  const now = new Date().toISOString()
   integration.seenIds = [eventId, ...integration.seenIds].slice(0, MAX_SEEN)
-  integration.lastEventAt = new Date().toISOString()
+  integration.lastEventAt = now
   integration.events = (integration.events || 0) + 1
+  const acc = integration.accounts![account]
+  acc.events += 1
+  acc.lastEventAt = now
   await putJSON(env.SMART_NOTE_KV, integrationKey(userId), integration)
 
   return jsonResponse({ success: true })
@@ -144,7 +210,8 @@ function summary(userId: string, env: Env, integration: SepayIntegration | null)
     keyHint: integration ? `…${integration.apiKey.slice(-4)}` : null,
     hasHmacSecret: !!integration?.hmacSecret,
     lastEventAt: integration?.lastEventAt ?? null,
-    events: integration?.events ?? 0
+    events: integration?.events ?? 0,
+    accounts: Object.entries(integration?.accounts ?? {}).map(([accountNumber, a]) => ({ accountNumber, ...a }))
   }
 }
 
@@ -175,6 +242,36 @@ export async function handleSetSepaySecret(userId: string, request: Request, env
   const value = typeof secret === 'string' ? secret.trim() : ''
   if (value.length > 200) return errorResponse('Secret không hợp lệ')
   integration.hmacSecret = value || undefined
+  await putJSON(env.SMART_NOTE_KV, integrationKey(userId), integration)
+  return jsonResponse({ success: true, data: summary(userId, env, integration) })
+}
+
+/**
+ * Map a bank account number to a wallet (also before its first transaction), or forget the
+ * mapping with walletId: null so the next transaction is matched again.
+ */
+export async function handleSetSepayAccount(userId: string, request: Request, env: Env): Promise<Response> {
+  const body = (await request.json()) as { accountNumber?: string; walletId?: string | null; bank?: string }
+  const account = normalizeAccount(body.accountNumber)
+  if (account.length < 6) return errorResponse('Số tài khoản không hợp lệ')
+
+  const integration = await getJSON<SepayIntegration>(env.SMART_NOTE_KV, integrationKey(userId))
+  if (!integration) return errorResponse('Tạo khoá kết nối trước', 400)
+  integration.accounts ??= {}
+
+  if (body.walletId === null) {
+    delete integration.accounts[account]
+  } else {
+    const wallets = (await getJSON<WalletData[]>(env.SMART_NOTE_KV, `users/${userId}/finance/wallets`)) || []
+    if (!wallets.some((w) => w.id === body.walletId && w.kind !== 'gold')) return errorResponse('Ví không hợp lệ')
+    const current = integration.accounts[account]
+    integration.accounts[account] = {
+      walletId: body.walletId!,
+      bank: current?.bank || (typeof body.bank === 'string' ? body.bank.substring(0, 30) : ''),
+      events: current?.events ?? 0,
+      lastEventAt: current?.lastEventAt
+    }
+  }
   await putJSON(env.SMART_NOTE_KV, integrationKey(userId), integration)
   return jsonResponse({ success: true, data: summary(userId, env, integration) })
 }

@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Landmark, Copy, KeyRound, RefreshCw, Unplug, CheckCircle2, ExternalLink } from 'lucide-vue-next'
+import { Landmark, Copy, KeyRound, RefreshCw, Unplug, CheckCircle2, ExternalLink, Plus, X } from 'lucide-vue-next'
+import CustomSelect from '@/components/ui/CustomSelect.vue'
+import { useFinanceStore } from '@/stores/finance'
 import { httpClient } from '@/shared/api/httpClient'
 import { useUiStore } from '@/stores/ui'
 import { useAuthStore } from '@/stores/auth'
@@ -11,8 +13,17 @@ import { useAuthStore } from '@/stores/auth'
  * FinNote's webhook on every money in/out. Here the user gets the webhook URL + API key
  * to paste into SePay (or saves SePay's HMAC secret), and sees whether events arrive.
  */
+interface SepayAccount {
+  accountNumber: string
+  walletId: string
+  bank: string
+  events: number
+  lastEventAt?: string
+}
+
 interface SepayStatus {
   connected: boolean
+  accounts: SepayAccount[]
   webhookUrl: string
   keyHint: string | null
   hasHmacSecret: boolean
@@ -23,6 +34,7 @@ interface SepayStatus {
 const { t, locale } = useI18n()
 const ui = useUiStore()
 const isGuest = useAuthStore().isGuest
+const finance = useFinanceStore()
 
 const status = ref<SepayStatus | null>(null)
 /** Full key: only available right after it is created */
@@ -32,6 +44,7 @@ const busy = ref(false)
 
 onMounted(async () => {
   if (isGuest) return
+  if (!finance.wallets.length) void finance.fetchWallets()
   try {
     status.value = await httpClient.get<SepayStatus>('/api/integrations/sepay', { silent: true })
   } catch {
@@ -103,11 +116,37 @@ async function disconnect() {
   busy.value = true
   try {
     await httpClient.del('/api/integrations/sepay')
-    if (status.value) status.value = { ...status.value, connected: false, keyHint: null, hasHmacSecret: false, lastEventAt: null, events: 0 }
+    if (status.value) status.value = { ...status.value, connected: false, keyHint: null, hasHmacSecret: false, lastEventAt: null, events: 0, accounts: [] }
     newKey.value = ''
   } finally {
     busy.value = false
   }
+}
+
+// ── Bank account → wallet ──
+const walletOptions = computed(() => finance.cashWallets.map((w) => ({ value: w.id, label: w.name })))
+const newAccount = ref('')
+const newWalletId = ref('')
+
+/** "06238505201" → "•••5201": enough to recognise, not the full number on screen */
+const masked = (n: string) => (n.length > 4 ? `•••${n.slice(-4)}` : n)
+
+async function mapAccount(accountNumber: string, walletId: string | null) {
+  busy.value = true
+  try {
+    status.value = await httpClient.put<SepayStatus>('/api/integrations/sepay/accounts', { accountNumber, walletId })
+  } finally {
+    busy.value = false
+  }
+}
+
+async function addAccount() {
+  const digits = newAccount.value.replace(/\D/g, '')
+  if (digits.length < 6 || !newWalletId.value) return
+  await mapAccount(digits, newWalletId.value)
+  ui.showToast('success', t('autoSync.sepayAccountSaved'))
+  newAccount.value = ''
+  newWalletId.value = ''
 }
 
 const STEPS = ['sepayStep1', 'sepayStep2', 'sepayStep3', 'sepayStep4', 'sepayStep5'] as const
@@ -163,6 +202,53 @@ const STEPS = ['sepayStep1', 'sepayStep2', 'sepayStep3', 'sepayStep4', 'sepaySte
             <code class="flex-1">{{ status.keyHint }}</code>
           </div>
           <p v-if="newKey" class="text-warning mt-1.5 text-xs">{{ t('autoSync.sepayKeyOnce') }}</p>
+        </div>
+
+        <!-- Bank account → wallet -->
+        <div class="sepay__field">
+          <div class="sepay__label">{{ t('autoSync.sepayAccounts') }}</div>
+          <p class="text-text-tertiary mb-2 text-xs">{{ t('autoSync.sepayAccountsHint') }}</p>
+          <div class="flex flex-col gap-2">
+            <div v-for="a in status.accounts" :key="a.accountNumber" class="sepay__account">
+              <div class="sepay__account-name">
+                <div class="text-sm font-semibold">{{ a.bank || t('autoSync.sepayBank') }} {{ masked(a.accountNumber) }}</div>
+                <div class="text-text-tertiary text-xs">{{ t('autoSync.sepayAccountEvents', { n: a.events }) }}</div>
+              </div>
+              <div class="sepay__account-wallet">
+                <CustomSelect
+                  :model-value="a.walletId"
+                  :options="walletOptions"
+                  :disabled="busy"
+                  @update:model-value="(v: string | number) => mapAccount(a.accountNumber, String(v))"
+                />
+              </div>
+              <button class="sepay__copy" :aria-label="t('autoSync.sepayAccountRemove')" :disabled="busy" @click="mapAccount(a.accountNumber, null)">
+                <X :size="14" />
+              </button>
+            </div>
+
+            <!-- Map an account before its first transaction -->
+            <div class="sepay__account sepay__account--new">
+              <input
+                v-model="newAccount"
+                inputmode="numeric"
+                autocomplete="off"
+                class="sepay__input"
+                :placeholder="t('autoSync.sepayAccountPlaceholder')"
+              />
+              <div class="sepay__account-wallet">
+                <CustomSelect v-model="newWalletId" :options="walletOptions" :placeholder="t('autoSync.sepayChooseWallet')" />
+              </div>
+              <button
+                class="btn-primary shrink-0 px-3"
+                :aria-label="t('autoSync.sepayAccountAdd')"
+                :disabled="busy || newAccount.replace(/\D/g, '').length < 6 || !newWalletId"
+                @click="addAccount"
+              >
+                <Plus :size="15" />
+              </button>
+            </div>
+          </div>
         </div>
 
         <!-- Optional: HMAC secret from SePay -->
@@ -333,6 +419,37 @@ const STEPS = ['sepayStep1', 'sepayStep2', 'sepayStep3', 'sepayStep4', 'sepaySte
 .sepay__copy:hover {
   background: var(--bg-hover);
   color: var(--text-primary);
+}
+
+.sepay__account {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  padding: 0.625rem 0.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--border-default);
+  background: var(--bg-elevated);
+}
+
+.sepay__account--new {
+  border-style: dashed;
+  background: transparent;
+}
+
+/* Name on its own line when narrow; wallet picker + remove button share the next */
+.sepay__account-name {
+  flex: 1 1 9rem;
+  min-width: 0;
+}
+
+.sepay__account--new .sepay__input {
+  flex: 1 1 9rem;
+}
+
+.sepay__account-wallet {
+  flex: 1 1 11rem;
+  min-width: 0;
 }
 
 .sepay__input {

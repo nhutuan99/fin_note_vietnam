@@ -154,6 +154,7 @@ import {
   handleGetSepayIntegration,
   handleCreateSepayKey,
   handleSetSepaySecret,
+  handleSetSepayAccount,
   handleDeleteSepayIntegration
 } from './controllers/sepay.controller'
 
@@ -431,6 +432,9 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
       }
       if (path === '/api/integrations/sepay/secret' && request.method === 'PUT') {
         return handleSetSepaySecret(userId, request, env)
+      }
+      if (path === '/api/integrations/sepay/accounts' && request.method === 'PUT') {
+        return handleSetSepayAccount(userId, request, env)
       }
 
       // Finance: Routines (recurring in/out, push reminder + auto-record)
