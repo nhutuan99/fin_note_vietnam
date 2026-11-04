@@ -272,7 +272,7 @@ async function quickRecord(item: RoutineItem) {
 async function quickSkip(item: RoutineItem) {
   try {
     await store.skip(item.occurrence.id)
-    ui.showToast('info', t(item.occurrence.status === 'auto' ? 'routine.undone' : 'routine.skipped', { name: item.routine.name }))
+    ui.showToast('info', t('routine.skipped', { name: item.routine.name }))
   } catch {
     /* toast shown by httpClient */
   }
@@ -391,24 +391,16 @@ async function importLegacy() {
             <span class="rt-emoji font-emoji">{{ getCategoryConfig(item.routine.category).icon }}</span>
             <span class="min-w-0 flex-1 text-left">
               <span class="block min-w-0 wrap-break-word text-sm font-semibold">{{ item.routine.name }}</span>
-              <span class="text-text-tertiary block text-xs">
-                {{ occurrenceDay(item.occurrence.date) }}
-                <template v-if="item.occurrence.status === 'auto'"> · <span class="text-warning">{{ t('routine.autoTitle') }}</span></template>
-              </span>
+              <span class="text-text-tertiary block text-xs">{{ occurrenceDay(item.occurrence.date) }}</span>
             </span>
             <span class="text-sm font-bold tabular-nums" :class="item.routine.type === 'income' ? 'text-success' : 'text-error'">
               {{ signedMoney(item.routine.type, item.occurrence.amount) }}
             </span>
           </button>
+          <!-- Only remind-only routines wait here: auto-record ones are recorded at their time -->
           <div class="rt-pending__actions">
-            <template v-if="item.occurrence.status === 'pending'">
-              <button class="rt-chip-btn" @click="quickSkip(item)">{{ t('routine.skip') }}</button>
-              <button class="rt-chip-btn rt-chip-btn--primary" @click="quickRecord(item)">{{ t('routine.record') }}</button>
-            </template>
-            <template v-else>
-              <button class="rt-chip-btn" @click="quickSkip(item)">{{ t('routine.undo') }}</button>
-              <button class="rt-chip-btn rt-chip-btn--primary" @click="openInPopup(item)">{{ t('routine.review') }}</button>
-            </template>
+            <button class="rt-chip-btn" @click="quickSkip(item)">{{ t('routine.skip') }}</button>
+            <button class="rt-chip-btn rt-chip-btn--primary" @click="quickRecord(item)">{{ t('routine.record') }}</button>
           </div>
         </div>
       </div>

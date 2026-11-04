@@ -20,13 +20,13 @@ const occurrenceUrl = (id: string, action?: string) =>
 export const useRoutinesStore = defineStore('routines', () => {
   const routines = ref<Routine[]>([])
   const pending = ref<RoutineOccurrence[]>([])
-  const autoRecorded = ref<RoutineOccurrence[]>([])
   const loaded = ref(false)
-  let inboxFetchedAt = 0
 
   /** Occurrences shown one after another in the quick-add popup */
   const queue = ref<RoutineItem[]>([])
   const current = computed(() => queue.value[0] ?? null)
+  /** The popup was opened from a routine notification: once handled, land on the transactions */
+  const fromNotification = ref(false)
 
   const withRoutine = (list: RoutineOccurrence[]) =>
     list.flatMap((occurrence) => {
@@ -34,8 +34,8 @@ export const useRoutinesStore = defineStore('routines', () => {
       return routine ? [{ occurrence, routine }] : []
     })
 
-  /** Everything waiting on the user: unanswered first, then the auto-recorded ones */
-  const attention = computed<RoutineItem[]>(() => [...withRoutine(pending.value), ...withRoutine(autoRecorded.value)])
+  /** Waiting on the user: remind-only occurrences not recorded yet (auto-record ones never wait) */
+  const attention = computed<RoutineItem[]>(() => withRoutine(pending.value))
 
   function upsert(routine: Routine) {
     const i = routines.value.findIndex((r) => r.id === routine.id)
@@ -51,17 +51,25 @@ export const useRoutinesStore = defineStore('routines', () => {
     }
   }
 
-  /** Also creates/settles due occurrences on the server; skipped when fetched within `maxAgeMs` */
-  async function fetchInbox(maxAgeMs = 0): Promise<RoutineItem[]> {
-    if (maxAgeMs && Date.now() - inboxFetchedAt < maxAgeMs) return attention.value
+  /**
+   * Also creates/records due occurrences on the server. Concurrent calls share one request,
+   * so the server never settles the same routine twice at once.
+   */
+  let inboxRequest: Promise<RoutineItem[]> | null = null
+  function fetchInbox(): Promise<RoutineItem[]> {
+    inboxRequest ??= loadInbox().finally(() => (inboxRequest = null))
+    return inboxRequest
+  }
+
+  async function loadInbox(): Promise<RoutineItem[]> {
     try {
       const data = await httpClient.get<RoutineInbox>('/api/routines/inbox', { silent: true })
       if (data) {
         routines.value = data.routines
         pending.value = data.pending
-        autoRecorded.value = data.autoRecorded
         loaded.value = true
-        inboxFetchedAt = Date.now()
+        // Recorded just now (the cron hadn't got to it yet): balances on screen are stale
+        if (data.recorded) refreshFinance()
       }
     } catch (err) {
       console.error('Failed to load routine inbox:', err)
@@ -100,7 +108,6 @@ export const useRoutinesStore = defineStore('routines', () => {
 
   function forget(occurrenceId: string) {
     pending.value = pending.value.filter((o) => o.id !== occurrenceId)
-    autoRecorded.value = autoRecorded.value.filter((o) => o.id !== occurrenceId)
   }
 
   /** Money moved: refresh balances and the dashboard in the background */
@@ -124,24 +131,12 @@ export const useRoutinesStore = defineStore('routines', () => {
     return occurrence
   }
 
-  /** Auto-recorded ones the user has seen and kept */
-  async function acknowledge(ids: string[]) {
-    if (!ids.length) return
-    autoRecorded.value = autoRecorded.value.filter((o) => !ids.includes(o.id))
-    try {
-      await httpClient.post('/api/routines/occurrences/ack', { ids }, { silent: true })
-    } catch (err) {
-      console.error('Failed to acknowledge routine occurrences:', err)
-    }
-  }
-
   function reset() {
     routines.value = []
     pending.value = []
-    autoRecorded.value = []
     queue.value = []
+    fromNotification.value = false
     loaded.value = false
-    inboxFetchedAt = 0
   }
 
   // Another account signed in (or signed out): drop everything cached for the previous one
@@ -150,11 +145,11 @@ export const useRoutinesStore = defineStore('routines', () => {
   return {
     routines,
     pending,
-    autoRecorded,
     attention,
     loaded,
     queue,
     current,
+    fromNotification,
     fetchRoutines,
     fetchInbox,
     getItem,
@@ -163,7 +158,6 @@ export const useRoutinesStore = defineStore('routines', () => {
     remove,
     confirm,
     skip,
-    acknowledge,
     reset
   }
 })

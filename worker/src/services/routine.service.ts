@@ -6,8 +6,9 @@ import { sendPushToUser } from '../controllers/push.controller'
 /**
  * Routines: recurring money in/out the user sets up once.
  *
- * - At the routine's time a push asks the user to confirm (or change) the amount.
- * - Unanswered by the end of that day → recorded automatically (or just marked missed).
+ * - Auto-record routines are recorded at their time, and a push says so ("đã trừ …");
+ *   tapping it opens the entry to change the amount or undo it. No popup otherwise.
+ * - Remind-only routines push a reminder instead; unanswered by the end of that day → missed.
  *
  * Scheduling is cheap on KV: each enabled routine is indexed under a 15-minute UTC slot
  * (`routines/slots/{HHmm}/{userId}`, routine ids in the key's metadata), so a cron run is a
@@ -118,9 +119,13 @@ const signed = (t: Pick<TransactionData, 'type' | 'amount'>) => (t.type === 'inc
 
 /**
  * Applies the operations; returns the created transactions in the order of `ops.add`
- * (null for one whose wallet is gone or isn't a money wallet).
+ * (null for one whose wallet is gone or isn't a money wallet) and the updated wallets.
  */
-export async function applyLedger(env: Env, userId: string, ops: LedgerOps): Promise<(TransactionData | null)[]> {
+export async function applyLedger(
+  env: Env,
+  userId: string,
+  ops: LedgerOps
+): Promise<{ created: (TransactionData | null)[]; wallets: WalletData[] }> {
   const txKey = `users/${userId}/finance/transactions`
   const walletKey = `users/${userId}/finance/wallets`
   const [txs, wallets] = await Promise.all([
@@ -157,7 +162,7 @@ export async function applyLedger(env: Env, userId: string, ops: LedgerOps): Pro
   }
 
   await Promise.all([putJSON(env.SMART_NOTE_KV, txKey, txs), putJSON(env.SMART_NOTE_KV, walletKey, wallets)])
-  return created
+  return { created, wallets }
 }
 
 // ── Occurrences ──
@@ -214,27 +219,40 @@ function transactionFor(r: RoutineData, o: RoutineOccurrence, amount = o.amount)
   }
 }
 
-/** Unanswered occurrences past their deadline: record them (or mark missed) */
-async function settleOverdue(env: Env, userId: string, routines: RoutineData[], doc: RoutineOccurrenceDoc, nowMs: number) {
-  const overdue = doc.items.filter((o) => o.status === 'pending' && Date.parse(o.deadline) <= nowMs)
-  if (!overdue.length) return false
+/**
+ * Settles pending occurrences:
+ * - auto-record routines are written to the ledger as soon as they're due (nothing waits on the user),
+ * - remind-only ones still unanswered at the end of their day are marked missed.
+ * Returns the occurrences recorded now, and the wallets (for naming them in the push).
+ */
+async function settle(env: Env, userId: string, routines: RoutineData[], doc: RoutineOccurrenceDoc, nowMs: number) {
+  const resolvedAt = new Date(nowMs).toISOString()
   const toRecord: { o: RoutineOccurrence; r: RoutineData }[] = []
-  for (const o of overdue) {
+  let changed = false
+  for (const o of doc.items) {
+    if (o.status !== 'pending') continue
     const r = routines.find((x) => x.id === o.routineId)
-    if (r?.onMissed === 'record') toRecord.push({ o, r })
-    else Object.assign(o, { status: 'missed', resolvedAt: new Date(nowMs).toISOString() })
+    if (r?.onMissed === 'record') {
+      toRecord.push({ o, r })
+    } else if (Date.parse(o.deadline) <= nowMs) {
+      Object.assign(o, { status: 'missed', resolvedAt })
+      changed = true
+    }
   }
-  if (toRecord.length) {
-    const txs = await applyLedger(env, userId, { add: toRecord.map(({ o, r }) => transactionFor(r, o)) })
-    toRecord.forEach(({ o }, i) => {
-      const tx = txs[i]
-      Object.assign(o, tx
-        ? { status: 'auto', txId: tx.id, acknowledged: false, resolvedAt: new Date(nowMs).toISOString() }
-        : { status: 'missed', resolvedAt: new Date(nowMs).toISOString() })
-    })
-  }
-  return true
+  if (!toRecord.length) return { changed, recorded: [] as RoutineOccurrence[], wallets: [] as WalletData[] }
+
+  const { created, wallets } = await applyLedger(env, userId, { add: toRecord.map(({ o, r }) => transactionFor(r, o)) })
+  const recorded: RoutineOccurrence[] = []
+  toRecord.forEach(({ o }, i) => {
+    const tx = created[i]
+    // No money wallet any more (deleted / turned into gold): nothing to record into
+    Object.assign(o, tx ? { status: 'auto', txId: tx.id, resolvedAt } : { status: 'missed', resolvedAt })
+    if (tx) recorded.push(o)
+  })
+  return { changed: true, recorded, wallets }
 }
+
+const formatMoney = (amount: number) => `${new Intl.NumberFormat('vi-VN').format(amount)}đ`
 
 function prune(doc: RoutineOccurrenceDoc, routines: RoutineData[]) {
   const alive = new Set(routines.map((r) => r.id))
@@ -256,36 +274,42 @@ export async function saveOccurrences(env: Env, userId: string, doc: RoutineOccu
 }
 
 /**
- * Brings a user's occurrences up to date: create what became due, settle what expired.
- * With `push`, freshly due occurrences are announced to the user's devices.
+ * Brings a user's occurrences up to date: create what became due, record auto-record ones,
+ * settle what expired. With `push`, freshly due occurrences are announced to the user's devices.
+ * `recorded` = transactions written by this call (the caller's balances are now stale).
  */
 export async function refreshUserRoutines(env: Env, userId: string, nowMs: number, push = false) {
   const routines = (await getJSON<RoutineData[]>(env.SMART_NOTE_KV, routinesKey(userId))) || []
   const doc = await loadOccurrences(env, userId)
   const created = materialise(routines, doc, nowMs)
-  const settled = await settleOverdue(env, userId, routines, doc, nowMs)
-  if (created.length || settled) {
+  const { changed, recorded, wallets } = await settle(env, userId, routines, doc, nowMs)
+  if (created.length || changed) {
     prune(doc, routines)
     await saveOccurrences(env, userId, doc)
   }
 
   if (push) {
-    for (const o of created) {
+    for (const o of new Set([...created, ...recorded])) {
       const r = routines.find((x) => x.id === o.routineId)
-      if (!r || nowMs - dueAt(r, o.date) > PUSH_FRESH_MS || o.status !== 'pending') continue
-      const money = `${r.type === 'expense' ? '−' : '+'}${new Intl.NumberFormat('vi-VN').format(o.amount)}đ`
-      await sendPushToUser(userId, env, {
-        title: `${r.name} · ${money}`,
-        body: r.onMissed === 'record'
-          ? 'Chạm để xác nhận hoặc sửa số tiền. Không phản hồi thì tự ghi lúc hết ngày.'
-          : 'Chạm để ghi lại khoản này.',
-        tag: o.id,
-        url: `/?routine=${encodeURIComponent(o.id)}`
-      })
+      // Only what just became due: back-filled days are recorded quietly
+      if (!r || nowMs - dueAt(r, o.date) > PUSH_FRESH_MS) continue
+      const isExpense = r.type === 'expense'
+      const title = `${r.name} · ${isExpense ? '−' : '+'}${formatMoney(o.amount)}`
+      let body: string
+      if (o.status === 'auto') {
+        const wallet = wallets.find((w) => w.id === r.walletId)?.name
+        const done = isExpense ? (wallet ? `Đã trừ từ ${wallet}` : 'Đã trừ') : wallet ? `Đã cộng vào ${wallet}` : 'Đã cộng'
+        body = `${done}. Chạm để sửa số tiền nếu cần.`
+      } else if (o.status === 'pending') {
+        body = 'Chạm để ghi lại khoản này.'
+      } else {
+        continue
+      }
+      await sendPushToUser(userId, env, { title, body, tag: o.id, url: `/?routine=${encodeURIComponent(o.id)}` })
     }
   }
 
-  return { routines, doc }
+  return { routines, doc, recorded: recorded.length }
 }
 
 /** Cron entry: every user with a routine in the current 15-minute slot */

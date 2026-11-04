@@ -300,11 +300,12 @@ export interface RoutineOccurrence {
   deadline: string
   createdAt: string
   resolvedAt?: string
-  acknowledged?: boolean
 }
 
 export interface RoutineInbox {
+  /** Remind-only occurrences waiting to be recorded */
   pending: RoutineOccurrence[]
-  autoRecorded: RoutineOccurrence[]
+  /** Transactions the server recorded while answering (balances changed) */
+  recorded: number
   routines: Routine[]
 }

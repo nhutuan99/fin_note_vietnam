@@ -61,11 +61,23 @@ const routineSubtitle = computed(() => {
   const item = routineItem.value
   if (!item) return ''
   const { occurrence: o, routine: r } = item
-  if (o.status === 'pending') return t('routine.popupPending', { when: `${dayLabel(o.date)} · ${r.time}` })
-  if (o.status === 'auto') return t('routine.popupAuto', { date: dayLabel(o.date) })
+  const when = `${dayLabel(o.date)} · ${r.time}`
+  if (o.status === 'pending') return t('routine.popupPending', { when })
+  if (o.status === 'auto') return t(r.type === 'income' ? 'routine.popupAutoIncome' : 'routine.popupAutoExpense', { when })
   if (o.status === 'confirmed') return t('routine.popupDone', { date: dayLabel(o.date) })
   return t('routine.popupMissed', { date: dayLabel(o.date) })
 })
+
+/** What the recorded routine entry holds, to tell "keep as is" from "save my changes" */
+const routineInitial = ref({ amount: 0, walletId: '', category: '', note: '' })
+const routineRecorded = computed(() => !!routineItem.value?.occurrence.txId)
+const routineChanged = computed(
+  () =>
+    amount.value !== routineInitial.value.amount ||
+    walletId.value !== routineInitial.value.walletId ||
+    category.value !== routineInitial.value.category ||
+    note.value !== routineInitial.value.note
+)
 
 /** Fill the form from the routine occurrence at the head of the queue */
 function fillFromRoutine() {
@@ -77,9 +89,10 @@ function fillFromRoutine() {
   category.value = item.routine.category
   note.value = item.routine.note
   filled.value = false
+  routineInitial.value = { amount: amount.value, walletId: walletId.value, category: category.value, note: note.value }
 }
 
-// Next item in the queue, or an untouched quick-add popup switched to routine mode in place
+// Next item in the queue, or a routine notification opened while the popup was already up
 watch(
   () => routineItem.value?.occurrence.id,
   (id) => {
@@ -113,7 +126,6 @@ function stopCountdown() {
 
 /** Any interaction with the popup means the user is using it: cancel the auto close for good */
 function markTouched() {
-  store.markInteracted()
   if (countingDown.value) stopCountdown()
 }
 
@@ -181,10 +193,9 @@ watch(
 
 function close() {
   stopCountdown()
-  // Auto-recorded routine items that were shown count as seen (kept as recorded)
   if (store.reason === 'routine') {
-    void routines.acknowledge(routines.queue.filter((i) => i.occurrence.status === 'auto').map((i) => i.occurrence.id))
     routines.queue = []
+    routines.fromNotification = false
   }
   store.close()
 }
@@ -193,6 +204,13 @@ function close() {
 function advanceRoutine() {
   routines.queue = routines.queue.slice(1)
   if (!routines.queue.length) close()
+}
+
+/** Kept or saved: next in the queue; done from a notification → show it among the transactions */
+function finishRoutine() {
+  const toTransactions = routines.fromNotification && routines.queue.length <= 1
+  advanceRoutine()
+  if (toTransactions) router.push('/transactions')
 }
 
 async function skipRoutine() {
@@ -235,6 +253,11 @@ function setEnabled(enabled: boolean) {
 
 // ── Submit ──
 async function submit() {
+  // Already recorded (automatically, from its notification) and left as it was: nothing to save
+  if (routineItem.value && routineRecorded.value && !routineChanged.value && !submitting.value) {
+    finishRoutine()
+    return
+  }
   if (!canSubmit.value) {
     shake.value = true
     setTimeout(() => (shake.value = false), 400)
@@ -262,7 +285,7 @@ async function submit() {
         note: note.value.trim()
       })
       ui.showToast('success', t('routine.confirmed', { amount: formatVND(amount.value), name: item.routine.name }))
-      advanceRoutine()
+      finishRoutine()
     } catch {
       // httpClient already showed the error
     } finally {
@@ -489,7 +512,7 @@ function walletBrand(w: Wallet) {
             <button class="qa-submit" :disabled="submitting" @click="submit">
               <AppSpinner v-if="submitting" :size="18" />
               <Check v-else :size="18" />
-              <template v-if="routineItem && routineItem.occurrence.txId">{{ t('routine.save') }}</template>
+              <template v-if="routineItem && routineRecorded">{{ routineChanged ? t('routine.save') : t('routine.keep') }}</template>
               <template v-else>{{ type === 'income' ? t('quickAdd.saveIncome') : t('quickAdd.saveExpense') }}</template>
             </button>
             <!-- Routine: skip this time / undo what was recorded -->

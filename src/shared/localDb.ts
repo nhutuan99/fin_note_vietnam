@@ -402,7 +402,7 @@ export const localDbMock = async (method: string, url: string, body?: any) => {
   }
 
   // ── ROUTINES: reminders and auto-recording run on the server, so guests only get empty lists ──
-  if (path === '/api/routines/inbox') return sendResponse({ pending: [], autoRecorded: [], routines: [] })
+  if (path === '/api/routines/inbox') return sendResponse({ pending: [], recorded: 0, routines: [] })
   if (path === '/api/routines' && method === 'GET') return sendResponse([])
 
   // Fallback for missing mocks

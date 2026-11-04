@@ -145,8 +145,7 @@ import {
   handleRoutineInbox,
   handleGetOccurrence,
   handleConfirmOccurrence,
-  handleSkipOccurrence,
-  handleAcknowledgeOccurrences
+  handleSkipOccurrence
 } from './controllers/routine.controller'
 import { runRoutineSlot } from './services/routine.service'
 
@@ -419,9 +418,6 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
       }
       if (path === '/api/routines/inbox' && request.method === 'GET') {
         return handleRoutineInbox(userId, env)
-      }
-      if (path === '/api/routines/occurrences/ack' && request.method === 'POST') {
-        return handleAcknowledgeOccurrences(userId, request, env)
       }
       const occurrenceMatch = path.match(/^\/api\/routines\/occurrences\/([^/]+?)(?:\/(confirm|skip))?$/)
       if (occurrenceMatch) {

@@ -281,7 +281,7 @@ export interface OtpHubSubscriber {
 }
 
 
-// ── Routines: recurring money in/out, reminded by push and recorded automatically if ignored ──
+// ── Routines: recurring money in/out, recorded automatically at their time and announced by push ──
 
 export type RoutineRepeat =
   | { kind: 'daily' }
@@ -303,7 +303,11 @@ export interface RoutineData {
   time: string
   /** Minutes east of UTC when the routine was saved (Vietnam = 420) */
   tzOffset: number
-  /** What happens when the user doesn't respond by the end of the day */
+  /**
+   * 'record': recorded at its time, the push says so (tap to edit / undo).
+   * 'skip': remind only — the push asks the user to record it; unanswered by day's end → missed.
+   * (Name kept from when recording waited for the end of the day.)
+   */
   onMissed: 'record' | 'skip'
   enabled: boolean
   /** No occurrences before this local date (YYYY-MM-DD) */
@@ -327,12 +331,10 @@ export interface RoutineOccurrence {
   amount: number
   /** Transaction recorded for it (confirmed / auto) */
   txId?: string
-  /** End of the local day: after this an unanswered occurrence is settled */
+  /** End of the local day: after this an unanswered (remind-only) occurrence is marked missed */
   deadline: string
   createdAt: string
   resolvedAt?: string
-  /** Auto-recorded and already shown to the user */
-  acknowledged?: boolean
 }
 
 export interface RoutineOccurrenceDoc {

@@ -148,19 +148,19 @@ export async function handleDeleteRoutine(userId: string, routineId: string, env
 }
 
 /**
- * What needs the user's attention: unanswered occurrences and ones recorded automatically
- * that haven't been shown yet. Also the moment occurrences are created/settled when the
- * user opens the app, so nothing depends on the cron alone.
+ * What needs the user's attention: unanswered (remind-only) occurrences. Also the moment
+ * occurrences are created/recorded when the user opens the app, so nothing depends on the
+ * cron alone; `recorded` tells the app its balances just changed.
  */
 export async function handleRoutineInbox(userId: string, env: Env): Promise<Response> {
   const now = Date.now()
-  const { routines, doc } = await refreshUserRoutines(env, userId, now)
+  const { routines, doc, recorded } = await refreshUserRoutines(env, userId, now)
   const byDate = (a: RoutineOccurrence, b: RoutineOccurrence) => a.date.localeCompare(b.date)
   return jsonResponse({
     success: true,
     data: {
       pending: doc.items.filter((o) => o.status === 'pending').sort(byDate),
-      autoRecorded: doc.items.filter((o) => o.status === 'auto' && !o.acknowledged).sort(byDate),
+      recorded,
       routines: routines.map((r) => withNext(r, now))
     }
   })
@@ -206,14 +206,16 @@ export async function handleConfirmOccurrence(userId: string, occurrenceId: stri
   if (o.txId && (o.status === 'auto' || o.status === 'confirmed')) {
     await applyLedger(env, userId, { update: [{ id: o.txId, patch: values }] })
   } else {
-    const [tx] = await applyLedger(env, userId, {
+    const {
+      created: [tx]
+    } = await applyLedger(env, userId, {
       add: [{ type: r.type, source: 'routine', date: o.date, ...values }]
     })
     if (!tx) return errorResponse('Ví không còn tồn tại — chọn ví khác')
     o.txId = tx.id
   }
   // From here on the occurrence carries what was actually recorded
-  Object.assign(o, { status: 'confirmed', amount: values.amount, acknowledged: true, resolvedAt: new Date().toISOString() })
+  Object.assign(o, { status: 'confirmed', amount: values.amount, resolvedAt: new Date().toISOString() })
   await saveOccurrences(env, userId, doc)
   return jsonResponse({ success: true, data: o })
 }
@@ -227,23 +229,7 @@ export async function handleSkipOccurrence(userId: string, occurrenceId: string,
     await applyLedger(env, userId, { remove: [o.txId] })
     delete o.txId
   }
-  Object.assign(o, { status: 'skipped', acknowledged: true, resolvedAt: new Date().toISOString() })
+  Object.assign(o, { status: 'skipped', resolvedAt: new Date().toISOString() })
   await saveOccurrences(env, userId, doc)
   return jsonResponse({ success: true, data: o })
-}
-
-/** Auto-recorded occurrences the user has now seen (kept as recorded) */
-export async function handleAcknowledgeOccurrences(userId: string, request: Request, env: Env): Promise<Response> {
-  const { ids } = (await request.json()) as { ids?: string[] }
-  if (!Array.isArray(ids) || !ids.length) return jsonResponse({ success: true })
-  const doc = await loadOccurrences(env, userId)
-  let changed = false
-  for (const o of doc.items) {
-    if (ids.includes(o.id) && o.status === 'auto' && !o.acknowledged) {
-      o.acknowledged = true
-      changed = true
-    }
-  }
-  if (changed) await saveOccurrences(env, userId, doc)
-  return jsonResponse({ success: true })
 }
