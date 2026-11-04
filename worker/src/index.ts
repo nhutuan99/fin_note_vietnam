@@ -149,14 +149,6 @@ import {
   handleAcknowledgeOccurrences
 } from './controllers/routine.controller'
 import { runRoutineSlot } from './services/routine.service'
-import {
-  handleSepayWebhook,
-  handleGetSepayIntegration,
-  handleCreateSepayKey,
-  handleSetSepaySecret,
-  handleSetSepayAccount,
-  handleDeleteSepayIntegration
-} from './controllers/sepay.controller'
 
 async function handleRequest(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url)
@@ -232,10 +224,6 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
       }
       if (path === '/api/webhook/notification' && request.method === 'POST') {
         return handleNotificationWebhook(request, env)
-      }
-      // SePay bank sync (auth: per-user API key or HMAC signature)
-      if (path === '/api/webhook/sepay' && request.method === 'POST') {
-        return handleSepayWebhook(request, env)
       }
       if (path === '/api/webhook/sms' && request.method === 'POST') {
         return handleSmsWebhook(request, env)
@@ -420,21 +408,6 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
       }
       if (path === '/api/quick-add/prefs' && request.method === 'PUT') {
         return handleUpdateQuickAddPrefs(userId, request, env)
-      }
-
-      // Integrations: SePay bank sync settings
-      if (path === '/api/integrations/sepay') {
-        if (request.method === 'GET') return handleGetSepayIntegration(userId, env)
-        if (request.method === 'DELETE') return handleDeleteSepayIntegration(userId, env)
-      }
-      if (path === '/api/integrations/sepay/key' && request.method === 'POST') {
-        return handleCreateSepayKey(userId, env)
-      }
-      if (path === '/api/integrations/sepay/secret' && request.method === 'PUT') {
-        return handleSetSepaySecret(userId, request, env)
-      }
-      if (path === '/api/integrations/sepay/accounts' && request.method === 'PUT') {
-        return handleSetSepayAccount(userId, request, env)
       }
 
       // Finance: Routines (recurring in/out, push reminder + auto-record)

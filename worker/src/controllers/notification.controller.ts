@@ -58,7 +58,7 @@ export async function handleClearNotifications(userId: string, env: Env): Promis
  * 
  * Also handles generic: +500,000VND or -300.000VND
  */
-export interface SmsParsedResult {
+interface SmsParsedResult {
   type: 'income' | 'expense'
   amount: number
   note: string        // extracted ND or truncated text
@@ -444,26 +444,12 @@ async function processSmsWebhook(
   })
 }
 
-/** Where a bank transaction came from (SMS forwarded by the phone, or a bank-sync service) */
-export interface TransactionChannel {
-  source: TransactionData['source']
-  /** Shown in the in-app notification title, e.g. "SMS", "SePay" */
-  label: string
-  /** Transaction date (YYYY-MM-DD) when the sender knows it; today otherwise */
-  date?: string
-  /** Wallet chosen by the caller (e.g. a bank account mapped to a wallet); skips name matching */
-  walletId?: string
-}
-
-const SMS_CHANNEL: TransactionChannel = { source: 'sms', label: 'SMS' }
-
 export async function processSmsTransaction(
   parsed: SmsParsedResult, 
   originalText: string, 
   userId: string,
   env: Env,
-  log?: WebhookLog,
-  channel: TransactionChannel = SMS_CHANNEL
+  log?: WebhookLog
 ): Promise<Response> {
   const wallets = (await getJSON<WalletData[]>(env.SMART_NOTE_KV, `users/${userId}/finance/wallets`)) || []
   const txs = (await getJSON<TransactionData[]>(env.SMART_NOTE_KV, `users/${userId}/finance/transactions`)) || []
@@ -472,9 +458,7 @@ export async function processSmsTransaction(
   const cashWallets = wallets.filter(w => w.kind !== 'gold')
   // ── Match wallet by bank name ──
   let walletId = cashWallets[0]?.id || ''
-  if (channel.walletId && cashWallets.some(w => w.id === channel.walletId)) {
-    walletId = channel.walletId
-  } else if (parsed.bankName) {
+  if (parsed.bankName) {
     // 1. Direct name match (preferred)
     const found = cashWallets.find(w => w.name.toLowerCase().includes(parsed.bankName.toLowerCase()))
     if (found) {
@@ -561,8 +545,8 @@ export async function processSmsTransaction(
     category: parsed.type === 'income' ? 'bank_receive' : 'bank_transfer',
     note: `${noteContent}${extraInfo}${bankLabel} ${smsHash}`.trim(),
     walletId,
-    source: channel.source,
-    date: channel.date || new Date().toISOString().substring(0, 10),
+    source: 'sms',
+    date: new Date().toISOString().substring(0, 10),
     createdAt: new Date().toISOString()
   }
 
@@ -584,11 +568,11 @@ export async function processSmsTransaction(
   notiList.unshift({
     id: generateId(),
     type: parsed.type === 'income' ? 'bank_in' : 'bank_out',
-    title: `[${channel.label}] ${parsed.type === 'income' ? 'Tiền vào tài khoản' : 'Tiền ra tài khoản'}`,
+    title: `[SMS] ${parsed.type === 'income' ? 'Tiền vào tài khoản' : 'Tiền ra tài khoản'}`,
     body: `${parsed.type === 'income' ? '+' : '-'}${parsed.amount.toLocaleString('vi-VN')}đ • Ghi vào ví: ${walletName}`,
     read: false,
     createdAt: new Date().toISOString(),
-    meta: { amount: parsed.amount, txType: parsed.type, walletName, bankName: parsed.bankName || channel.label }
+    meta: { amount: parsed.amount, txType: parsed.type, walletName, bankName: parsed.bankName || 'SMS' }
   })
   if (notiList.length > 100) notiList.splice(100)
   
