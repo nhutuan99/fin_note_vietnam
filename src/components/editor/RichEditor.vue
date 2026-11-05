@@ -602,6 +602,7 @@ useEventListener(window, 'keydown', (e: KeyboardEvent) => {
   outline: none;
   font-size: 1rem;
   line-height: 1.75;
+  font-weight: 500;
   color: var(--text-primary);
   caret-color: var(--accent);
   word-break: break-word;
@@ -644,7 +645,7 @@ useEventListener(window, 'keydown', (e: KeyboardEvent) => {
 .editor-content .tiptap h2 {
   margin-top: 1.25em;
   font-size: 1.375rem;
-  font-weight: 650;
+  font-weight: 700;
   line-height: 1.3;
 }
 .editor-content .tiptap h3 {
@@ -658,7 +659,7 @@ useEventListener(window, 'keydown', (e: KeyboardEvent) => {
 }
 
 /* Inline formatting */
-.editor-content .tiptap strong { font-weight: 650; }
+.editor-content .tiptap strong { font-weight: 700; }
 .editor-content .tiptap s { text-decoration: line-through; color: var(--text-tertiary); }
 .editor-content .tiptap u { text-underline-offset: 3px; }
 .editor-content .tiptap mark {
