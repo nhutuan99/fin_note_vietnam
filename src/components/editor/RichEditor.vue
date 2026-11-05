@@ -662,6 +662,7 @@ useEventListener(window, 'keydown', (e: KeyboardEvent) => {
 .editor-content .tiptap s { text-decoration: line-through; color: var(--text-tertiary); }
 .editor-content .tiptap u { text-underline-offset: 3px; }
 .editor-content .tiptap mark {
+  background: rgba(251, 191, 36, 0.32);
   background: color-mix(in srgb, var(--warning) 32%, transparent);
   color: inherit;
   border-radius: 3px;
@@ -763,29 +764,81 @@ useEventListener(window, 'keydown', (e: KeyboardEvent) => {
 /* Syntax highlighting (lowlight / highlight.js classes) */
 .editor-content .hljs-comment,
 .editor-content .hljs-quote { color: var(--text-tertiary); font-style: italic; }
+.editor-content .hljs-punctuation { color: var(--text-secondary); }
+
 .editor-content .hljs-keyword,
 .editor-content .hljs-selector-tag,
-.editor-content .hljs-built_in { color: #c792ea; }
+.editor-content .hljs-built_in,
+.editor-content .hljs-doctag,
+.editor-content .hljs-formula,
+.editor-content .hljs-template-tag { color: #c792ea; }
+
 .editor-content .hljs-string,
 .editor-content .hljs-attr,
-.editor-content .hljs-template-variable { color: #8bd49c; }
+.editor-content .hljs-attribute,
+.editor-content .hljs-regexp,
+.editor-content .hljs-template-variable,
+.editor-content .hljs-property,
+.editor-content .hljs-selector-class,
+.editor-content .hljs-selector-attr,
+.editor-content .hljs-selector-pseudo { color: #8bd49c; }
+
 .editor-content .hljs-number,
-.editor-content .hljs-literal { color: #f78c6c; }
+.editor-content .hljs-literal,
+.editor-content .hljs-symbol,
+.editor-content .hljs-bullet { color: #f78c6c; }
+
 .editor-content .hljs-title,
 .editor-content .hljs-section,
-.editor-content .hljs-name { color: #82aaff; }
+.editor-content .hljs-name,
+.editor-content .hljs-meta,
+.editor-content .hljs-selector-id,
+.editor-content .hljs-type,
+.editor-content .hljs-class,
+.editor-content .hljs-subst,
+.editor-content .hljs-title.class_ { color: #82aaff; }
+
 .editor-content .hljs-variable,
-.editor-content .hljs-params { color: #f07178; }
+.editor-content .hljs-params,
+.editor-content .hljs-deletion { color: #f07178; }
+
+.editor-content .hljs-addition { color: #8bd49c; }
+.editor-content .hljs-link { color: #82aaff; text-decoration: underline; }
+.editor-content .hljs-emphasis { font-style: italic; }
+.editor-content .hljs-strong { font-weight: 700; }
+
+[data-theme='light'] .editor-content .hljs-punctuation { color: var(--text-tertiary); }
 [data-theme='light'] .editor-content .hljs-keyword,
-[data-theme='light'] .editor-content .hljs-built_in { color: #7c3aed; }
+[data-theme='light'] .editor-content .hljs-built_in,
+[data-theme='light'] .editor-content .hljs-doctag,
+[data-theme='light'] .editor-content .hljs-formula,
+[data-theme='light'] .editor-content .hljs-template-tag { color: #7c3aed; }
 [data-theme='light'] .editor-content .hljs-string,
-[data-theme='light'] .editor-content .hljs-attr { color: #15803d; }
+[data-theme='light'] .editor-content .hljs-attr,
+[data-theme='light'] .editor-content .hljs-attribute,
+[data-theme='light'] .editor-content .hljs-regexp,
+[data-theme='light'] .editor-content .hljs-template-variable,
+[data-theme='light'] .editor-content .hljs-property,
+[data-theme='light'] .editor-content .hljs-selector-class,
+[data-theme='light'] .editor-content .hljs-selector-attr,
+[data-theme='light'] .editor-content .hljs-selector-pseudo { color: #15803d; }
 [data-theme='light'] .editor-content .hljs-number,
-[data-theme='light'] .editor-content .hljs-literal { color: #c2410c; }
+[data-theme='light'] .editor-content .hljs-literal,
+[data-theme='light'] .editor-content .hljs-symbol,
+[data-theme='light'] .editor-content .hljs-bullet { color: #c2410c; }
 [data-theme='light'] .editor-content .hljs-title,
-[data-theme='light'] .editor-content .hljs-name { color: #1d4ed8; }
+[data-theme='light'] .editor-content .hljs-name,
+[data-theme='light'] .editor-content .hljs-meta,
+[data-theme='light'] .editor-content .hljs-selector-id,
+[data-theme='light'] .editor-content .hljs-type,
+[data-theme='light'] .editor-content .hljs-class,
+[data-theme='light'] .editor-content .hljs-subst,
+[data-theme='light'] .editor-content .hljs-title.class_ { color: #1d4ed8; }
 [data-theme='light'] .editor-content .hljs-variable,
-[data-theme='light'] .editor-content .hljs-params { color: #be123c; }
+[data-theme='light'] .editor-content .hljs-params,
+[data-theme='light'] .editor-content .hljs-deletion { color: #be123c; }
+[data-theme='light'] .editor-content .hljs-addition { color: #15803d; }
+[data-theme='light'] .editor-content .hljs-link { color: #1d4ed8; }
 
 /* Horizontal rule */
 .editor-content .tiptap hr {
