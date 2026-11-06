@@ -1,4 +1,5 @@
 import type { Wallet, Transaction, Reminder, Note, StockPosition, FundPosition, FinanceStats, GoldPrices } from '@/types'
+import type { SavingsGoalData } from '../../worker/src/types'
 import { deriveNoteText } from '@/shared/utils/noteText'
 
 const LOCAL_STORAGE_KEY = 'smart_note_guest_data'
@@ -10,6 +11,7 @@ interface LocalSchema {
   notes: Note[]
   stocks: StockPosition[]
   funds: FundPosition[]
+  savings: SavingsGoalData[]
   /** Quick-add popup preferences (same shape as the worker's QuickAddPrefs) */
   quickAdd?: Record<string, unknown>
 }
@@ -23,12 +25,15 @@ function getDb(): LocalSchema {
       reminders: [],
       notes: [],
       stocks: [],
-      funds: []
+      funds: [],
+      savings: []
     }
     saveDb(defaultData)
     return defaultData
   }
-  return JSON.parse(raw)
+  const parsed = JSON.parse(raw) as LocalSchema
+  if (!Array.isArray(parsed.savings)) parsed.savings = []
+  return parsed
 }
 
 function saveDb(data: LocalSchema) {
@@ -399,6 +404,84 @@ export const localDbMock = async (method: string, url: string, body?: any) => {
     db.funds = db.funds.filter(r => r.id !== id)
     saveDb(db)
     return sendResponse({ success: true })
+  }
+
+  // ── SAVINGS ──
+  if (path === '/api/savings') {
+    if (method === 'GET') return sendResponse(db.savings)
+    if (method === 'POST') {
+      const s: SavingsGoalData = {
+        id: generateId(),
+        name: body?.name ?? '',
+        icon: body?.icon ?? '🎯',
+        color: body?.color ?? '#10b981',
+        targetAmount: body?.targetAmount ?? 0,
+        currentAmount: 0,
+        deadline: body?.deadline,
+        autoSaveEnabled: !!body?.autoSaveEnabled,
+        autoSaveAmount: body?.autoSaveAmount,
+        autoSaveWalletId: body?.autoSaveWalletId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+      db.savings.push(s)
+      saveDb(db)
+      return sendResponse(s)
+    }
+  }
+  if (path.startsWith('/api/savings/')) {
+    const segments = path.split('/')
+    const id = segments[3]
+    const action = segments[4]
+
+    if (method === 'PUT' && !action) {
+      const idx = db.savings.findIndex(s => s.id === id)
+      if (idx !== -1) {
+        db.savings[idx] = { ...db.savings[idx], ...body, updatedAt: new Date().toISOString() }
+        saveDb(db)
+        return sendResponse(db.savings[idx])
+      }
+      return sendResponse(null)
+    }
+    if (method === 'DELETE' && !action) {
+      db.savings = db.savings.filter(s => s.id !== id)
+      saveDb(db)
+      return sendResponse({ success: true })
+    }
+    if (method === 'POST' && (action === 'deposit' || action === 'withdraw')) {
+      const isDeposit = action === 'deposit'
+      const amount = Number(body?.amount) || 0
+      const walletId = body?.walletId as string | undefined
+      const idx = db.savings.findIndex(s => s.id === id)
+      if (idx === -1) return sendResponse(null)
+
+      if (walletId) {
+        const wIdx = db.wallets.findIndex(w => w.id === walletId)
+        if (wIdx !== -1) {
+          if (isDeposit) {
+            if (db.wallets[wIdx].balance < amount) return { success: false, error: 'Số dư ví không đủ để trích' }
+            db.wallets[wIdx].balance -= amount
+          } else {
+            db.wallets[wIdx].balance += amount
+          }
+          db.transactions.push({
+            id: generateId(),
+            type: isDeposit ? 'expense' : 'income',
+            amount,
+            category: isDeposit ? 'saving' : 'saving_withdraw',
+            note: isDeposit ? `Trích tiền vào quỹ: ${db.savings[idx].name}` : `Rút tiền từ quỹ: ${db.savings[idx].name}`,
+            walletId,
+            source: 'manual',
+            date: new Date().toISOString().substring(0, 10),
+            createdAt: new Date().toISOString()
+          })
+        }
+      }
+      db.savings[idx].currentAmount += isDeposit ? amount : -amount
+      db.savings[idx].updatedAt = new Date().toISOString()
+      saveDb(db)
+      return sendResponse(db.savings[idx])
+    }
   }
 
   // ── ROUTINES: reminders and auto-recording run on the server, so guests only get empty lists ──

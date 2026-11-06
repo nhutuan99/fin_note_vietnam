@@ -18,6 +18,7 @@ const financeStore = useFinanceStore()
 onMounted(async () => {
   await financeStore.fetchWallets()
   await savingsStore.migrateFromLocal()
+  await savingsStore.fetch()
 })
 
 const goals = computed(() => savingsStore.goals)
@@ -65,7 +66,7 @@ function applyAiPlan() {
 async function addGoal() {
   const amt = form.value.targetAmount
   if (!form.value.name.trim() || amt <= 0) return
-  await savingsStore.create({
+  const goal = await savingsStore.create({
     name: form.value.name.trim(),
     icon: form.value.icon,
     color: form.value.color,
@@ -75,6 +76,7 @@ async function addGoal() {
     autoSaveAmount: form.value.autoSaveAmount || undefined,
     autoSaveWalletId: form.value.autoSaveWalletId || undefined
   })
+  if (!goal) return
   showAdd.value = false
   planDurationMonths.value = null
   form.value = { name: '', icon: '🎯', color: '#10b981', targetAmount: 0, deadline: '', autoSaveEnabled: false, autoSaveAmount: 0, autoSaveWalletId: '' }
