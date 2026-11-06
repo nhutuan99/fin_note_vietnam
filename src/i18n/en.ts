@@ -1163,6 +1163,8 @@ export default {
     emptyHint: 'Create money pots for your goals',
     deleteTitle: 'Delete Goal',
     deleteMessage: 'This savings goal will be removed.',
+    createSuccess: 'Savings goal created',
+    createError: "Couldn't create the goal. Please try again.",
     autoSaveTitle: 'Smart Auto-Save',
     autoSaveDesc: 'The system will automatically send you reminders and help you quickly deposit money into this fund.',
     autoSaveSource: 'Auto-save funding source',

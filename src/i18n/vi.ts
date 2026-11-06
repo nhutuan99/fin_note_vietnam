@@ -1195,6 +1195,8 @@ export default {
     emptyHint: 'Tạo hũ tiết kiệm cho các mục tiêu của bạn',
     deleteTitle: 'Xóa mục tiêu',
     deleteMessage: 'Mục tiêu tiết kiệm này sẽ bị xóa.',
+    createSuccess: 'Đã tạo mục tiêu tiết kiệm',
+    createError: 'Không thể tạo mục tiêu. Vui lòng thử lại.',
     autoSaveTitle: 'Smart Auto-Save',
     autoSaveDesc: 'Hệ thống sẽ tự động gửi thông báo nhắc nhở và giúp bạn trích tiền vào quỹ này một cách nhanh chóng.',
     autoSaveSource: 'Nguồn tiền trích tự động',

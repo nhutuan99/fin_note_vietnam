@@ -23,6 +23,7 @@ onMounted(async () => {
 
 const goals = computed(() => savingsStore.goals)
 const showAdd = ref(false)
+const saving = ref(false)
 const showDeposit = ref<string | null>(null)
 const depositAmount = ref<number>(0)
 const depositWalletId = ref<string>('')
@@ -66,20 +67,33 @@ function applyAiPlan() {
 async function addGoal() {
   const amt = form.value.targetAmount
   if (!form.value.name.trim() || amt <= 0) return
-  const goal = await savingsStore.create({
-    name: form.value.name.trim(),
-    icon: form.value.icon,
-    color: form.value.color,
-    targetAmount: amt,
-    deadline: form.value.deadline || undefined,
-    autoSaveEnabled: form.value.autoSaveEnabled,
-    autoSaveAmount: form.value.autoSaveAmount || undefined,
-    autoSaveWalletId: form.value.autoSaveWalletId || undefined
-  })
-  if (!goal) return
-  showAdd.value = false
-  planDurationMonths.value = null
-  form.value = { name: '', icon: '🎯', color: '#10b981', targetAmount: 0, deadline: '', autoSaveEnabled: false, autoSaveAmount: 0, autoSaveWalletId: '' }
+  if (saving.value) return
+  saving.value = true
+  try {
+    const goal = await savingsStore.create({
+      name: form.value.name.trim(),
+      icon: form.value.icon,
+      color: form.value.color,
+      targetAmount: amt,
+      deadline: form.value.deadline || undefined,
+      autoSaveEnabled: form.value.autoSaveEnabled,
+      autoSaveAmount: form.value.autoSaveAmount || undefined,
+      autoSaveWalletId: form.value.autoSaveWalletId || undefined
+    })
+    if (!goal) {
+      ui.showToast('error', t('savings.createError'))
+      return
+    }
+    showAdd.value = false
+    planDurationMonths.value = null
+    form.value = { name: '', icon: '🎯', color: '#10b981', targetAmount: 0, deadline: '', autoSaveEnabled: false, autoSaveAmount: 0, autoSaveWalletId: '' }
+    ui.showToast('success', t('savings.createSuccess'))
+  } catch (err) {
+    console.error('Failed to create saving goal:', err)
+    ui.showToast('error', t('savings.createError'))
+  } finally {
+    saving.value = false
+  }
 }
 
 async function deposit(id: string) {
@@ -243,7 +257,10 @@ const depositWalletOptions = computed(() => [
 
           <div class="flex gap-2">
             <button @click="showAdd = false; planDurationMonths = null" class="border-border-default text-text-secondary hover:bg-bg-hover flex-1 rounded-lg border py-2 text-sm transition-all">{{ t('common.cancel') }}</button>
-            <button @click="addGoal" :disabled="!form.name.trim() || form.targetAmount <= 0" class="btn-primary flex-1 justify-center py-2 disabled:opacity-40">{{ t('common.add') }}</button>
+            <button @click="addGoal" :disabled="saving || !form.name.trim() || form.targetAmount <= 0" class="btn-primary flex-1 justify-center py-2 disabled:opacity-40">
+              <AppSpinner v-if="saving" :size="16" />
+              <template v-else>{{ t('common.add') }}</template>
+            </button>
           </div>
         </div>
       </div>

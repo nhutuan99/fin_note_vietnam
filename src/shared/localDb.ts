@@ -31,9 +31,24 @@ function getDb(): LocalSchema {
     saveDb(defaultData)
     return defaultData
   }
-  const parsed = JSON.parse(raw) as LocalSchema
-  if (!Array.isArray(parsed.savings)) parsed.savings = []
-  return parsed
+  try {
+    const parsed = JSON.parse(raw) as LocalSchema
+    if (!Array.isArray(parsed.savings)) parsed.savings = []
+    return parsed
+  } catch {
+    // Corrupted guest data — reset to a clean state instead of crashing every API call.
+    const defaultData: LocalSchema = {
+      wallets: [],
+      transactions: [],
+      reminders: [],
+      notes: [],
+      stocks: [],
+      funds: [],
+      savings: []
+    }
+    saveDb(defaultData)
+    return defaultData
+  }
 }
 
 function saveDb(data: LocalSchema) {
