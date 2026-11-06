@@ -316,12 +316,18 @@ export const useFinanceStore = defineStore('finance', () => {
       }
       
       await httpClient.del(`/api/transactions/${id}`)
-      
-      // Refresh wallets and stats from server in background
+
+      // If we deleted the only transaction left on the current page, step back one
+      // page so the refreshed list doesn't land on an empty page.
+      if (paginatedTransactions.value.length === 1 && pagination.value.page > 1) {
+        pagination.value.page -= 1
+      }
+
+      // Refresh wallets, stats and the paginated list from the server.
       fetchWallets().then(() => {
         _lastFetchTime = Date.now()
       })
-      fetchStats()
+      await Promise.all([fetchStats(), fetchPaginatedTransactions()])
     } catch (err) {
       console.error('Failed to delete transaction:', err)
     }
