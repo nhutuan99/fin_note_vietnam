@@ -4,16 +4,18 @@ import { useI18n } from 'vue-i18n'
 import { useQuickAddStore } from '@/stores/quickAdd'
 import { useRoutinesStore } from '@/stores/routines'
 import { useUiStore } from '@/stores/ui'
-import { useEventListener } from '@/composables/useEventListener'
 import type { TransactionType } from '@/types'
 
 /**
- * Opens the quick-add popup:
- * - when the app starts and every time the user comes back to the app/tab, on any page (when enabled),
- * - from home-screen shortcuts / links with `?quick=1|income|expense`, and
- * - in routine mode only from a routine notification (`?routine=<occurrence>`). Routines are
+ * Opens the quick-add popup only when the user asks for it:
+ * - from home-screen shortcuts / links with `?quick=1|income|expense` (the weekly-review push
+ *   also lands here), and
+ * - in routine mode from a routine notification (`?routine=<occurrence>`). Routines are
  *   recorded by the server at their time and announced by push — the app never pops them up
  *   by itself.
+ *
+ * The popup no longer auto-opens on every launch/return; instead the server pushes a weekly
+ * review reminder (configurable day) and tapping it opens the popup.
  * Mount once in the authenticated layout.
  */
 export function useQuickAddTriggers() {
@@ -24,21 +26,12 @@ export function useQuickAddTriggers() {
   const router = useRouter()
   const { t } = useI18n()
 
-  // Only a confirm/PIN prompt that is already waiting for an answer takes precedence
-  function canAutoOpen() {
-    return store.prefs.enabled && !store.isOpen && !ui.confirmState.isOpen && !ui.pinState.isOpen
-  }
-
-  useEventListener(document, 'visibilitychange', () => {
-    if (document.visibilityState === 'visible' && canAutoOpen()) store.open('visibility')
-  })
-
   function dropQuery(key: string) {
     const { [key]: _drop, ...rest } = route.query
     router.replace({ query: rest })
   }
 
-  /** `?quick=` from the PWA shortcuts; the param is removed so a reload doesn't reopen it */
+  /** `?quick=` from the PWA shortcuts or the weekly-review push; removed so a reload doesn't reopen it */
   function handleQuickParam(): boolean {
     const quick = route.query.quick
     if (typeof quick !== 'string') return false
@@ -65,27 +58,11 @@ export function useQuickAddTriggers() {
     return true
   }
 
-  /**
-   * App start: the quick-add popup straight away from the cached prefs, or — first launch on this
-   * device — as soon as the synced prefs say it's on. At most once per start.
-   */
-  let launchHandled = false
-  function openOnLaunch() {
-    if (launchHandled || !canAutoOpen()) return
-    launchHandled = true
-    store.open('launch')
-  }
-
   onMounted(async () => {
-    const prefsLoaded = store.loadPrefs()
-    launchHandled = handleQuickParam() || (await handleRoutineParam())
+    void store.loadPrefs()
+    if (!handleQuickParam()) await handleRoutineParam()
     // Records routines that came due before the cron got to them (and refreshes balances if so).
-    // Only after the notification lookup: both settle routines on the server, never at once.
     void routines.fetchInbox()
-    openOnLaunch()
-    await prefsLoaded
-    openOnLaunch()
-    launchHandled = true
   })
 
   watch(() => route.query.quick, () => void handleQuickParam())

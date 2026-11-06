@@ -18,6 +18,17 @@ const quickAdd = useQuickAddStore()
 // Language
 const selectedLocale = ref(currentLocale())
 
+// Weekly review reminder
+const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0]
+const dayName = (d: number) => t(`routine.d${d}`)
+function setReviewDay(d: number) {
+  quickAdd.updatePrefs({ reviewDay: d })
+}
+function setReviewTime(e: Event) {
+  const value = (e.target as HTMLInputElement).value
+  if (value) quickAdd.updatePrefs({ reviewTime: value })
+}
+
 function changeLocale(locale: 'vi' | 'en') {
   selectedLocale.value = locale
   setLocale(locale)
@@ -192,6 +203,39 @@ const confirmLargeTransfer = computed({
               />
               <div class="peer h-6 w-11 rounded-full bg-border-default after:absolute after:top-[2px] after:left-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-white after:bg-white after:transition-all after:content-[''] peer-checked:bg-accent peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none"></div>
             </label>
+          </div>
+        </div>
+
+        <div v-if="quickAdd.prefs.enabled" class="border-border-default mt-4 border-t pt-4">
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h5 class="mb-0.5 text-sm font-semibold">{{ t('quickAdd.reviewDay') }}</h5>
+              <p class="text-text-tertiary text-xs">{{ t('quickAdd.reviewDayHint') }}</p>
+            </div>
+            <div class="flex flex-wrap gap-1.5">
+              <button
+                v-for="d in WEEK_ORDER"
+                :key="d"
+                class="min-w-10 rounded-lg border px-2.5 py-1.5 text-sm font-medium transition-colors"
+                :class="
+                  quickAdd.prefs.reviewDay === d
+                    ? 'border-accent bg-accent-subtle text-accent'
+                    : 'border-border-default text-text-secondary hover:bg-bg-hover'
+                "
+                @click="setReviewDay(d)"
+              >
+                {{ dayName(d) }}
+              </button>
+            </div>
+          </div>
+          <div class="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <h5 class="text-sm font-semibold">{{ t('quickAdd.reviewTime') }}</h5>
+            <input
+              type="time"
+              :value="quickAdd.prefs.reviewTime"
+              class="border-border-default bg-bg-surface text-text-primary focus:border-accent rounded-lg border px-3 py-1.5 text-sm outline-none"
+              @change="setReviewTime"
+            />
           </div>
         </div>
       </div>

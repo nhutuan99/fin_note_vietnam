@@ -153,7 +153,7 @@ export interface PushSubscriptionRecord {
 
 /** Quick-add popup settings, synced across the user's devices (`users/{userId}/quick_add`). */
 export interface QuickAddPrefs {
-  /** Open the popup automatically when the user comes back to the app */
+  /** Weekly review reminder on/off (pushes once a week) */
   enabled: boolean
   /** Last chosen tab: money in (income) or out (expense) */
   type: 'income' | 'expense'
@@ -161,6 +161,14 @@ export interface QuickAddPrefs {
   walletId: string | null
   /** Last chosen category per tab */
   categories: { income: string; expense: string }
+  /** Weekly review day of week, 0 = Sunday … 6 = Saturday */
+  reviewDay: number
+  /** Weekly review local "HH:MM" */
+  reviewTime: string
+  /** User's UTC offset in minutes (so the push fires at their local time) */
+  tzOffset: number
+  /** Local date (YYYY-MM-DD) the weekly reminder was last sent — dedupe guard */
+  reviewLastSent: string
   updatedAt: string
 }
 

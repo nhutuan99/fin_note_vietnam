@@ -148,6 +148,7 @@ import {
   handleSkipOccurrence
 } from './controllers/routine.controller'
 import { runRoutineSlot } from './services/routine.service'
+import { runWeeklyReviewSlot } from './services/weekly-review.service'
 
 async function handleRequest(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url)
@@ -618,12 +619,18 @@ export default {
   },
 
   // ── Cloudflare Cron Trigger (*/15 * * * *) ──
-  // Only routines run in the background: one KV list of the current 15-minute slot per run.
+  // Background jobs: routines record/announce in their 15-minute slot, and the weekly
+  // review reminder pushes once a week on the user's chosen day.
   async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
     ctx.waitUntil(
-      runRoutineSlot(env, event.scheduledTime)
-        .then((result) => console.log(result))
-        .catch((err) => console.error('[Cron] Routines failed:', err))
+      Promise.allSettled([
+        runRoutineSlot(env, event.scheduledTime)
+          .then((result) => console.log(result))
+          .catch((err) => console.error('[Cron] Routines failed:', err)),
+        runWeeklyReviewSlot(env, event.scheduledTime)
+          .then((result) => console.log(result))
+          .catch((err) => console.error('[Cron] Weekly review failed:', err))
+      ])
     )
   }
 }

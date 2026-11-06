@@ -4,6 +4,7 @@ import { generateId } from '../utils/crypto'
 import { getJSON, putJSON } from '../services/kv.service'
 import { getGoldPrices, goldValue } from '../services/gold-price.service'
 import { applyLedger } from '../services/routine.service'
+import { syncWeeklyReviewSlots } from '../services/weekly-review.service'
 
 // ====== Finance Handlers ======
 
@@ -475,9 +476,14 @@ const DEFAULT_QUICK_ADD: QuickAddPrefs = {
   type: 'expense',
   walletId: null,
   categories: { income: 'salary', expense: 'food' },
+  reviewDay: 6,
+  reviewTime: '09:00',
+  tzOffset: 0,
+  reviewLastSent: '',
   updatedAt: ''
 }
 const CATEGORY_RE = /^[a-z_]{1,32}$/
+const TIME_RE = /^\d{2}:\d{2}$/
 
 export async function handleGetQuickAddPrefs(userId: string, env: Env): Promise<Response> {
   const stored = await getJSON<Partial<QuickAddPrefs>>(env.SMART_NOTE_KV, QUICK_ADD_KEY(userId))
@@ -487,10 +493,11 @@ export async function handleGetQuickAddPrefs(userId: string, env: Env): Promise<
 /** Partial update: only fields present and valid in the body are changed. */
 export async function handleUpdateQuickAddPrefs(userId: string, request: Request, env: Env): Promise<Response> {
   const body = (await request.json()) as Record<string, unknown>
-  const current = {
+  const current: QuickAddPrefs = {
     ...DEFAULT_QUICK_ADD,
     ...(await getJSON<Partial<QuickAddPrefs>>(env.SMART_NOTE_KV, QUICK_ADD_KEY(userId)))
   }
+  const before: QuickAddPrefs = { ...current }
 
   if (typeof body.enabled === 'boolean') current.enabled = body.enabled
   if (body.type === 'income' || body.type === 'expense') current.type = body.type
@@ -505,9 +512,15 @@ export async function handleUpdateQuickAddPrefs(userId: string, request: Request
       if (typeof value === 'string' && CATEGORY_RE.test(value)) current.categories[kind] = value
     }
   }
+  if (typeof body.reviewDay === 'number' && Number.isInteger(body.reviewDay) && body.reviewDay >= 0 && body.reviewDay <= 6) {
+    current.reviewDay = body.reviewDay
+  }
+  if (typeof body.reviewTime === 'string' && TIME_RE.test(body.reviewTime)) current.reviewTime = body.reviewTime
+  if (typeof body.tzOffset === 'number' && isFinite(body.tzOffset)) current.tzOffset = Math.round(body.tzOffset)
   current.updatedAt = new Date().toISOString()
 
   await putJSON(env.SMART_NOTE_KV, QUICK_ADD_KEY(userId), current)
+  await syncWeeklyReviewSlots(env, userId, before, current)
   return jsonResponse({ success: true, data: current })
 }
 
