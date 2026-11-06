@@ -151,6 +151,14 @@ export interface PushSubscriptionRecord {
   createdAt: string
 }
 
+/** One day of the weekly review schedule: which weekday and at what local time. */
+export interface ReviewScheduleEntry {
+  /** 0 = Sunday … 6 = Saturday */
+  day: number
+  /** Local "HH:MM" */
+  time: string
+}
+
 /** Quick-add popup settings, synced across the user's devices (`users/{userId}/quick_add`). */
 export interface QuickAddPrefs {
   /** Weekly review reminder on/off (pushes once a week) */
@@ -161,10 +169,8 @@ export interface QuickAddPrefs {
   walletId: string | null
   /** Last chosen category per tab */
   categories: { income: string; expense: string }
-  /** Weekly review day of week, 0 = Sunday … 6 = Saturday */
-  reviewDay: number
-  /** Weekly review local "HH:MM" */
-  reviewTime: string
+  /** Weekly review schedule: the days and their local times the reminder fires */
+  reviewSchedule: ReviewScheduleEntry[]
   /** User's UTC offset in minutes (so the push fires at their local time) */
   tzOffset: number
   /** Local date (YYYY-MM-DD) the weekly reminder was last sent — dedupe guard */

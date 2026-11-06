@@ -5,16 +5,22 @@ import { httpClient } from '@/shared/api/httpClient'
 import { useAuthStore } from '@/stores/auth'
 import { AUTH_TOKEN_KEY } from '@/constants/auth'
 
+/** One day of the weekly review schedule. */
+export interface ReviewScheduleEntry {
+  /** 0 = Sunday … 6 = Saturday */
+  day: number
+  /** Local "HH:MM" */
+  time: string
+}
+
 /** Synced across devices via /api/quick-add/prefs; mirrored in localStorage so the popup opens instantly. */
 export interface QuickAddPrefs {
   enabled: boolean
   type: TransactionType
   walletId: string | null
   categories: { income: string; expense: string }
-  /** Weekly review reminder: day of week, 0 = Sunday … 6 = Saturday */
-  reviewDay: number
-  /** Weekly review reminder local "HH:MM" */
-  reviewTime: string
+  /** Weekly review schedule: the days and their local times the reminder fires */
+  reviewSchedule: ReviewScheduleEntry[]
   /** User's UTC offset in minutes */
   tzOffset: number
   /** Local date (YYYY-MM-DD) the weekly reminder was last sent (server bookkeeping) */
@@ -33,8 +39,10 @@ const DEFAULT_PREFS: QuickAddPrefs = {
   type: 'expense',
   walletId: null,
   categories: { income: 'salary', expense: 'food' },
-  reviewDay: 6,
-  reviewTime: '09:00',
+  reviewSchedule: [
+    { day: 6, time: '09:00' },
+    { day: 0, time: '09:00' }
+  ],
   tzOffset: -new Date().getTimezoneOffset(),
   reviewLastSent: '',
   updatedAt: ''

@@ -1,12 +1,12 @@
-import { Env, QuickAddPrefs } from '../types'
+import { Env, QuickAddPrefs, ReviewScheduleEntry } from '../types'
 import { getJSON, putJSON } from './kv.service'
 import { sendPushToUser } from '../controllers/push.controller'
 
 /**
- * Weekly review reminder: once a week (configurable day + time) the server pushes a
- * notification so the user does a quick weekly overview instead of logging every day.
+ * Weekly review reminder: on the days the user picked (each with its own time) the server
+ * pushes a notification so they do a quick weekly overview instead of logging every day.
  *
- * Scheduling mirrors routines: each enabled reminder is indexed under a 15-minute UTC slot
+ * Scheduling mirrors routines: each enabled (day, time) is indexed under a 15-minute UTC slot
  * (`weekly-review/slots/{HHmm}/{userId}`), so a cron run is a single `list` of the current
  * slot. The actual day-of-week match is checked at fire time against the user's local date.
  */
@@ -28,19 +28,28 @@ export function weeklyReviewSlot(time: string, tzOffset: number): string {
   return `${String(Math.floor(slot / 60)).padStart(2, '0')}${String(slot % 60).padStart(2, '0')}`
 }
 
-/** Keep the user's weekly-review slot key in line with their prefs */
+function slotsOf(schedule: ReviewScheduleEntry[], tzOffset: number): Set<string> {
+  const slots = new Set<string>()
+  for (const e of schedule) slots.add(weeklyReviewSlot(e.time, tzOffset))
+  return slots
+}
+
+/** Keep the user's weekly-review slot keys in line with their prefs */
 export async function syncWeeklyReviewSlots(
   env: Env,
   userId: string,
   before: QuickAddPrefs | null,
   after: QuickAddPrefs | null
 ) {
-  const prevSlot = before?.enabled ? weeklyReviewSlot(before.reviewTime, before.tzOffset) : null
-  const nextSlot = after?.enabled ? weeklyReviewSlot(after.reviewTime, after.tzOffset) : null
-  if (prevSlot === nextSlot) return
+  const prev = before?.enabled ? slotsOf(before.reviewSchedule, before.tzOffset) : new Set<string>()
+  const next = after?.enabled ? slotsOf(after.reviewSchedule, after.tzOffset) : new Set<string>()
   const ops: Promise<unknown>[] = []
-  if (prevSlot) ops.push(env.SMART_NOTE_KV.delete(`${SLOT_PREFIX}${prevSlot}/${userId}`))
-  if (nextSlot) ops.push(env.SMART_NOTE_KV.put(`${SLOT_PREFIX}${nextSlot}/${userId}`, '1'))
+  for (const slot of next) {
+    if (!prev.has(slot)) ops.push(env.SMART_NOTE_KV.put(`${SLOT_PREFIX}${slot}/${userId}`, '1'))
+  }
+  for (const slot of prev) {
+    if (!next.has(slot)) ops.push(env.SMART_NOTE_KV.delete(`${SLOT_PREFIX}${slot}/${userId}`))
+  }
   await Promise.all(ops)
 }
 
@@ -69,8 +78,12 @@ export async function runWeeklyReviewSlot(env: Env, scheduledTime: number): Prom
         const prefs = await getJSON<QuickAddPrefs>(env.SMART_NOTE_KV, weeklyReviewPrefsKey(userId))
         if (!prefs?.enabled) continue
         const today = localDate(nowMs, prefs.tzOffset)
-        if (localWeekday(nowMs, prefs.tzOffset) !== prefs.reviewDay) continue
         if (prefs.reviewLastSent === today) continue
+        const weekday = localWeekday(nowMs, prefs.tzOffset)
+        const matched = prefs.reviewSchedule.some(
+          (e) => e.day === weekday && weeklyReviewSlot(e.time, prefs.tzOffset) === slot
+        )
+        if (!matched) continue
 
         await sendPushToUser(userId, env, {
           title: 'Tổng kết tuần 📊',

@@ -8,6 +8,7 @@ import { useCurrency, type CurrencyCode } from '@/composables/useCurrency'
 import { useUiStore } from '@/stores/ui'
 import { useAuthStore } from '@/stores/auth'
 import { httpClient } from '@/shared/api/httpClient'
+import CustomTimePicker from '@/components/ui/CustomTimePicker.vue'
 import type { User } from '@/types'
 
 const { t } = useI18n()
@@ -18,15 +19,28 @@ const quickAdd = useQuickAddStore()
 // Language
 const selectedLocale = ref(currentLocale())
 
-// Weekly review reminder
+// Weekly review reminder (multi-day, each with its own time)
 const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0]
 const dayName = (d: number) => t(`routine.d${d}`)
-function setReviewDay(d: number) {
-  quickAdd.updatePrefs({ reviewDay: d })
+const selectedDays = computed(() => [...quickAdd.prefs.reviewSchedule].sort((a, b) => a.day - b.day))
+const dayTime = (d: number) => quickAdd.prefs.reviewSchedule.find((e) => e.day === d)?.time ?? '09:00'
+
+function toggleDay(d: number) {
+  const schedule = [...quickAdd.prefs.reviewSchedule]
+  const idx = schedule.findIndex((e) => e.day === d)
+  if (idx === -1) {
+    schedule.push({ day: d, time: schedule[0]?.time ?? '09:00' })
+    schedule.sort((a, b) => a.day - b.day)
+  } else {
+    schedule.splice(idx, 1)
+  }
+  quickAdd.updatePrefs({ reviewSchedule: schedule })
 }
-function setReviewTime(e: Event) {
-  const value = (e.target as HTMLInputElement).value
-  if (value) quickAdd.updatePrefs({ reviewTime: value })
+
+function setDayTime(d: number, time: string) {
+  quickAdd.updatePrefs({
+    reviewSchedule: quickAdd.prefs.reviewSchedule.map((e) => (e.day === d ? { ...e, time } : e))
+  })
 }
 
 function changeLocale(locale: 'vi' | 'en') {
@@ -207,7 +221,7 @@ const confirmLargeTransfer = computed({
         </div>
 
         <div v-if="quickAdd.prefs.enabled" class="border-border-default mt-4 border-t pt-4">
-          <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div class="flex flex-col gap-3">
             <div>
               <h5 class="mb-0.5 text-sm font-semibold">{{ t('quickAdd.reviewDay') }}</h5>
               <p class="text-text-tertiary text-xs">{{ t('quickAdd.reviewDayHint') }}</p>
@@ -216,26 +230,35 @@ const confirmLargeTransfer = computed({
               <button
                 v-for="d in WEEK_ORDER"
                 :key="d"
+                type="button"
                 class="min-w-10 rounded-lg border px-2.5 py-1.5 text-sm font-medium transition-colors"
                 :class="
-                  quickAdd.prefs.reviewDay === d
+                  quickAdd.prefs.reviewSchedule.some((e) => e.day === d)
                     ? 'border-accent bg-accent-subtle text-accent'
                     : 'border-border-default text-text-secondary hover:bg-bg-hover'
                 "
-                @click="setReviewDay(d)"
+                @click="toggleDay(d)"
               >
                 {{ dayName(d) }}
               </button>
             </div>
           </div>
-          <div class="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <h5 class="text-sm font-semibold">{{ t('quickAdd.reviewTime') }}</h5>
-            <input
-              type="time"
-              :value="quickAdd.prefs.reviewTime"
-              class="border-border-default bg-bg-surface text-text-primary focus:border-accent rounded-lg border px-3 py-1.5 text-sm outline-none"
-              @change="setReviewTime"
-            />
+
+          <div v-if="selectedDays.length" class="mt-4 space-y-3">
+            <div
+              v-for="entry in selectedDays"
+              :key="entry.day"
+              class="flex items-center justify-between gap-3"
+            >
+              <span class="text-text-primary w-12 text-sm font-medium">{{ dayName(entry.day) }}</span>
+              <div class="w-32">
+                <CustomTimePicker
+                  :model-value="entry.time"
+                  :placeholder="t('quickAdd.reviewTime')"
+                  @update:modelValue="setDayTime(entry.day, $event)"
+                />
+              </div>
+            </div>
           </div>
         </div>
       </div>

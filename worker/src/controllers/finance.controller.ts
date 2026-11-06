@@ -476,8 +476,10 @@ const DEFAULT_QUICK_ADD: QuickAddPrefs = {
   type: 'expense',
   walletId: null,
   categories: { income: 'salary', expense: 'food' },
-  reviewDay: 6,
-  reviewTime: '09:00',
+  reviewSchedule: [
+    { day: 6, time: '09:00' },
+    { day: 0, time: '09:00' }
+  ],
   tzOffset: 0,
   reviewLastSent: '',
   updatedAt: ''
@@ -512,10 +514,20 @@ export async function handleUpdateQuickAddPrefs(userId: string, request: Request
       if (typeof value === 'string' && CATEGORY_RE.test(value)) current.categories[kind] = value
     }
   }
-  if (typeof body.reviewDay === 'number' && Number.isInteger(body.reviewDay) && body.reviewDay >= 0 && body.reviewDay <= 6) {
-    current.reviewDay = body.reviewDay
+  if (Array.isArray(body.reviewSchedule)) {
+    const schedule = (body.reviewSchedule as any[])
+      .filter(
+        (e) =>
+          e &&
+          Number.isInteger(e.day) &&
+          e.day >= 0 &&
+          e.day <= 6 &&
+          typeof e.time === 'string' &&
+          TIME_RE.test(e.time)
+      )
+      .map((e) => ({ day: e.day, time: e.time }))
+    current.reviewSchedule = schedule
   }
-  if (typeof body.reviewTime === 'string' && TIME_RE.test(body.reviewTime)) current.reviewTime = body.reviewTime
   if (typeof body.tzOffset === 'number' && isFinite(body.tzOffset)) current.tzOffset = Math.round(body.tzOffset)
   current.updatedAt = new Date().toISOString()
 

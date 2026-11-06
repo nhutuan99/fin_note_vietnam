@@ -597,9 +597,9 @@ export default {
     autoOffToast: 'Weekly review reminder off',
     settingTitle: 'Weekly review reminder',
     settingDesc: 'FinNote sends one notification a week so you can review your money. Tap it to open the quick-add popup.',
-    reviewDay: 'Reminder day',
-    reviewDayHint: 'Get the weekly review on this day',
-    reviewTime: 'Reminder time',
+    reviewDay: 'Reminder days',
+    reviewDayHint: 'Pick one or more days, each with its own time',
+    reviewTime: 'Time',
     tryNow: 'Try it'
   },
 

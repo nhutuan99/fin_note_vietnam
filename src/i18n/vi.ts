@@ -611,7 +611,7 @@ export default {
     settingTitle: 'Nhắc tổng kết hàng tuần',
     settingDesc: 'FinNote gửi thông báo mỗi tuần 1 lần để bạn điểm lại thu chi. Nhấn thông báo để mở popup nhập nhanh.',
     reviewDay: 'Ngày nhắc',
-    reviewDayHint: 'Nhận thông báo tổng kết vào ngày này mỗi tuần',
+    reviewDayHint: 'Chọn một hoặc nhiều ngày trong tuần, mỗi ngày một khung giờ',
     reviewTime: 'Giờ nhắc',
     tryNow: 'Mở thử'
   },
