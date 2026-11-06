@@ -18,8 +18,8 @@ import {
   X
 } from 'lucide-vue-next'
 
-import TransactionTable from '@/components/finance/TransactionTable.vue'
-import ClearTransactionsModal from '@/components/finance/ClearTransactionsModal.vue'
+import TransactionTable from '@/modules/finance/components/TransactionTable.vue'
+import ClearTransactionsModal from '@/modules/finance/components/ClearTransactionsModal.vue'
 import { useExportCsv } from '@/composables/useExportCsv'
 import { onMounted, watch } from 'vue'
 

@@ -12,6 +12,3 @@ export interface Debt {
   status: 'active' | 'paid'
   createdAt: string
 }
-
-export type DebtType = Debt['type']
-export type DebtStatus = Debt['status']

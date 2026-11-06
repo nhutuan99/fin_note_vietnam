@@ -20,7 +20,7 @@ import { useSwipeNavigation } from '@/composables/useSwipeNavigation'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import ToastContainer from '@/components/ui/ToastContainer.vue'
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
-import PinDialog from '@/components/PinDialog.vue'
+import PinDialog from '@/components/ui/PinDialog.vue'
 import { ArrowLeft } from 'lucide-vue-next'
 
 const route  = useRoute()

@@ -25,7 +25,7 @@ import {
   ArrowDownRight,
   Target
 } from 'lucide-vue-next'
-import WeatherWidget from '@/components/WeatherWidget.vue'
+import WeatherWidget from './WeatherWidget.vue'
 import MonthSummaryCard from './MonthSummaryCard.vue'
 
 const { t, tm } = useI18n()
