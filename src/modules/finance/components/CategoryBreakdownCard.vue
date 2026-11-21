@@ -5,7 +5,7 @@ import { useI18n } from 'vue-i18n'
 import { ArrowUpRight, ArrowDownRight, ChevronDown, LayoutList } from 'lucide-vue-next'
 import { useFinanceStore } from '@/stores/finance'
 import { useUiStore } from '@/stores/ui'
-import { getCategoryConfig } from '@/constants/finance'
+import { getCategoryConfig, categoryLabel } from '@/constants/finance'
 import { categoryColor, otherColor } from '@/constants/categoryPalette'
 import { formatMoneyShort } from '@/composables/useCurrency'
 
@@ -117,7 +117,7 @@ const headline = computed(() => {
 })
 
 function rowName(row: Row) {
-  return row.key === OTHER_KEY ? t('dashboard.categories.other') : t(`categories.${row.key}`)
+  return row.key === OTHER_KEY ? t('dashboard.categories.other') : categoryLabel(row.key)
 }
 
 function setKind(next: Kind) {

@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ArrowUpRight, ArrowDownRight, ArrowRight, Plus, Wallet } from 'lucide-vue-next'
 import { useFinancePolling } from '@/composables/useFinancePolling'
-import { formatVNDShort, formatVND, getCategoryConfig } from '@/constants/finance'
+import { formatVNDShort, formatVND, getCategoryConfig, categoryLabel } from '@/constants/finance'
 import { getWalletBrand } from '@/constants/walletBrands'
 
 import DailyTrendCard from './DailyTrendCard.vue'
@@ -186,7 +186,7 @@ const activeWalletStats = computed(() => walletBreakdownTab.value === 'expense' 
           <div class="min-w-0 flex-1">
             <div class="flex items-center gap-2">
               <span class="text-sm font-semibold text-text-primary min-w-0 wrap-break-word">
-                {{ t(`categories.${tx.category}`) }}
+                {{ categoryLabel(tx.category) }}
               </span>
               <span
                 v-if="tx.source && tx.source !== 'manual'"

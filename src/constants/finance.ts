@@ -1,5 +1,6 @@
 import type { CategoryConfig, Wallet } from '@/types'
 import { useUiStore } from '@/stores/ui'
+import i18n from '@/i18n'
 
 // ── Default Wallets ──
 
@@ -84,7 +85,17 @@ export const INCOME_CATEGORIES: CategoryConfig[] = [
   { key: 'other_income', label: 'Thu khác', icon: '📥', color: '#737373', type: 'income' }
 ]
 
-export const ALL_CATEGORIES = [...EXPENSE_CATEGORIES, ...INCOME_CATEGORIES]
+/**
+ * Categories the system assigns on its own and the user never picks — kept
+ * out of the pickers above, but still known so they render with a name/icon.
+ * `transfer`: internal move between the user's own wallets (worker
+ * finance.controller), excluded from income/expense totals.
+ */
+export const SYSTEM_CATEGORIES: CategoryConfig[] = [
+  { key: 'transfer', label: 'Chuyển nội bộ', icon: '🔁', color: '#0ea5e9', type: 'both' }
+]
+
+export const ALL_CATEGORIES = [...EXPENSE_CATEGORIES, ...INCOME_CATEGORIES, ...SYSTEM_CATEGORIES]
 
 export function getCategoryConfig(key: string): CategoryConfig {
   return (
@@ -96,6 +107,18 @@ export function getCategoryConfig(key: string): CategoryConfig {
       type: 'both' as const
     }
   )
+}
+
+/**
+ * Display name of a category in the current locale. Use this everywhere
+ * instead of a raw `t('categories.' + key)` so an unknown key never shows up as
+ * a raw "categories.xxx" string.
+ */
+export function categoryLabel(key: string | null | undefined): string {
+  if (!key) return ''
+  const path = `categories.${key}`
+  const { t, te } = i18n.global
+  return te(path) ? t(path) : getCategoryConfig(key).label
 }
 
 // ── Format Helpers ──

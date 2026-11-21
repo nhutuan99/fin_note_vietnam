@@ -9,7 +9,7 @@ import { useRoutinesStore } from '@/stores/routines'
 import { useFinanceStore } from '@/stores/finance'
 import { useUiStore } from '@/stores/ui'
 import { useEventListener } from '@/composables/useEventListener'
-import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, formatVND } from '@/constants/finance'
+import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, formatVND, categoryLabel } from '@/constants/finance'
 import { getWalletBrand } from '@/constants/walletBrands'
 import CurrencyInput from '@/components/ui/CurrencyInput.vue'
 
@@ -492,7 +492,7 @@ function walletBrand(w: Wallet) {
                   @click="setCategory(c.key)"
                 >
                   <span class="qa-cat__icon font-emoji">{{ c.icon }}</span>
-                  <span class="qa-cat__label">{{ t(`categories.${c.key}`) }}</span>
+                  <span class="qa-cat__label">{{ categoryLabel(c.key) }}</span>
                 </button>
               </div>
             </div>

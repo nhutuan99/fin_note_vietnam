@@ -1,5 +1,5 @@
 import { useI18n } from 'vue-i18n'
-import { getCategoryConfig } from '@/constants/finance'
+import { categoryLabel } from '@/constants/finance'
 import { useFinanceStore } from '@/stores/finance'
 import type { Transaction } from '@/types'
 
@@ -34,14 +34,13 @@ export function useExportCsv() {
     ]
 
     const rows = transactions.map((tx) => {
-      const cat = getCategoryConfig(tx.category)
       const walletName = finance.getWalletName(tx.walletId)
       const typeLabel = tx.type === 'income' ? t('transactions.filterIncome') : t('transactions.filterExpense')
 
       return [
         tx.date,
         escapeCsv(typeLabel),
-        escapeCsv(t(`categories.${tx.category}`, cat.label)),
+        escapeCsv(categoryLabel(tx.category)),
         formatAmount(tx.amount),
         escapeCsv(walletName),
         escapeCsv(tx.note || ''),

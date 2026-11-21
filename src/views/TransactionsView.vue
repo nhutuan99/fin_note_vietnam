@@ -5,7 +5,7 @@ import { useRouter } from 'vue-router'
 import { useFinancePolling } from '@/composables/useFinancePolling'
 import { useUiStore } from '@/stores/ui'
 import { getWalletBrand } from '@/constants/walletBrands'
-import { getCategoryConfig } from '@/constants/finance'
+import { getCategoryConfig, categoryLabel } from '@/constants/finance'
 import { useI18n } from 'vue-i18n'
 import type { Transaction } from '@/types'
 import {
@@ -176,7 +176,7 @@ useEventListener(document, 'click', handleClickOutside)
         @click="finance.filter = { ...finance.filter, category: undefined }"
       >
         <span class="font-emoji">{{ getCategoryConfig(finance.filter.category).icon }}</span>
-        {{ t(`categories.${finance.filter.category}`) }}
+        {{ categoryLabel(finance.filter.category) }}
         <X :size="14" />
       </button>
 

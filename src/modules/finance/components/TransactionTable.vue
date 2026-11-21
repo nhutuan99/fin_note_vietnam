@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { Transaction } from '@/types'
-import { formatVND, getCategoryConfig } from '@/constants/finance'
+import { formatVND, getCategoryConfig, categoryLabel } from '@/constants/finance'
 import { getWalletBrand } from '@/constants/walletBrands'
 import { useFinancePolling } from '@/composables/useFinancePolling'
 import {
@@ -212,7 +212,7 @@ function dayTotal(txs: Transaction[]) {
                     <div class="min-w-0 flex-1">
                       <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                         <span class="text-sm font-semibold text-text-primary min-w-0 wrap-break-word">
-                          {{ t(`categories.${tx.category}`) }}
+                          {{ categoryLabel(tx.category) }}
                         </span>
                         <span :class="['tx-badge', getSourceClass(tx.source)]">
                           {{ getSourceLabel(tx.source) }}
@@ -334,7 +334,7 @@ function dayTotal(txs: Transaction[]) {
                 <span v-else class="text-2xl">{{ getCategoryConfig(selectedTx.category).icon }}</span>
               </div>
               <div>
-                <h3 class="text-base font-bold text-text-primary">{{ t(`categories.${selectedTx.category}`) }}</h3>
+                <h3 class="text-base font-bold text-text-primary">{{ categoryLabel(selectedTx.category) }}</h3>
                 <p class="text-[0.6875rem] text-text-tertiary mt-0.5">{{ formatDateTime(selectedTx.createdAt || selectedTx.date) }}</p>
               </div>
             </div>
@@ -374,7 +374,7 @@ function dayTotal(txs: Transaction[]) {
               </div>
               <div class="flex items-center gap-1.5">
                 <span class="text-sm">{{ getCategoryConfig(selectedTx.category).icon }}</span>
-                <span class="tx-detail-card__value">{{ t(`categories.${selectedTx.category}`) }}</span>
+                <span class="tx-detail-card__value">{{ categoryLabel(selectedTx.category) }}</span>
               </div>
             </div>
 

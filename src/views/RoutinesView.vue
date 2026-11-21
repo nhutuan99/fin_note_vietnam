@@ -9,7 +9,7 @@ import { useQuickAddStore } from '@/stores/quickAdd'
 import { useUiStore } from '@/stores/ui'
 import { useAuthStore } from '@/stores/auth'
 import { usePushNotifications } from '@/composables/usePushNotifications'
-import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, formatVND, getCategoryConfig } from '@/constants/finance'
+import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, formatVND, getCategoryConfig, categoryLabel } from '@/constants/finance'
 import { getWalletBrand } from '@/constants/walletBrands'
 import CurrencyInput from '@/components/ui/CurrencyInput.vue'
 
@@ -306,7 +306,7 @@ async function importLegacy() {
     if (!walletId) continue
     try {
       await store.create({
-        name: item.note || t(`categories.${item.category}`),
+        name: item.note || categoryLabel(item.category),
         type: item.type,
         amount: item.amount,
         category: item.category,
@@ -484,7 +484,7 @@ async function importLegacy() {
                 :class="{ 'is-active': form.category === c.key }"
                 @click="form.category = c.key"
               >
-                <span class="font-emoji">{{ c.icon }}</span> {{ t(`categories.${c.key}`) }}
+                <span class="font-emoji">{{ c.icon }}</span> {{ categoryLabel(c.key) }}
               </button>
             </div>
           </div>

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useFinanceStore } from '@/stores/finance'
-import { formatVND, getCategoryConfig } from '@/constants/finance'
+import { formatVND, getCategoryConfig, categoryLabel } from '@/constants/finance'
 import { useI18n } from 'vue-i18n'
 import { useAi } from '@/composables/useGemini'
 import { formatMoneyShort } from '@/composables/useCurrency'
@@ -67,7 +67,7 @@ async function setupBudget() {
   showSetup.value = false
 
   // Ask AI for analysis
-  const catLines = categoryBudgets.map(c => `  ${getCategoryConfig(c.category).icon} ${t(`categories.${c.category}`)}: ${formatMoneyShort(c.limit)}`).join('\n')
+  const catLines = categoryBudgets.map(c => `  ${getCategoryConfig(c.category).icon} ${categoryLabel(c.category)}: ${formatMoneyShort(c.limit)}`).join('\n')
   const prompt = `Người dùng vừa đặt ngân sách tháng ${currentMonth}: ${formatMoneyShort(amt)}.\nĐã chi: ${formatMoneyShort(spent.value)} | Còn lại: ${formatMoneyShort(remaining.value)} | Còn ${daysLeft.value} ngày\nPhân bổ theo danh mục:\n${catLines}\n\nHãy đưa ra 3-4 lời khuyên ngắn gọn, thực tế dựa trên dữ liệu trên. Dùng emoji, Markdown.`
   aiPlanGenerated.value = true
   await askFinance(prompt)
@@ -126,7 +126,7 @@ function resetBudget() { budget.value = null; showSetup.value = true; localStora
       <div v-if="alerts.length" class="mb-6 space-y-2">
         <div v-for="a in alerts" :key="a.category" class="flex items-center gap-3 rounded-xl p-3 text-sm" :class="a.level === 'danger' ? 'bg-error/10 border border-error/20' : 'bg-warning/10 border border-warning/20'">
           <AlertTriangle :size="16" :class="a.level === 'danger' ? 'text-error' : 'text-warning'" />
-          <span>{{ a.icon }} {{ t(`categories.${a.category}`) }}: <strong>{{ a.pct.toFixed(0) }}%</strong> {{ t('budget.ofBudget') }}</span>
+          <span>{{ a.icon }} {{ categoryLabel(a.category) }}: <strong>{{ a.pct.toFixed(0) }}%</strong> {{ t('budget.ofBudget') }}</span>
         </div>
       </div>
 
@@ -136,7 +136,7 @@ function resetBudget() { budget.value = null; showSetup.value = true; localStora
         <div class="space-y-4">
           <div v-for="c in categoryStats" :key="c.category">
             <div class="flex items-center justify-between mb-1">
-              <span class="flex items-center gap-2 text-sm"><span>{{ c.icon }}</span><span class="text-text-secondary">{{ t(`categories.${c.category}`) }}</span></span>
+              <span class="flex items-center gap-2 text-sm"><span>{{ c.icon }}</span><span class="text-text-secondary">{{ categoryLabel(c.category) }}</span></span>
               <span class="text-[0.75rem] font-semibold">{{ formatVND(c.spent) }} <span class="text-text-disabled font-normal">/ {{ formatVND(c.limit) }}</span></span>
             </div>
             <div class="bg-bg-elevated h-1.5 overflow-hidden rounded-full">

@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useFinanceStore } from '@/stores/finance'
-import { getCategoryConfig, EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '@/constants/finance'
+import { getCategoryConfig, EXPENSE_CATEGORIES, INCOME_CATEGORIES, categoryLabel } from '@/constants/finance'
 import { getWalletBrand } from '@/constants/walletBrands'
 import { useI18n } from 'vue-i18n'
 import type { TransactionType } from '@/types'
@@ -133,7 +133,7 @@ async function submit() {
       >
         <span class="flex items-center gap-2">
           <span class="text-lg">{{ selectedCategory.icon }}</span>
-          <span class="text-text-primary text-sm">{{ t(`categories.${selectedCategory.key}`) }}</span>
+          <span class="text-text-primary text-sm">{{ categoryLabel(selectedCategory.key) }}</span>
         </span>
         <ChevronDown
           :size="16"
@@ -160,7 +160,7 @@ async function submit() {
             @click="category = cat.key; showCategoryPicker = false"
           >
             <span class="text-xl">{{ cat.icon }}</span>
-            <span class="text-text-secondary text-[0.6875rem]">{{ t(`categories.${cat.key}`) }}</span>
+            <span class="text-text-secondary text-[0.6875rem]">{{ categoryLabel(cat.key) }}</span>
           </button>
         </div>
       </transition>

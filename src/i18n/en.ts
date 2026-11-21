@@ -996,7 +996,8 @@ export default {
     refund: 'Refund',
     bank_receive: 'Bank Received',
     other_income: 'Other Income',
-    saving: 'Savings'
+    saving: 'Savings',
+    transfer: 'Internal transfer'
   },
 
   // ── Guide ──

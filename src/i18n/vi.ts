@@ -1025,7 +1025,8 @@ export default {
     refund: 'Hoàn tiền',
     bank_receive: 'Nhận CK',
     other_income: 'Thu khác',
-    saving: 'Tiết kiệm'
+    saving: 'Tiết kiệm',
+    transfer: 'Chuyển nội bộ'
   },
 
   // ── Guide ──
